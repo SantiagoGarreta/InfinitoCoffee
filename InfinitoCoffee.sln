@@ -5,19 +5,19 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InfinitoCoffee.Domain", "src\InfinitoCoffee.Domain\InfinitoCoffee.Domain.csproj", "{A25F3F7D-24B6-4D1E-B2B2-2AD8ED0397A4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InfinitoCoffee.Domain", "src\InfinitoCoffee.Domain\InfinitoCoffee.Domain.csproj", "{A25F3F7D-24B6-4D1E-B2B2-2AD8ED0397A4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InfinitoCoffee.Application", "src\InfinitoCoffee.Application\InfinitoCoffee.Application.csproj", "{E5EC4CB6-F036-4EF4-95A9-D3D48E65003A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InfinitoCoffee.Application", "src\InfinitoCoffee.Application\InfinitoCoffee.Application.csproj", "{E5EC4CB6-F036-4EF4-95A9-D3D48E65003A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InfinitoCoffee.Infrastructure", "src\InfinitoCoffee.Infrastructure\InfinitoCoffee.Infrastructure.csproj", "{1A6C59D8-0085-4C20-9D25-C9723BA20C15}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InfinitoCoffee.Infrastructure", "src\InfinitoCoffee.Infrastructure\InfinitoCoffee.Infrastructure.csproj", "{1A6C59D8-0085-4C20-9D25-C9723BA20C15}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InfinitoCoffee.Api", "src\InfinitoCoffee.Api\InfinitoCoffee.Api.csproj", "{1B3955BF-6D8E-4EAD-B2BD-61BA84E4CF4D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InfinitoCoffee.Api", "src\InfinitoCoffee.Api\InfinitoCoffee.Api.csproj", "{1B3955BF-6D8E-4EAD-B2BD-61BA84E4CF4D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InfinitoCoffee.Domain.Tests", "tests\InfinitoCoffee.Domain.Tests\InfinitoCoffee.Domain.Tests.csproj", "{1F61FF8D-35B8-4929-AD85-414ABA20B758}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InfinitoCoffee.Domain.Tests", "tests\InfinitoCoffee.Domain.Tests\InfinitoCoffee.Domain.Tests.csproj", "{1F61FF8D-35B8-4929-AD85-414ABA20B758}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InfinitoCoffee.Application.Tests", "tests\InfinitoCoffee.Application.Tests\InfinitoCoffee.Application.Tests.csproj", "{3A3AA2DE-D54A-462C-96F5-C183A6861463}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InfinitoCoffee.Application.Tests", "tests\InfinitoCoffee.Application.Tests\InfinitoCoffee.Application.Tests.csproj", "{3A3AA2DE-D54A-462C-96F5-C183A6861463}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InfinitoCoffee.Api.IntegrationTests", "tests\InfinitoCoffee.Api.IntegrationTests\InfinitoCoffee.Api.IntegrationTests.csproj", "{569547A0-6E58-40B8-B9A8-A7007553D58C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InfinitoCoffee.Api.IntegrationTests", "tests\InfinitoCoffee.Api.IntegrationTests\InfinitoCoffee.Api.IntegrationTests.csproj", "{569547A0-6E58-40B8-B9A8-A7007553D58C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
