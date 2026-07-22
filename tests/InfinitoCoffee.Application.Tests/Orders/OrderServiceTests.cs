@@ -20,9 +20,10 @@ public class OrderServiceTests
         };
         var orderRepository = new FakeOrderRepository();
         var productRepository = new FakeProductRepository();
+        var eventPublisher = new FakeOrderEventPublisher(() => orderRepository.SaveChangesCalls);
         var product = new Product(Guid.NewGuid(), "Flat White", 6.50m, "Double shot");
         productRepository.Seed(product);
-        var service = CreateOrderService(orderRepository, productRepository, dateTimeProvider);
+        var service = CreateOrderService(orderRepository, productRepository, dateTimeProvider, eventPublisher);
 
         var result = await service.CreateOrderAsync(new CreateOrderCommand(
             "260721-0001",
@@ -36,6 +37,10 @@ public class OrderServiceTests
         Assert.Equal(13m, result.Total);
         Assert.Single(result.Items);
         Assert.Equal(1, orderRepository.SaveChangesCalls);
+        var publishedEvent = Assert.Single(eventPublisher.Events);
+        Assert.Equal("OrderCreated", publishedEvent.EventName);
+        Assert.Equal(result.Id, publishedEvent.Order.Id);
+        Assert.Equal(1, publishedEvent.SaveChangesCallsAtPublish);
     }
 
     [Fact]
@@ -139,9 +144,10 @@ public class OrderServiceTests
         var tokenSource = new CancellationTokenSource();
         var orderRepository = new FakeOrderRepository();
         var productRepository = new FakeProductRepository();
+        var eventPublisher = new FakeOrderEventPublisher(() => orderRepository.SaveChangesCalls);
         var product = new Product(Guid.NewGuid(), "Americano", 5m);
         productRepository.Seed(product);
-        var service = CreateOrderService(orderRepository, productRepository);
+        var service = CreateOrderService(orderRepository, productRepository, eventPublisher: eventPublisher);
 
         await service.CreateOrderAsync(new CreateOrderCommand(
             "260721-0001",
@@ -153,6 +159,7 @@ public class OrderServiceTests
         Assert.Equal(tokenSource.Token, productRepository.LastGetByIdToken);
         Assert.Equal(tokenSource.Token, orderRepository.LastAddToken);
         Assert.Equal(tokenSource.Token, orderRepository.LastSaveChangesToken);
+        Assert.Equal(tokenSource.Token, Assert.Single(eventPublisher.Events).CancellationToken);
     }
 
     [Fact]
@@ -275,17 +282,22 @@ public class OrderServiceTests
         var order = CreatePendingOrder("260721-0001");
         var orderRepository = new FakeOrderRepository();
         orderRepository.Seed(order);
+        var eventPublisher = new FakeOrderEventPublisher(() => orderRepository.SaveChangesCalls);
         var dateTimeProvider = new FakeDateTimeProvider
         {
             UtcNow = new DateTime(2026, 7, 21, 12, 5, 0, DateTimeKind.Utc)
         };
-        var service = CreateOrderService(orderRepository, new FakeProductRepository(), dateTimeProvider);
+        var service = CreateOrderService(orderRepository, new FakeProductRepository(), dateTimeProvider, eventPublisher);
 
         var result = await service.StartOrderPreparationAsync(new StartOrderPreparationCommand(order.Id));
 
         Assert.Equal(OrderStatus.Preparing, result.Status);
         Assert.Equal(dateTimeProvider.UtcNow, result.StartedAtUtc);
         Assert.Equal(1, orderRepository.SaveChangesCalls);
+        var publishedEvent = Assert.Single(eventPublisher.Events);
+        Assert.Equal("OrderStatusChanged", publishedEvent.EventName);
+        Assert.Equal("Preparing", publishedEvent.Order.Status);
+        Assert.Equal(1, publishedEvent.SaveChangesCallsAtPublish);
     }
 
     [Fact]
@@ -294,16 +306,20 @@ public class OrderServiceTests
         var order = CreatePreparingOrder("260721-0001");
         var orderRepository = new FakeOrderRepository();
         orderRepository.Seed(order);
+        var eventPublisher = new FakeOrderEventPublisher(() => orderRepository.SaveChangesCalls);
         var dateTimeProvider = new FakeDateTimeProvider
         {
             UtcNow = new DateTime(2026, 7, 21, 12, 9, 0, DateTimeKind.Utc)
         };
-        var service = CreateOrderService(orderRepository, new FakeProductRepository(), dateTimeProvider);
+        var service = CreateOrderService(orderRepository, new FakeProductRepository(), dateTimeProvider, eventPublisher);
 
         var result = await service.MarkOrderAsReadyAsync(new MarkOrderAsReadyCommand(order.Id));
 
         Assert.Equal(OrderStatus.Ready, result.Status);
         Assert.Equal(dateTimeProvider.UtcNow, result.ReadyAtUtc);
+        var publishedEvent = Assert.Single(eventPublisher.Events);
+        Assert.Equal("OrderStatusChanged", publishedEvent.EventName);
+        Assert.Equal("Ready", publishedEvent.Order.Status);
     }
 
     [Fact]
@@ -312,16 +328,20 @@ public class OrderServiceTests
         var order = CreateReadyOrder("260721-0001");
         var orderRepository = new FakeOrderRepository();
         orderRepository.Seed(order);
+        var eventPublisher = new FakeOrderEventPublisher(() => orderRepository.SaveChangesCalls);
         var dateTimeProvider = new FakeDateTimeProvider
         {
             UtcNow = new DateTime(2026, 7, 21, 12, 12, 0, DateTimeKind.Utc)
         };
-        var service = CreateOrderService(orderRepository, new FakeProductRepository(), dateTimeProvider);
+        var service = CreateOrderService(orderRepository, new FakeProductRepository(), dateTimeProvider, eventPublisher);
 
         var result = await service.DeliverOrderAsync(new DeliverOrderCommand(order.Id));
 
         Assert.Equal(OrderStatus.Delivered, result.Status);
         Assert.Equal(dateTimeProvider.UtcNow, result.DeliveredAtUtc);
+        var publishedEvent = Assert.Single(eventPublisher.Events);
+        Assert.Equal("OrderStatusChanged", publishedEvent.EventName);
+        Assert.Equal("Delivered", publishedEvent.Order.Status);
     }
 
     [Fact]
@@ -330,28 +350,34 @@ public class OrderServiceTests
         var order = CreatePreparingOrder("260721-0001");
         var orderRepository = new FakeOrderRepository();
         orderRepository.Seed(order);
+        var eventPublisher = new FakeOrderEventPublisher(() => orderRepository.SaveChangesCalls);
         var dateTimeProvider = new FakeDateTimeProvider
         {
             UtcNow = new DateTime(2026, 7, 21, 12, 13, 0, DateTimeKind.Utc)
         };
-        var service = CreateOrderService(orderRepository, new FakeProductRepository(), dateTimeProvider);
+        var service = CreateOrderService(orderRepository, new FakeProductRepository(), dateTimeProvider, eventPublisher);
 
         var result = await service.CancelOrderAsync(new CancelOrderCommand(order.Id));
 
         Assert.Equal(OrderStatus.Cancelled, result.Status);
         Assert.Equal(dateTimeProvider.UtcNow, result.CancelledAtUtc);
+        var publishedEvent = Assert.Single(eventPublisher.Events);
+        Assert.Equal("OrderCancelled", publishedEvent.EventName);
+        Assert.Equal(result.CancelledAtUtc, publishedEvent.Order.CancelledAtUtc);
     }
 
     [Fact]
     public async Task StartOrderPreparationAsync_MissingOrder_ThrowsNotFoundException()
     {
         var orderRepository = new FakeOrderRepository();
-        var service = CreateOrderService(orderRepository, new FakeProductRepository());
+        var eventPublisher = new FakeOrderEventPublisher(() => orderRepository.SaveChangesCalls);
+        var service = CreateOrderService(orderRepository, new FakeProductRepository(), eventPublisher: eventPublisher);
 
         var action = () => service.StartOrderPreparationAsync(new StartOrderPreparationCommand(Guid.NewGuid()));
 
         await Assert.ThrowsAsync<NotFoundException>(action);
         Assert.Equal(0, orderRepository.SaveChangesCalls);
+        Assert.Empty(eventPublisher.Events);
     }
 
     [Fact]
@@ -360,12 +386,14 @@ public class OrderServiceTests
         var order = CreatePendingOrder("260721-0001");
         var orderRepository = new FakeOrderRepository();
         orderRepository.Seed(order);
-        var service = CreateOrderService(orderRepository, new FakeProductRepository());
+        var eventPublisher = new FakeOrderEventPublisher(() => orderRepository.SaveChangesCalls);
+        var service = CreateOrderService(orderRepository, new FakeProductRepository(), eventPublisher: eventPublisher);
 
         var action = () => service.MarkOrderAsReadyAsync(new MarkOrderAsReadyCommand(order.Id));
 
         await Assert.ThrowsAsync<InvalidOrderStateTransitionException>(action);
         Assert.Equal(0, orderRepository.SaveChangesCalls);
+        Assert.Empty(eventPublisher.Events);
     }
 
     [Fact]
@@ -387,18 +415,45 @@ public class OrderServiceTests
         var order = CreateDeliveredOrder("260721-0001");
         var orderRepository = new FakeOrderRepository();
         orderRepository.Seed(order);
-        var service = CreateOrderService(orderRepository, new FakeProductRepository());
+        var eventPublisher = new FakeOrderEventPublisher(() => orderRepository.SaveChangesCalls);
+        var service = CreateOrderService(orderRepository, new FakeProductRepository(), eventPublisher: eventPublisher);
 
         var action = () => service.CancelOrderAsync(new CancelOrderCommand(order.Id));
 
         await Assert.ThrowsAsync<InvalidOrderStateTransitionException>(action);
+        Assert.Equal(0, orderRepository.SaveChangesCalls);
+        Assert.Empty(eventPublisher.Events);
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_SaveChangesFails_DoesNotPublishEvent()
+    {
+        var orderRepository = new FakeOrderRepository
+        {
+            SaveChangesException = new InvalidOperationException("Persistence failed.")
+        };
+        var productRepository = new FakeProductRepository();
+        var eventPublisher = new FakeOrderEventPublisher(() => orderRepository.SaveChangesCalls);
+        var product = new Product(Guid.NewGuid(), "Americano", 5m);
+        productRepository.Seed(product);
+        var service = CreateOrderService(orderRepository, productRepository, eventPublisher: eventPublisher);
+
+        var action = () => service.CreateOrderAsync(new CreateOrderCommand(
+            "260721-0001",
+            OrderSource.Counter,
+            null,
+            [new CreateOrderItemCommand(product.Id, 1, null)]));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(action);
+        Assert.Empty(eventPublisher.Events);
         Assert.Equal(0, orderRepository.SaveChangesCalls);
     }
 
     private static OrderService CreateOrderService(
         FakeOrderRepository orderRepository,
         FakeProductRepository productRepository,
-        FakeDateTimeProvider? dateTimeProvider = null)
+        FakeDateTimeProvider? dateTimeProvider = null,
+        FakeOrderEventPublisher? eventPublisher = null)
     {
         return new OrderService(
             orderRepository,
@@ -406,7 +461,8 @@ public class OrderServiceTests
             dateTimeProvider ?? new FakeDateTimeProvider
             {
                 UtcNow = new DateTime(2026, 7, 21, 12, 0, 0, DateTimeKind.Utc)
-            });
+            },
+            eventPublisher ?? new FakeOrderEventPublisher(() => orderRepository.SaveChangesCalls));
     }
 
     private static Order CreatePendingOrder(string orderNumber, DateTime? createdAtUtc = null)

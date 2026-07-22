@@ -1,0 +1,25 @@
+<section class="screen">
+  <header class="screen__header">
+    <div>
+      <p class="eyebrow">Kitchen Display</p>
+      <h1>Comandas activas</h1>
+    </div>
+    <div class="status-card">
+      <span>Conexion</span>
+      <strong>{{ connectionState() }}</strong>
+    </div>
+  </header>
+
+  <p class="screen__summary">Ordenes activas: {{ orderCount() }}</p>
+
+  <ul class="orders">
+    @for (order of orders(); track order.id) {
+      <li class="order-card">
+        <strong>{{ order.orderNumber }}</strong>
+        <span>{{ order.status }}</span>
+      </li>
+    } @empty {
+      <li class="order-card order-card--empty">No hay comandas activas para mostrar.</li>
+    }
+  </ul>
+</section>

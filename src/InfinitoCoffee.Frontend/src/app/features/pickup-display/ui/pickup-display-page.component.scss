@@ -1,0 +1,62 @@
+.screen {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.screen__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: end;
+}
+
+.screen__summary {
+  margin: 0;
+  color: #4e5d52;
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.78rem;
+  color: #3b8262;
+}
+
+.status-card {
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  background: rgba(239, 250, 245, 0.95);
+  border: 1px solid rgba(59, 130, 98, 0.2);
+  min-width: 9rem;
+}
+
+.status-card span,
+.order-card span {
+  display: block;
+  color: #4e5d52;
+}
+
+.orders {
+  list-style: none;
+  display: grid;
+  gap: 0.9rem;
+  padding: 0;
+  margin: 0;
+}
+
+.order-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 1rem;
+  background: rgba(249, 255, 252, 0.95);
+  border: 1px solid rgba(59, 130, 98, 0.16);
+}
+
+.order-card--empty {
+  justify-content: center;
+  color: #4e5d52;
+}

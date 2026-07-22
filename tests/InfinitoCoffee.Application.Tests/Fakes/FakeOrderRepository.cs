@@ -21,6 +21,8 @@ internal sealed class FakeOrderRepository : IOrderRepository
 
     public CancellationToken? LastSaveChangesToken { get; private set; }
 
+    public Exception? SaveChangesException { get; set; }
+
     public Task<Order?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         LastGetByIdToken = cancellationToken;
@@ -56,6 +58,12 @@ internal sealed class FakeOrderRepository : IOrderRepository
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         LastSaveChangesToken = cancellationToken;
+
+        if (SaveChangesException is not null)
+        {
+            throw SaveChangesException;
+        }
+
         SaveChangesCalls++;
         return Task.CompletedTask;
     }

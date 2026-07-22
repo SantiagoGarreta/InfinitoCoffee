@@ -12,17 +12,20 @@ namespace InfinitoCoffee.Application.Orders.Services;
 public sealed class OrderService
 {
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IOrderEventPublisher _orderEventPublisher;
     private readonly IOrderRepository _orderRepository;
     private readonly IProductRepository _productRepository;
 
     public OrderService(
         IOrderRepository orderRepository,
         IProductRepository productRepository,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        IOrderEventPublisher orderEventPublisher)
     {
         _orderRepository = orderRepository;
         _productRepository = productRepository;
         _dateTimeProvider = dateTimeProvider;
+        _orderEventPublisher = orderEventPublisher;
     }
 
     public async Task<OrderDto> CreateOrderAsync(
@@ -81,7 +84,10 @@ public sealed class OrderService
         await _orderRepository.AddAsync(order, cancellationToken);
         await _orderRepository.SaveChangesAsync(cancellationToken);
 
-        return MapOrder(order);
+        var orderDto = MapOrder(order);
+        await _orderEventPublisher.OrderCreatedAsync(MapRealtimeOrder(orderDto), cancellationToken);
+
+        return orderDto;
     }
 
     public async Task<OrderDto> GetOrderByIdAsync(
@@ -141,6 +147,7 @@ public sealed class OrderService
         return ApplyStatusTransitionAsync(
             command.OrderId,
             order => order.StartPreparing(_dateTimeProvider.UtcNow),
+            order => _orderEventPublisher.OrderStatusChangedAsync(order, cancellationToken),
             cancellationToken);
     }
 
@@ -153,6 +160,7 @@ public sealed class OrderService
         return ApplyStatusTransitionAsync(
             command.OrderId,
             order => order.MarkReady(_dateTimeProvider.UtcNow),
+            order => _orderEventPublisher.OrderStatusChangedAsync(order, cancellationToken),
             cancellationToken);
     }
 
@@ -165,6 +173,7 @@ public sealed class OrderService
         return ApplyStatusTransitionAsync(
             command.OrderId,
             order => order.Deliver(_dateTimeProvider.UtcNow),
+            order => _orderEventPublisher.OrderStatusChangedAsync(order, cancellationToken),
             cancellationToken);
     }
 
@@ -177,12 +186,14 @@ public sealed class OrderService
         return ApplyStatusTransitionAsync(
             command.OrderId,
             order => order.Cancel(_dateTimeProvider.UtcNow),
+            order => _orderEventPublisher.OrderCancelledAsync(order, cancellationToken),
             cancellationToken);
     }
 
     private async Task<OrderDto> ApplyStatusTransitionAsync(
         Guid orderId,
         Action<Order> transition,
+        Func<OrderRealtimeDto, Task> publishEvent,
         CancellationToken cancellationToken)
     {
         var order = await _orderRepository.GetByIdAsync(orderId, cancellationToken)
@@ -191,7 +202,10 @@ public sealed class OrderService
         transition(order);
         await _orderRepository.SaveChangesAsync(cancellationToken);
 
-        return MapOrder(order);
+        var orderDto = MapOrder(order);
+        await publishEvent(MapRealtimeOrder(orderDto));
+
+        return orderDto;
     }
 
     private static OrderDto MapOrder(Order order)
@@ -221,6 +235,21 @@ public sealed class OrderService
             item.Quantity,
             item.Notes,
             item.LineTotal);
+    }
+
+    private static OrderRealtimeDto MapRealtimeOrder(OrderDto order)
+    {
+        return new OrderRealtimeDto(
+            order.Id,
+            order.OrderNumber,
+            order.Source.ToString(),
+            order.Status.ToString(),
+            order.CreatedAtUtc,
+            order.StartedAtUtc,
+            order.ReadyAtUtc,
+            order.DeliveredAtUtc,
+            order.CancelledAtUtc,
+            order.Total);
     }
 
     private static string NormalizeRequired(string value, string parameterName)

@@ -208,6 +208,40 @@ Desde el frontend:
 cd .\src\InfinitoCoffee.Frontend
 npm test
 
+13. Tiempo real con SignalR
+
+La API expone el hub:
+
+`/hubs/orders`
+
+Eventos emitidos:
+
+- `OrderCreated`
+- `OrderStatusChanged`
+- `OrderCancelled`
+
+Flujo del MVP:
+
+- Los cambios de estado siguen entrando por la API REST.
+- La API persiste primero.
+- DespuÃ©s intenta publicar el evento por SignalR.
+- Si la publicaciÃ³n falla, se registra el error y la respuesta HTTP puede seguir siendo exitosa porque la fuente de verdad ya fue guardada.
+- El frontend hace sincronizaciÃ³n inicial por REST y resincroniza tras reconectar para cubrir eventos perdidos.
+
+Pantallas mÃ­nimas:
+
+- `/kitchen`
+- `/pickup`
+
+Prueba manual sugerida:
+
+- Iniciar API y frontend.
+- Abrir `/kitchen` en dos pestaÃ±as.
+- Crear o cambiar comandas desde Swagger.
+- Confirmar actualizaciÃ³n en ambas pestaÃ±as sin refrescar.
+- Abrir `/pickup` y verificar la visibilidad de pedidos `Preparing` y `Ready`.
+- Reiniciar la API y confirmar que el frontend se reconecta y vuelve a sincronizar.
+
 13. Verificación completa del entorno
 
 Desde la raíz:
