@@ -2,6 +2,11 @@ namespace InfinitoCoffee.Domain.Products;
 
 public class ProductCategory
 {
+    private ProductCategory()
+    {
+        Name = string.Empty;
+    }
+
     public ProductCategory(string name)
     {
         Rename(name);

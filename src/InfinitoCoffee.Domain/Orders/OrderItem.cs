@@ -4,6 +4,11 @@ namespace InfinitoCoffee.Domain.Orders;
 
 public class OrderItem
 {
+    private OrderItem()
+    {
+        ProductNameSnapshot = string.Empty;
+    }
+
     public OrderItem(Guid productId, string productNameSnapshot, decimal unitPriceSnapshot, int quantity, string? notes = null)
     {
         if (productId == Guid.Empty)

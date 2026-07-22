@@ -7,6 +7,11 @@ public class Order
 {
     private readonly List<OrderItem> _items = [];
 
+    private Order()
+    {
+        OrderNumber = string.Empty;
+    }
+
     public Order(
         string orderNumber,
         OrderSource source,

@@ -2,6 +2,11 @@ namespace InfinitoCoffee.Domain.Products;
 
 public class Product
 {
+    private Product()
+    {
+        Name = string.Empty;
+    }
+
     public Product(Guid categoryId, string name, decimal price, string? description = null)
     {
         if (categoryId == Guid.Empty)
