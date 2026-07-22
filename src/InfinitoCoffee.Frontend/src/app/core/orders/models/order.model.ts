@@ -1,4 +1,16 @@
-export interface OrderItemDto {
+export type OrderStatus =
+  | 'Pending'
+  | 'Preparing'
+  | 'Ready'
+  | 'Delivered'
+  | 'Cancelled';
+
+export type OrderSource =
+  | 'Counter'
+  | 'WhatsApp'
+  | 'Web';
+
+export interface OrderItem {
   id: string;
   productId: string;
   productName: string;
@@ -8,11 +20,11 @@ export interface OrderItemDto {
   lineTotal: number;
 }
 
-export interface OrderDto {
+export interface Order {
   id: string;
   orderNumber: string;
-  source: string;
-  status: string;
+  source: OrderSource;
+  status: OrderStatus;
   createdAtUtc: string;
   startedAtUtc: string | null;
   readyAtUtc: string | null;
@@ -20,18 +32,37 @@ export interface OrderDto {
   cancelledAtUtc: string | null;
   notes: string | null;
   total: number;
-  items: OrderItemDto[];
+  items: OrderItem[];
 }
 
-export interface OrderRealtimeDto {
+export interface OrderRealtime {
   id: string;
   orderNumber: string;
-  source: string;
-  status: string;
+  source: OrderSource;
+  status: OrderStatus;
   createdAtUtc: string;
   startedAtUtc: string | null;
   readyAtUtc: string | null;
   deliveredAtUtc: string | null;
   cancelledAtUtc: string | null;
+  notes: string | null;
   total: number;
+  items: OrderItem[];
+}
+
+export type OrderDto = Order;
+export type OrderItemDto = OrderItem;
+export type OrderRealtimeDto = OrderRealtime;
+
+export interface CreateOrderItemRequest {
+  productId: string;
+  quantity: number;
+  notes: string | null;
+}
+
+export interface CreateOrderRequest {
+  orderNumber: string;
+  source: OrderSource;
+  notes: string | null;
+  items: CreateOrderItemRequest[];
 }

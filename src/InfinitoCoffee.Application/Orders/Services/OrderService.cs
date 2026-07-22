@@ -249,7 +249,21 @@ public sealed class OrderService
             order.ReadyAtUtc,
             order.DeliveredAtUtc,
             order.CancelledAtUtc,
-            order.Total);
+            order.Notes,
+            order.Total,
+            order.Items.Select(MapRealtimeOrderItem).ToArray());
+    }
+
+    private static OrderRealtimeItemDto MapRealtimeOrderItem(OrderItemDto item)
+    {
+        return new OrderRealtimeItemDto(
+            item.Id,
+            item.ProductId,
+            item.ProductName,
+            item.UnitPrice,
+            item.Quantity,
+            item.Notes,
+            item.LineTotal);
     }
 
     private static string NormalizeRequired(string value, string parameterName)

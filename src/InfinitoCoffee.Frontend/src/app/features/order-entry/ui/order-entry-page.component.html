@@ -1,0 +1,98 @@
+<section class="order-entry">
+  <header class="order-entry__header">
+    <div>
+      <p class="order-entry__eyebrow">Caja</p>
+      <h1>Nueva comanda</h1>
+      <p class="order-entry__subtitle">Crea pedidos manuales para que aparezcan de inmediato en cocina y pickup.</p>
+    </div>
+
+    <app-connection-status [state]="'connected'" />
+  </header>
+
+  @if (store.loading()) {
+    <app-loading-state label="Cargando categorias y productos..." />
+  } @else if (store.loadError()) {
+    <app-error-message [message]="store.loadError()!" retryLabel="Reintentar carga" (retry)="store.initialize()" />
+  } @else {
+    <div class="order-entry__layout">
+      <section class="order-entry__catalog">
+        <div class="order-entry__form-card">
+          <label>
+            <span>Numero de pedido</span>
+            <input
+              type="text"
+              [disabled]="store.submitting()"
+              [maxLength]="orderNumberMaxLength"
+              [ngModel]="store.orderNumber()"
+              (ngModelChange)="store.setOrderNumber($event)" />
+          </label>
+
+          <label>
+            <span>Canal</span>
+            <select
+              [disabled]="store.submitting()"
+              [ngModel]="store.source()"
+              (ngModelChange)="store.setSource($event)">
+              @for (source of orderSources; track source) {
+                <option [ngValue]="source">{{ source }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="order-entry__notes">
+            <span>Notas generales</span>
+            <textarea
+              rows="3"
+              [disabled]="store.submitting()"
+              [ngModel]="store.notes()"
+              (ngModelChange)="store.setNotes($event)"></textarea>
+          </label>
+        </div>
+
+        <app-category-selector
+          [categories]="store.activeCategories()"
+          [selectedCategoryId]="store.selectedCategoryId()"
+          (selectCategory)="store.selectCategory($event)" />
+
+        <app-product-grid
+          [products]="store.visibleProducts()"
+          [disabled]="store.submitting()"
+          (addProduct)="store.addProduct($event)" />
+      </section>
+
+      <aside class="order-entry__summary">
+        <app-order-summary
+          [items]="store.items()"
+          [total]="store.visualTotal()"
+          [disabled]="store.submitting()"
+          (increase)="store.increaseQuantity($event)"
+          (decrease)="store.decreaseQuantity($event)"
+          (notesChanged)="store.updateItemNotes($event.productId, $event.notes)" />
+
+        <button
+          type="button"
+          class="order-entry__submit"
+          [disabled]="!store.canSubmit()"
+          (click)="store.submit()">
+          @if (store.submitting()) {
+            <span>Creando comanda...</span>
+          } @else {
+            <span>Crear comanda</span>
+          }
+        </button>
+
+        @if (trimmedOrderNumberLength() > orderNumberMaxLength) {
+          <app-error-message message="El numero de pedido supera el maximo permitido." />
+        }
+
+        @if (store.submitError()) {
+          <app-error-message [message]="store.submitError()!" />
+        }
+
+        @if (store.successMessage()) {
+          <p class="order-entry__success" role="status" aria-live="polite">{{ store.successMessage() }}</p>
+        }
+      </aside>
+    </div>
+  }
+</section>

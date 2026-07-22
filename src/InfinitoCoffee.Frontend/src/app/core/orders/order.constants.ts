@@ -1,0 +1,3 @@
+export const ORDER_NUMBER_MAX_LENGTH = 32;
+export const PENDING_DELAY_MINUTES = 10;
+export const PREPARING_DELAY_MINUTES = 15;

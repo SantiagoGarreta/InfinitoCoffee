@@ -10,4 +10,6 @@ public sealed record OrderRealtimeDto(
     DateTime? ReadyAtUtc,
     DateTime? DeliveredAtUtc,
     DateTime? CancelledAtUtc,
-    decimal Total);
+    string? Notes,
+    decimal Total,
+    IReadOnlyCollection<OrderRealtimeItemDto> Items);

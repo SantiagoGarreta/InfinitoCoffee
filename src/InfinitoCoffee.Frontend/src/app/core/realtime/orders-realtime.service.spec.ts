@@ -95,7 +95,9 @@ describe('OrdersRealtimeService', () => {
     readyAtUtc: null,
     deliveredAtUtc: null,
     cancelledAtUtc: null,
+    notes: null,
     total: 15,
+    items: [],
   };
 
   it('registers the three order events', async () => {

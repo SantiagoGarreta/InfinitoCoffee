@@ -1,0 +1,44 @@
+.kitchen-column {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.kitchen-column__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
+.kitchen-column__header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.kitchen-column__header p {
+  margin: 0.3rem 0 0;
+  color: #665847;
+}
+
+.kitchen-column__count {
+  min-width: 2.2rem;
+  text-align: center;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: #f5eee7;
+  font-weight: 700;
+}
+
+.kitchen-column__content {
+  display: grid;
+  gap: 1rem;
+}
+
+.kitchen-column__empty {
+  margin: 0;
+  padding: 1.2rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.72);
+  color: #665847;
+}

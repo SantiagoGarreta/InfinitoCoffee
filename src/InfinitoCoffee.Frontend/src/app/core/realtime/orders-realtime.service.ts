@@ -68,6 +68,11 @@ export class OrdersRealtimeService {
     await connection.stop();
   }
 
+  async restart(): Promise<void> {
+    await this.stop();
+    await this.start();
+  }
+
   subscribe(listener: EventListener): () => void {
     this.eventListeners.add(listener);
     return () => {

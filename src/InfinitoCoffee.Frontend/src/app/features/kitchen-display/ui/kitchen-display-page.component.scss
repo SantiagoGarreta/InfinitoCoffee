@@ -1,62 +1,72 @@
-.screen {
+.kitchen {
   display: grid;
   gap: 1.5rem;
 }
 
-.screen__header {
+.kitchen__header {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
-  align-items: end;
+  gap: 1.5rem;
+  align-items: start;
+  flex-wrap: wrap;
 }
 
-.screen__summary {
-  margin: 0;
-  color: #5f5144;
-}
-
-.eyebrow {
-  margin: 0 0 0.35rem;
+.kitchen__eyebrow {
+  margin: 0 0 0.3rem;
   text-transform: uppercase;
   letter-spacing: 0.18em;
   font-size: 0.78rem;
   color: #996c44;
 }
 
-.status-card {
-  padding: 0.85rem 1rem;
-  border-radius: 1rem;
-  background: rgba(255, 248, 238, 0.92);
-  border: 1px solid rgba(153, 108, 68, 0.2);
-  min-width: 9rem;
+.kitchen__header h1 {
+  margin: 0;
+  font-size: clamp(1.9rem, 4vw, 3rem);
 }
 
-.status-card span,
-.order-card span {
-  display: block;
-  color: #6d5a48;
+.kitchen__subtitle {
+  margin: 0.65rem 0 0;
+  color: #665847;
+  max-width: 40rem;
 }
 
-.orders {
-  list-style: none;
+.kitchen__grid {
   display: grid;
-  gap: 0.9rem;
-  padding: 0;
+  gap: 1.25rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.kitchen__empty {
+  padding: 2rem;
+  border-radius: 1.3rem;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(121, 102, 81, 0.14);
+}
+
+.kitchen__empty h2,
+.kitchen__empty p {
   margin: 0;
 }
 
-.order-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.1rem;
-  border-radius: 1rem;
-  background: rgba(255, 251, 246, 0.94);
-  border: 1px solid rgba(153, 108, 68, 0.16);
+.kitchen__empty p {
+  margin-top: 0.7rem;
+  color: #665847;
 }
 
-.order-card--empty {
-  justify-content: center;
-  color: #6d5a48;
+@media (max-width: 1100px) {
+  .kitchen__grid {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(18rem, 1fr);
+    overflow-x: auto;
+    padding-bottom: 0.35rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .kitchen__grid {
+    grid-auto-flow: row;
+    grid-template-columns: 1fr;
+    grid-auto-columns: unset;
+    overflow: visible;
+  }
 }

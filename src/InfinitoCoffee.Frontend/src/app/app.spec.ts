@@ -23,5 +23,6 @@ describe('App', () => {
     expect(compiled.querySelector('h1')?.textContent).toContain('Tiempo real para cocina y pickup');
     expect(compiled.textContent).toContain('Kitchen');
     expect(compiled.textContent).toContain('Pickup');
+    expect(compiled.textContent).toContain('Caja');
   });
 });

@@ -1,0 +1,24 @@
+<section class="kitchen-column">
+  <header class="kitchen-column__header">
+    <div>
+      <h2>{{ title() }}</h2>
+      <p>{{ description() }}</p>
+    </div>
+    <span class="kitchen-column__count">{{ orders().length }}</span>
+  </header>
+
+  <div class="kitchen-column__content">
+    @for (order of orders(); track trackByOrder($index, order)) {
+      <app-order-card
+        [order]="order"
+        [isActionPending]="isActionPending(order.id)"
+        [actionError]="actionErrorFor(order.id)"
+        (startPreparation)="startPreparation.emit(order.id)"
+        (markReady)="markReady.emit(order.id)"
+        (deliver)="deliver.emit(order.id)"
+        (cancel)="cancel.emit(order.id)" />
+    } @empty {
+      <p class="kitchen-column__empty">No hay pedidos en esta columna.</p>
+    }
+  </div>
+</section>

@@ -1,0 +1,68 @@
+import { signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+
+import { Order } from '../../../core/orders/models/order.model';
+import { PickupOrdersStore } from '../data-access/pickup-orders.store';
+import { PickupDisplayPageComponent } from './pickup-display-page.component';
+
+class FakePickupOrdersStore {
+  readonly loading = signal(false);
+  readonly loadError = signal<string | null>(null);
+  readonly connectionState = signal<'connected' | 'reconnecting' | 'disconnected'>('connected');
+  readonly preparingOrders = signal<Order[]>([createOrder('A-100', 'Preparing')]);
+  readonly readyOrders = signal<Order[]>([createOrder('A-200', 'Ready')]);
+
+  initialize(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  destroy(): void {}
+  retryConnection(): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
+function createOrder(orderNumber: string, status: Order['status']): Order {
+  return {
+    id: `${orderNumber}-id`,
+    orderNumber,
+    source: 'Counter',
+    status,
+    createdAtUtc: '2026-07-22T12:00:00Z',
+    startedAtUtc: null,
+    readyAtUtc: null,
+    deliveredAtUtc: null,
+    cancelledAtUtc: null,
+    notes: null,
+    total: 9,
+    items: [],
+  };
+}
+
+describe('PickupDisplayPageComponent', () => {
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [PickupDisplayPageComponent],
+      providers: [{ provide: PickupOrdersStore, useClass: FakePickupOrdersStore }],
+    }).compileComponents();
+  });
+
+  it('shows preparing and ready sections with the right orders', () => {
+    const fixture = TestBed.createComponent(PickupDisplayPageComponent);
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('En preparacion');
+    expect(text).toContain('Listos para retirar');
+    expect(text).toContain('A-100');
+    expect(text).toContain('A-200');
+  });
+
+  it('renders the ready section with the emphasized style', () => {
+    const fixture = TestBed.createComponent(PickupDisplayPageComponent);
+    fixture.detectChanges();
+
+    const readySection = fixture.nativeElement.querySelector('.pickup-section--ready') as HTMLElement;
+    expect(readySection).toBeTruthy();
+  });
+});

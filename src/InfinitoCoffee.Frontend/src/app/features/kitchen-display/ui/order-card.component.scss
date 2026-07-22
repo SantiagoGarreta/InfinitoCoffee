@@ -1,0 +1,99 @@
+.order-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 1.2rem;
+  background: #fff;
+  border: 1px solid rgba(121, 102, 81, 0.14);
+  box-shadow: 0 12px 30px rgba(74, 57, 42, 0.08);
+}
+
+.order-card--delayed {
+  border-color: rgba(208, 122, 39, 0.45);
+  box-shadow: 0 16px 36px rgba(208, 122, 39, 0.14);
+}
+
+.order-card__header,
+.order-card__item-line,
+.order-card__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.order-card__eyebrow {
+  margin: 0 0 0.2rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #75624d;
+}
+
+.order-card h3 {
+  margin: 0;
+  font-size: 1.65rem;
+}
+
+.order-card__meta {
+  text-align: right;
+}
+
+.order-card__meta span,
+.order-card__total,
+.order-card__note {
+  color: #665847;
+}
+
+.order-card__items {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.order-card__note {
+  margin: 0.25rem 0 0;
+  font-size: 0.93rem;
+}
+
+.order-card__note--general {
+  padding: 0.8rem 0.9rem;
+  border-radius: 0.9rem;
+  background: #faf5ef;
+}
+
+.order-card__actions {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.order-card__button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.85rem 1.1rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.order-card__button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.order-card__button--primary {
+  background: #354f61;
+  color: #fff;
+}
+
+.order-card__button--secondary {
+  background: #f2e6dc;
+  color: #764a32;
+}
+
+.order-card__error {
+  margin: 0;
+  color: #a2462f;
+  font-size: 0.92rem;
+}

@@ -1,25 +1,21 @@
-<section class="screen">
-  <header class="screen__header">
+<section class="pickup-page">
+  <header class="pickup-page__header">
     <div>
-      <p class="eyebrow">Pickup Display</p>
-      <h1>Pedidos para retiro</h1>
+      <p class="pickup-page__eyebrow">Pickup Display</p>
+      <h1>Pedidos en preparacion y listos para retirar</h1>
     </div>
-    <div class="status-card">
-      <span>Conexion</span>
-      <strong>{{ connectionState() }}</strong>
-    </div>
+
+    <app-connection-status [state]="store.connectionState()" (retry)="store.retryConnection()" />
   </header>
 
-  <p class="screen__summary">Pedidos visibles: {{ orderCount() }}</p>
-
-  <ul class="orders">
-    @for (order of orders(); track order.id) {
-      <li class="order-card">
-        <strong>{{ order.orderNumber }}</strong>
-        <span>{{ order.status }}</span>
-      </li>
-    } @empty {
-      <li class="order-card order-card--empty">No hay pedidos visibles para pickup.</li>
-    }
-  </ul>
+  @if (store.loading()) {
+    <app-loading-state label="Cargando pantalla de pickup..." />
+  } @else if (store.loadError()) {
+    <app-error-message [message]="store.loadError()!" retryLabel="Reintentar carga" (retry)="store.initialize()" />
+  } @else {
+    <div class="pickup-page__grid">
+      <app-pickup-section title="En preparacion" [orders]="preparingOrders()" />
+      <app-pickup-section title="Listos para retirar" [orders]="readyOrders()" [ready]="true" />
+    </div>
+  }
 </section>

@@ -1,25 +1,55 @@
-<section class="screen">
-  <header class="screen__header">
+<section class="kitchen">
+  <header class="kitchen__header">
     <div>
-      <p class="eyebrow">Kitchen Display</p>
-      <h1>Comandas activas</h1>
+      <p class="kitchen__eyebrow">Kitchen Display</p>
+      <h1>Cocina en tiempo real</h1>
+      <p class="kitchen__subtitle">Las comandas cambian de columna a medida que avanzan en preparacion.</p>
     </div>
-    <div class="status-card">
-      <span>Conexion</span>
-      <strong>{{ connectionState() }}</strong>
-    </div>
+
+    <app-connection-status
+      [state]="connectionState()"
+      (retry)="store.retryConnection()" />
   </header>
 
-  <p class="screen__summary">Ordenes activas: {{ orderCount() }}</p>
+  @if (store.loading()) {
+    <app-loading-state label="Cargando pedidos..." />
+  } @else if (store.loadError()) {
+    <app-error-message [message]="store.loadError()!" retryLabel="Reintentar carga" (retry)="store.initialize()" />
+  } @else if (store.orderCount() === 0) {
+    <div class="kitchen__empty">
+      <h2>Sin pedidos activos</h2>
+      <p>Las nuevas comandas apareceran aqui apenas entren por caja o por otros canales.</p>
+    </div>
+  } @else {
+    <div class="kitchen__grid">
+      <app-kitchen-column
+        title="En cola"
+        description="Pedidos pendientes de comenzar."
+        [orders]="queuedOrders()"
+        [activeActionOrderId]="store.activeActionOrderId()"
+        [actionErrorOrderId]="store.actionError()?.orderId ?? null"
+        [actionErrorMessage]="store.actionError()?.message ?? null"
+        (startPreparation)="store.startPreparation($event)"
+        (cancel)="store.cancel($event)" />
 
-  <ul class="orders">
-    @for (order of orders(); track order.id) {
-      <li class="order-card">
-        <strong>{{ order.orderNumber }}</strong>
-        <span>{{ order.status }}</span>
-      </li>
-    } @empty {
-      <li class="order-card order-card--empty">No hay comandas activas para mostrar.</li>
-    }
-  </ul>
+      <app-kitchen-column
+        title="Preparando"
+        description="Pedidos actualmente en barra."
+        [orders]="preparingOrders()"
+        [activeActionOrderId]="store.activeActionOrderId()"
+        [actionErrorOrderId]="store.actionError()?.orderId ?? null"
+        [actionErrorMessage]="store.actionError()?.message ?? null"
+        (markReady)="store.markReady($event)"
+        (cancel)="store.cancel($event)" />
+
+      <app-kitchen-column
+        title="Listos"
+        description="Pedidos que ya pueden entregarse."
+        [orders]="readyOrders()"
+        [activeActionOrderId]="store.activeActionOrderId()"
+        [actionErrorOrderId]="store.actionError()?.orderId ?? null"
+        [actionErrorMessage]="store.actionError()?.message ?? null"
+        (deliver)="store.deliver($event)" />
+    </div>
+  }
 </section>

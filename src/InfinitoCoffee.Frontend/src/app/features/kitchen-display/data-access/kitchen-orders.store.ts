@@ -1,15 +1,24 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
+import { toUserMessage } from '../../../core/http/api-error.utils';
 import { OrdersApiService } from '../../../core/orders/data-access/orders-api.service';
-import { OrderDto, OrderRealtimeDto } from '../../../core/orders/models/order.model';
+import { toOrder } from '../../../core/orders/order.mappers';
+import { Order, OrderStatus } from '../../../core/orders/models/order.model';
 import { OrdersRealtimeService } from '../../../core/realtime/orders-realtime.service';
 import { RealtimeConnectionState } from '../../../core/realtime/realtime-connection-state';
 
 @Injectable({ providedIn: 'root' })
 export class KitchenOrdersStore {
-  readonly orders = signal<OrderRealtimeDto[]>([]);
+  readonly orders = signal<Order[]>([]);
+  readonly loading = signal(false);
+  readonly loadError = signal<string | null>(null);
+  readonly activeActionOrderId = signal<string | null>(null);
+  readonly actionError = signal<{ orderId: string; message: string } | null>(null);
   readonly orderCount = computed(() => this.orders().length);
   readonly connectionState = computed<RealtimeConnectionState>(() => this.realtimeService.connectionState());
+  readonly queuedOrders = computed(() => this.filterByStatus('Pending'));
+  readonly preparingOrders = computed(() => this.filterByStatus('Preparing'));
+  readonly readyOrders = computed(() => this.filterByStatus('Ready'));
 
   private readonly ordersApiService = inject(OrdersApiService);
   private readonly realtimeService = inject(OrdersRealtimeService);
@@ -56,12 +65,58 @@ export class KitchenOrdersStore {
     this.initialized = false;
   }
 
-  private async reload(): Promise<void> {
-    const orders = await this.ordersApiService.getActiveOrders();
-    this.orders.set(this.normalizeOrders(orders));
+  async retryConnection(): Promise<void> {
+    await this.realtimeService.restart();
   }
 
-  private upsertIfActive(order: OrderRealtimeDto): void {
+  async startPreparation(orderId: string): Promise<void> {
+    await this.runOrderAction(orderId, () => this.ordersApiService.startPreparation(orderId));
+  }
+
+  async markReady(orderId: string): Promise<void> {
+    await this.runOrderAction(orderId, () => this.ordersApiService.markReady(orderId));
+  }
+
+  async deliver(orderId: string): Promise<void> {
+    await this.runOrderAction(orderId, () => this.ordersApiService.deliver(orderId));
+  }
+
+  async cancel(orderId: string): Promise<void> {
+    await this.runOrderAction(orderId, () => this.ordersApiService.cancel(orderId));
+  }
+
+  private async reload(): Promise<void> {
+    this.loading.set(true);
+    this.loadError.set(null);
+
+    try {
+      const orders = await this.ordersApiService.getActiveOrders();
+      this.orders.set(this.normalizeOrders(orders));
+    } catch (error: unknown) {
+      this.loadError.set(toUserMessage(error, 'No fue posible cargar las comandas activas.'));
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  private async runOrderAction(orderId: string, action: () => Promise<Order>): Promise<void> {
+    this.activeActionOrderId.set(orderId);
+    this.actionError.set(null);
+
+    try {
+      const updatedOrder = toOrder(await action());
+      this.upsertIfActive(updatedOrder);
+    } catch (error: unknown) {
+      this.actionError.set({
+        orderId,
+        message: toUserMessage(error, 'No fue posible actualizar el pedido.'),
+      });
+    } finally {
+      this.activeActionOrderId.set(null);
+    }
+  }
+
+  private upsertIfActive(order: Order): void {
     if (!this.isActive(order.status)) {
       this.removeOrder(order.id);
       return;
@@ -78,43 +133,34 @@ export class KitchenOrdersStore {
     this.orders.update((currentOrders) => currentOrders.filter((order) => order.id !== orderId));
   }
 
-  private normalizeOrders(orders: OrderDto[]): OrderRealtimeDto[] {
-    const nextOrders = new Map<string, OrderRealtimeDto>();
+  private normalizeOrders(orders: Order[]): Order[] {
+    const nextOrders = new Map<string, Order>();
 
     for (const order of orders) {
-      if (!this.isActive(order.status)) {
+      const normalizedOrder = toOrder(order);
+
+      if (!this.isActive(normalizedOrder.status)) {
         continue;
       }
 
-      nextOrders.set(order.id, this.toRealtimeOrder(order));
+      nextOrders.set(normalizedOrder.id, normalizedOrder);
     }
 
     return this.sortOrders([...nextOrders.values()]);
   }
 
-  private sortOrders(orders: OrderRealtimeDto[]): OrderRealtimeDto[] {
+  private sortOrders(orders: Order[]): Order[] {
     return [...orders].sort((left, right) =>
       left.createdAtUtc.localeCompare(right.createdAtUtc)
       || left.orderNumber.localeCompare(right.orderNumber),
     );
   }
 
-  private toRealtimeOrder(order: OrderDto): OrderRealtimeDto {
-    return {
-      id: order.id,
-      orderNumber: order.orderNumber,
-      source: order.source,
-      status: order.status,
-      createdAtUtc: order.createdAtUtc,
-      startedAtUtc: order.startedAtUtc,
-      readyAtUtc: order.readyAtUtc,
-      deliveredAtUtc: order.deliveredAtUtc,
-      cancelledAtUtc: order.cancelledAtUtc,
-      total: order.total,
-    };
+  private filterByStatus(status: OrderStatus): Order[] {
+    return this.orders().filter((order) => order.status === status);
   }
 
-  private isActive(status: string): boolean {
+  private isActive(status: OrderStatus): boolean {
     return status !== 'Delivered' && status !== 'Cancelled';
   }
 }

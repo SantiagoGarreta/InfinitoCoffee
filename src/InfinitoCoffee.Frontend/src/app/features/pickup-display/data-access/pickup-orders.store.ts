@@ -1,15 +1,21 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
+import { toUserMessage } from '../../../core/http/api-error.utils';
 import { OrdersApiService } from '../../../core/orders/data-access/orders-api.service';
-import { OrderDto, OrderRealtimeDto } from '../../../core/orders/models/order.model';
+import { toOrder } from '../../../core/orders/order.mappers';
+import { Order, OrderStatus } from '../../../core/orders/models/order.model';
 import { OrdersRealtimeService } from '../../../core/realtime/orders-realtime.service';
 import { RealtimeConnectionState } from '../../../core/realtime/realtime-connection-state';
 
 @Injectable({ providedIn: 'root' })
 export class PickupOrdersStore {
-  readonly orders = signal<OrderRealtimeDto[]>([]);
+  readonly orders = signal<Order[]>([]);
+  readonly loading = signal(false);
+  readonly loadError = signal<string | null>(null);
   readonly orderCount = computed(() => this.orders().length);
   readonly connectionState = computed<RealtimeConnectionState>(() => this.realtimeService.connectionState());
+  readonly preparingOrders = computed(() => this.filterByStatus('Preparing'));
+  readonly readyOrders = computed(() => this.filterByStatus('Ready'));
 
   private readonly ordersApiService = inject(OrdersApiService);
   private readonly realtimeService = inject(OrdersRealtimeService);
@@ -56,12 +62,25 @@ export class PickupOrdersStore {
     this.initialized = false;
   }
 
-  private async reload(): Promise<void> {
-    const orders = await this.ordersApiService.getPickupOrders();
-    this.orders.set(this.normalizeOrders(orders));
+  async retryConnection(): Promise<void> {
+    await this.realtimeService.restart();
   }
 
-  private upsertOrder(order: OrderRealtimeDto): void {
+  private async reload(): Promise<void> {
+    this.loading.set(true);
+    this.loadError.set(null);
+
+    try {
+      const orders = await this.ordersApiService.getPickupOrders();
+      this.orders.set(this.normalizeOrders(orders));
+    } catch (error: unknown) {
+      this.loadError.set(toUserMessage(error, 'No fue posible cargar la pantalla de pickup.'));
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  private upsertOrder(order: Order): void {
     this.orders.update((currentOrders) => {
       const nextOrders = new Map(currentOrders.map((item) => [item.id, item]));
       nextOrders.set(order.id, order);
@@ -73,43 +92,34 @@ export class PickupOrdersStore {
     this.orders.update((currentOrders) => currentOrders.filter((order) => order.id !== orderId));
   }
 
-  private normalizeOrders(orders: OrderDto[]): OrderRealtimeDto[] {
-    const nextOrders = new Map<string, OrderRealtimeDto>();
+  private normalizeOrders(orders: Order[]): Order[] {
+    const nextOrders = new Map<string, Order>();
 
     for (const order of orders) {
-      if (!this.shouldDisplay(order.status)) {
+      const normalizedOrder = toOrder(order);
+
+      if (!this.shouldDisplay(normalizedOrder.status)) {
         continue;
       }
 
-      nextOrders.set(order.id, this.toRealtimeOrder(order));
+      nextOrders.set(normalizedOrder.id, normalizedOrder);
     }
 
     return this.sortOrders([...nextOrders.values()]);
   }
 
-  private sortOrders(orders: OrderRealtimeDto[]): OrderRealtimeDto[] {
+  private sortOrders(orders: Order[]): Order[] {
     return [...orders].sort((left, right) =>
       left.createdAtUtc.localeCompare(right.createdAtUtc)
       || left.orderNumber.localeCompare(right.orderNumber),
     );
   }
 
-  private toRealtimeOrder(order: OrderDto): OrderRealtimeDto {
-    return {
-      id: order.id,
-      orderNumber: order.orderNumber,
-      source: order.source,
-      status: order.status,
-      createdAtUtc: order.createdAtUtc,
-      startedAtUtc: order.startedAtUtc,
-      readyAtUtc: order.readyAtUtc,
-      deliveredAtUtc: order.deliveredAtUtc,
-      cancelledAtUtc: order.cancelledAtUtc,
-      total: order.total,
-    };
+  private filterByStatus(status: OrderStatus): Order[] {
+    return this.orders().filter((order) => order.status === status);
   }
 
-  private shouldDisplay(status: string): boolean {
+  private shouldDisplay(status: OrderStatus): boolean {
     return status === 'Preparing' || status === 'Ready';
   }
 }
