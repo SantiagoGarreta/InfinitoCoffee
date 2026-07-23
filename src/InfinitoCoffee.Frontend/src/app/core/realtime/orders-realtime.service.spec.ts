@@ -13,6 +13,8 @@ class FakeOrdersHubConnection implements OrdersHubConnection {
 
   startCalls = 0;
   stopCalls = 0;
+  startPromise: Promise<void> = Promise.resolve();
+  stopPromise: Promise<void> = Promise.resolve();
 
   on<T>(methodName: string, newMethod: (arg: T) => void): void {
     this.eventHandlers.set(methodName, newMethod as unknown as (order: OrderRealtimeDto) => void);
@@ -24,12 +26,12 @@ class FakeOrdersHubConnection implements OrdersHubConnection {
 
   start(): Promise<void> {
     this.startCalls++;
-    return Promise.resolve();
+    return this.startPromise;
   }
 
   stop(): Promise<void> {
     this.stopCalls++;
-    return Promise.resolve();
+    return this.stopPromise;
   }
 
   onreconnecting(callback: (error?: Error) => void): void {
@@ -145,5 +147,26 @@ describe('OrdersRealtimeService', () => {
 
     expect(connection.startCalls).toBe(0);
     expect(service.connectionState()).toBe('disconnected');
+  });
+
+  it('keeps concurrent start requests on a single connection attempt', async () => {
+    const { service, connection } = configure();
+    let resolveStart!: () => void;
+
+    connection.startPromise = new Promise<void>((resolve) => {
+      resolveStart = resolve;
+    });
+
+    const firstStart = service.start();
+    const secondStart = service.start();
+
+    expect(connection.startCalls).toBe(1);
+    expect(service.connectionState()).toBe('connecting');
+
+    resolveStart();
+    await Promise.all([firstStart, secondStart]);
+
+    expect(connection.startCalls).toBe(1);
+    expect(service.connectionState()).toBe('connected');
   });
 });

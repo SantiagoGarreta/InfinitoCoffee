@@ -1,5 +1,5 @@
 import { InjectionToken } from '@angular/core';
-import { HubConnectionBuilder } from '@microsoft/signalr';
+import { HubConnectionBuilder, HttpTransportType } from '@microsoft/signalr';
 
 export interface OrdersHubConnection {
   on<T>(methodName: string, newMethod: (arg: T) => void): void;
@@ -15,7 +15,11 @@ export type OrdersHubConnectionFactory = (hubUrl: string) => OrdersHubConnection
 
 function createOrdersHubConnection(hubUrl: string): OrdersHubConnection {
   return new HubConnectionBuilder()
-    .withUrl(hubUrl)
+    .withUrl(hubUrl, {
+      skipNegotiation: true,
+      transport: HttpTransportType.WebSockets,
+      withCredentials: false,
+    })
     .withAutomaticReconnect()
     .build();
 }

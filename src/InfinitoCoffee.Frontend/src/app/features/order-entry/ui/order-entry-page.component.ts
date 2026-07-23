@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 
 import { OrderSource } from '../../../core/orders/models/order.model';
 import { ORDER_NUMBER_MAX_LENGTH } from '../../../core/orders/order.constants';
-import { ConnectionStatusComponent } from '../../../shared/ui/connection-status/connection-status.component';
 import { ErrorMessageComponent } from '../../../shared/ui/error-message/error-message.component';
 import { LoadingStateComponent } from '../../../shared/ui/loading-state/loading-state.component';
 import { OrderEntryStore } from '../data-access/order-entry.store';
@@ -18,7 +17,6 @@ import { ProductGridComponent } from './product-grid.component';
   imports: [
     CategorySelectorComponent,
     CommonModule,
-    ConnectionStatusComponent,
     ErrorMessageComponent,
     FormsModule,
     LoadingStateComponent,

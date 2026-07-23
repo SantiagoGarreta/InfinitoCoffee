@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
+import { Injectable, PLATFORM_ID, inject, isDevMode, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
 import { APP_RUNTIME_CONFIG } from '../config/app-runtime-config';
@@ -14,29 +14,29 @@ type ResyncListener = () => void;
 export class OrdersRealtimeService {
   readonly connectionState = signal<RealtimeConnectionState>('disconnected');
 
-  private readonly destroyRef = inject(DestroyRef);
   private readonly hubConnectionFactory = inject(ORDERS_HUB_CONNECTION_FACTORY);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly appRuntimeConfig = inject(APP_RUNTIME_CONFIG);
   private readonly eventListeners = new Set<EventListener>();
   private readonly resyncListeners = new Set<ResyncListener>();
+  private readonly devLoggingEnabled = isDevMode();
 
   private connection: OrdersHubConnection | null = null;
   private startPromise: Promise<void> | null = null;
-
-  constructor() {
-    this.destroyRef.onDestroy(() => {
-      void this.stop();
-    });
-  }
 
   async start(): Promise<void> {
     if (!this.isBrowser) {
       return;
     }
 
+    this.log('start requested', { url: this.appRuntimeConfig.signalRHubUrl, state: this.connectionState() });
+
     if (this.startPromise) {
       return this.startPromise;
+    }
+
+    if (this.connectionState() === 'connected') {
+      return;
     }
 
     const connection = this.ensureConnection();
@@ -44,10 +44,12 @@ export class OrdersRealtimeService {
     this.startPromise = connection.start()
       .then(() => {
         this.connectionState.set('connected');
+        this.log('connection started', { url: this.appRuntimeConfig.signalRHubUrl });
       })
       .catch((error: unknown) => {
         this.connectionState.set('disconnected');
         this.startPromise = null;
+        this.log('connection failed', { url: this.appRuntimeConfig.signalRHubUrl, error });
         throw error;
       });
 
@@ -63,6 +65,7 @@ export class OrdersRealtimeService {
       return;
     }
 
+    this.log('stop requested', { url: this.appRuntimeConfig.signalRHubUrl });
     this.detachOrderHandlers(connection);
     this.connection = null;
     this.connectionState.set('disconnected');
@@ -97,16 +100,19 @@ export class OrdersRealtimeService {
     this.registerOrderHandler(connection, 'OrderCreated');
     this.registerOrderHandler(connection, 'OrderStatusChanged');
     this.registerOrderHandler(connection, 'OrderCancelled');
-    connection.onreconnecting(() => {
+    connection.onreconnecting((error) => {
       this.connectionState.set('reconnecting');
+      this.log('onreconnecting', { url: this.appRuntimeConfig.signalRHubUrl, error });
     });
-    connection.onreconnected(() => {
+    connection.onreconnected((connectionId) => {
       this.connectionState.set('connected');
+      this.log('onreconnected', { url: this.appRuntimeConfig.signalRHubUrl, connectionId });
       this.requestResync();
     });
-    connection.onclose(() => {
+    connection.onclose((error) => {
       this.startPromise = null;
       this.connectionState.set('disconnected');
+      this.log('onclose', { url: this.appRuntimeConfig.signalRHubUrl, error });
     });
 
     this.connection = connection;
@@ -138,5 +144,13 @@ export class OrdersRealtimeService {
     for (const listener of this.resyncListeners) {
       listener();
     }
+  }
+
+  private log(message: string, details?: Record<string, unknown>): void {
+    if (!this.devLoggingEnabled) {
+      return;
+    }
+
+    console.debug('[OrdersRealtimeService]', message, details ?? {});
   }
 }

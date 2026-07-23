@@ -11,12 +11,17 @@ class FakePickupOrdersStore {
   readonly connectionState = signal<'connected' | 'reconnecting' | 'disconnected'>('connected');
   readonly preparingOrders = signal<Order[]>([createOrder('A-100', 'Preparing')]);
   readonly readyOrders = signal<Order[]>([createOrder('A-200', 'Ready')]);
+  initializeCalls = 0;
+  destroyCalls = 0;
 
   initialize(): Promise<void> {
+    this.initializeCalls++;
     return Promise.resolve();
   }
 
-  destroy(): void {}
+  destroy(): void {
+    this.destroyCalls++;
+  }
   retryConnection(): Promise<void> {
     return Promise.resolve();
   }
@@ -56,6 +61,17 @@ describe('PickupDisplayPageComponent', () => {
     expect(text).toContain('Listos para retirar');
     expect(text).toContain('A-100');
     expect(text).toContain('A-200');
+  });
+
+  it('initializes on mount and tears down store subscriptions on destroy', () => {
+    const fixture = TestBed.createComponent(PickupDisplayPageComponent);
+    const store = TestBed.inject(PickupOrdersStore) as unknown as FakePickupOrdersStore;
+
+    fixture.detectChanges();
+    fixture.destroy();
+
+    expect(store.initializeCalls).toBe(1);
+    expect(store.destroyCalls).toBe(1);
   });
 
   it('renders the ready section with the emphasized style', () => {

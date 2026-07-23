@@ -49,7 +49,7 @@ export class KitchenOrdersStore {
     }
 
     this.initializePromise = this.reload()
-      .then(() => this.realtimeService.start())
+      .then(() => this.connectRealtime())
       .finally(() => {
         this.initializePromise = null;
       });
@@ -66,7 +66,7 @@ export class KitchenOrdersStore {
   }
 
   async retryConnection(): Promise<void> {
-    await this.realtimeService.restart();
+    await this.connectRealtime(true);
   }
 
   async startPreparation(orderId: string): Promise<void> {
@@ -96,6 +96,19 @@ export class KitchenOrdersStore {
       this.loadError.set(toUserMessage(error, 'No fue posible cargar las comandas activas.'));
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  private async connectRealtime(forceRestart = false): Promise<void> {
+    try {
+      if (forceRestart) {
+        await this.realtimeService.restart();
+        return;
+      }
+
+      await this.realtimeService.start();
+    } catch (error: unknown) {
+      console.warn('[KitchenOrdersStore] Realtime connection unavailable.', error);
     }
   }
 

@@ -46,7 +46,7 @@ export class PickupOrdersStore {
     }
 
     this.initializePromise = this.reload()
-      .then(() => this.realtimeService.start())
+      .then(() => this.connectRealtime())
       .finally(() => {
         this.initializePromise = null;
       });
@@ -63,7 +63,7 @@ export class PickupOrdersStore {
   }
 
   async retryConnection(): Promise<void> {
-    await this.realtimeService.restart();
+    await this.connectRealtime(true);
   }
 
   private async reload(): Promise<void> {
@@ -77,6 +77,19 @@ export class PickupOrdersStore {
       this.loadError.set(toUserMessage(error, 'No fue posible cargar la pantalla de pickup.'));
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  private async connectRealtime(forceRestart = false): Promise<void> {
+    try {
+      if (forceRestart) {
+        await this.realtimeService.restart();
+        return;
+      }
+
+      await this.realtimeService.start();
+    } catch (error: unknown) {
+      console.warn('[PickupOrdersStore] Realtime connection unavailable.', error);
     }
   }
 

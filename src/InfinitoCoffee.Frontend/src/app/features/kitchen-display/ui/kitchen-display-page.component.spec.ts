@@ -18,12 +18,17 @@ class FakeKitchenOrdersStore {
   readonly queuedOrders = signal<Order[]>([createOrder('A-100', 'Pending')]);
   readonly preparingOrders = signal<Order[]>([createOrder('A-200', 'Preparing')]);
   readonly readyOrders = signal<Order[]>([createOrder('A-300', 'Ready')]);
+  initializeCalls = 0;
+  destroyCalls = 0;
 
   initialize(): Promise<void> {
+    this.initializeCalls++;
     return Promise.resolve();
   }
 
-  destroy(): void {}
+  destroy(): void {
+    this.destroyCalls++;
+  }
   retryConnection(): Promise<void> {
     return Promise.resolve();
   }
@@ -87,6 +92,17 @@ describe('KitchenDisplayPageComponent', () => {
     expect(text).toContain('A-100');
     expect(text).toContain('A-200');
     expect(text).toContain('A-300');
+  });
+
+  it('initializes on mount and tears down store subscriptions on destroy', () => {
+    const fixture = TestBed.createComponent(KitchenDisplayPageComponent);
+    const store = TestBed.inject(KitchenOrdersStore) as unknown as FakeKitchenOrdersStore;
+
+    fixture.detectChanges();
+    fixture.destroy();
+
+    expect(store.initializeCalls).toBe(1);
+    expect(store.destroyCalls).toBe(1);
   });
 
   it('disables the button while an action is running and shows the action error', () => {

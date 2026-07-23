@@ -18,8 +18,10 @@ class FakeOrdersRealtimeService {
   private resyncListener?: () => void;
 
   readonly connectionState = () => 'connected' as const;
+  startCalls = 0;
 
   start(): Promise<void> {
+    this.startCalls++;
     return Promise.resolve();
   }
 
@@ -87,6 +89,15 @@ describe('PickupOrdersStore', () => {
 
     expect(store.preparingOrders().map((order) => order.orderNumber)).toEqual(['A-100']);
     expect(store.readyOrders().map((order) => order.orderNumber)).toEqual(['A-200']);
+  });
+
+  it('starts the shared realtime connection during initialization', async () => {
+    const store = TestBed.inject(PickupOrdersStore);
+    const realtime = TestBed.inject(OrdersRealtimeService) as unknown as FakeOrdersRealtimeService;
+
+    await store.initialize();
+
+    expect(realtime.startCalls).toBe(1);
   });
 
   it('removes delivered and cancelled orders from pickup', async () => {
