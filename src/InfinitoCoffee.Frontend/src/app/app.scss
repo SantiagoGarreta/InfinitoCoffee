@@ -1,0 +1,88 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+}
+
+.layout {
+  min-height: 100dvh;
+  padding: 2rem clamp(1.25rem, 4vw, 3rem) 3rem;
+  background:
+    radial-gradient(circle at top left, rgba(168, 118, 74, 0.22), transparent 24rem),
+    radial-gradient(circle at top right, rgba(47, 107, 86, 0.18), transparent 20rem),
+    linear-gradient(180deg, #f6efe6 0%, #f2f6f0 100%);
+  color: #24180f;
+}
+
+.hero {
+  max-width: 44rem;
+  margin-bottom: 1.5rem;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+}
+
+.eyebrow {
+  margin: 0 0 0.45rem;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.78rem;
+  color: #996c44;
+}
+
+.lead {
+  max-width: 36rem;
+  margin: 1rem 0 0;
+  color: #5f5144;
+  font-size: 1.04rem;
+}
+
+.tabs {
+  display: inline-flex;
+  gap: 0.55rem;
+  padding: 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 251, 246, 0.9);
+  border: 1px solid rgba(153, 108, 68, 0.16);
+  margin-bottom: 1.5rem;
+}
+
+.tabs__link {
+  text-decoration: none;
+  color: #6c5846;
+  padding: 0.8rem 1.1rem;
+  border-radius: 999px;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.tabs__link--active {
+  background: linear-gradient(135deg, #8a5a34, #345f4f);
+  color: #fff9f0;
+}
+
+.panel {
+  max-width: 68rem;
+  padding: clamp(1.25rem, 4vw, 2rem);
+  border-radius: 1.6rem;
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(111, 78, 55, 0.14);
+  backdrop-filter: blur(16px);
+}
+
+@media (max-width: 640px) {
+  .layout {
+    padding-top: 1.5rem;
+  }
+
+  .tabs {
+    display: grid;
+    width: 100%;
+  }
+
+  .tabs__link {
+    text-align: center;
+  }
+}

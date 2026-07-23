@@ -1,0 +1,44 @@
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(81, 95, 112, 0.12);
+}
+
+.connection-status__dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: #6a7480;
+}
+
+.connection-status--connected .connection-status__dot {
+  background: #30805f;
+}
+
+.connection-status--reconnecting .connection-status__dot,
+.connection-status--connecting .connection-status__dot {
+  background: #d07a27;
+}
+
+.connection-status--disconnected .connection-status__dot {
+  background: #b95739;
+}
+
+.connection-status__label {
+  font-weight: 600;
+}
+
+.connection-status__retry {
+  border: 0;
+  border-radius: 999px;
+  background: #354f61;
+  color: #fff;
+  padding: 0.55rem 0.9rem;
+  font: inherit;
+  cursor: pointer;
+}

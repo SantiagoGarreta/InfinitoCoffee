@@ -1,0 +1,18 @@
+<div class="product-grid">
+  @for (product of products(); track product.id) {
+    <button
+      type="button"
+      class="product-grid__card"
+      [disabled]="disabled()"
+      [attr.aria-label]="'Agregar ' + product.name"
+      (click)="addProduct.emit(product)">
+      <strong>{{ product.name }}</strong>
+      @if (product.description) {
+        <span>{{ product.description }}</span>
+      }
+      <em>{{ product.price | currency:'UYU':'symbol':'1.0-0' }}</em>
+    </button>
+  } @empty {
+    <p class="product-grid__empty">No hay productos activos en esta categoria.</p>
+  }
+</div>

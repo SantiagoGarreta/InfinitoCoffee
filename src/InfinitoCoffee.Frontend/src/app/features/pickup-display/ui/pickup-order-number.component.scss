@@ -1,0 +1,25 @@
+.pickup-order {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.1rem;
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(88, 99, 118, 0.12);
+}
+
+.pickup-order--ready {
+  background: linear-gradient(180deg, #f4fff9 0%, #e6f8ee 100%);
+  border-color: rgba(48, 128, 95, 0.22);
+}
+
+.pickup-order__status {
+  color: #5b6573;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.8rem;
+}
+
+.pickup-order__number {
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  line-height: 0.95;
+}

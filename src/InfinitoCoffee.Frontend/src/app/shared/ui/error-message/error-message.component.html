@@ -1,0 +1,9 @@
+<div class="error-message" role="alert" aria-live="assertive">
+  <p>{{ message() }}</p>
+
+  @if (retryLabel()) {
+    <button type="button" class="error-message__action" (click)="retry.emit()">
+      {{ retryLabel() }}
+    </button>
+  }
+</div>

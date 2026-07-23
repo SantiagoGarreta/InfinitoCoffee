@@ -1,0 +1,68 @@
+<article class="order-card" [class.order-card--delayed]="delayed()">
+  <header class="order-card__header">
+    <div>
+      <p class="order-card__eyebrow">{{ order().source }}</p>
+      <h3>{{ order().orderNumber }}</h3>
+    </div>
+
+    <div class="order-card__meta">
+      <strong>{{ elapsedTime() }}</strong>
+      <span>{{ localCreatedAt() }}</span>
+    </div>
+  </header>
+
+  <ul class="order-card__items">
+    @for (item of order().items; track item.id) {
+      <li>
+        <div class="order-card__item-line">
+          <strong>{{ item.quantity }} x {{ item.productName }}</strong>
+          <span>{{ item.lineTotal | currency:'UYU':'symbol':'1.0-0' }}</span>
+        </div>
+
+        @if (item.notes) {
+          <p class="order-card__note">Nota item: {{ item.notes }}</p>
+        }
+      </li>
+    }
+  </ul>
+
+  @if (order().notes) {
+    <p class="order-card__note order-card__note--general">Nota general: {{ order().notes }}</p>
+  }
+
+  <footer class="order-card__footer">
+    <span class="order-card__total">Total {{ order().total | currency:'UYU':'symbol':'1.0-0' }}</span>
+
+    <div class="order-card__actions">
+      @if (primaryActionLabel()) {
+        <button
+          type="button"
+          class="order-card__button order-card__button--primary"
+          [disabled]="isActionPending()"
+          [attr.aria-label]="primaryActionLabel() + ' para ' + order().orderNumber"
+          (click)="handlePrimaryAction()">
+          @if (isActionPending()) {
+            <span>Procesando...</span>
+          } @else {
+            <span>{{ primaryActionLabel() }}</span>
+          }
+        </button>
+      }
+
+      @if (showCancelAction()) {
+        <button
+          type="button"
+          class="order-card__button order-card__button--secondary"
+          [disabled]="isActionPending()"
+          [attr.aria-label]="'Cancelar pedido ' + order().orderNumber"
+          (click)="cancel.emit()">
+          Cancelar
+        </button>
+      }
+    </div>
+  </footer>
+
+  @if (actionError()) {
+    <p class="order-card__error" role="alert" aria-live="assertive">{{ actionError() }}</p>
+  }
+</article>
