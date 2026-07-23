@@ -223,12 +223,6 @@ npm start
 - En Docker, Nginx genera `config.js` al arrancar el contenedor.
 - Eso permite cambiar la URL publica de la API y del hub sin recompilar Angular.
 
-## Decision sobre SSR
-
-- El workspace Angular conserva SSR porque ya forma parte del proyecto.
-- El contenedor del frontend sirve unicamente el bundle de navegador como SPA estatica con Nginx.
-- Para este MVP es la opcion mas simple y estable; no hace falta ejecutar Node.js en el runtime del frontend.
-
 ## Verificacion sugerida
 
 ```powershell
