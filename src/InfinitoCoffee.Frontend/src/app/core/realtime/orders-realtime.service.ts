@@ -1,7 +1,7 @@
 import { DestroyRef, Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
-import { environment } from '../../../environments/environment';
+import { APP_RUNTIME_CONFIG } from '../config/app-runtime-config';
 import { OrderRealtimeDto } from '../orders/models/order.model';
 import { ORDERS_HUB_CONNECTION_FACTORY, OrdersHubConnection } from './orders-hub-connection';
 import { OrdersRealtimeEvent, OrdersRealtimeEventName } from './orders-realtime.types';
@@ -17,6 +17,7 @@ export class OrdersRealtimeService {
   private readonly destroyRef = inject(DestroyRef);
   private readonly hubConnectionFactory = inject(ORDERS_HUB_CONNECTION_FACTORY);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly appRuntimeConfig = inject(APP_RUNTIME_CONFIG);
   private readonly eventListeners = new Set<EventListener>();
   private readonly resyncListeners = new Set<ResyncListener>();
 
@@ -92,7 +93,7 @@ export class OrdersRealtimeService {
       return this.connection;
     }
 
-    const connection = this.hubConnectionFactory(environment.signalRHubUrl);
+    const connection = this.hubConnectionFactory(this.appRuntimeConfig.signalRHubUrl);
     this.registerOrderHandler(connection, 'OrderCreated');
     this.registerOrderHandler(connection, 'OrderStatusChanged');
     this.registerOrderHandler(connection, 'OrderCancelled');

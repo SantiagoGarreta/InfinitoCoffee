@@ -1,0 +1,83 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: infinito-coffee-sqlserver
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${SQLSERVER_SA_PASSWORD}
+    ports:
+      - "${SQLSERVER_PORT:-1433}:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - bash -c 'echo > /dev/tcp/127.0.0.1/1433'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  migrations:
+    build:
+      context: .
+      dockerfile: src/InfinitoCoffee.DbSetup/Dockerfile
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__InfinitoCoffee: Server=sqlserver,1433;Database=${SQLSERVER_DATABASE};User Id=sa;Password=${SQLSERVER_SA_PASSWORD};TrustServerCertificate=True
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    command: ["migrate"]
+    restart: "no"
+    profiles:
+      - tools
+
+  seed:
+    build:
+      context: .
+      dockerfile: src/InfinitoCoffee.DbSetup/Dockerfile
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__InfinitoCoffee: Server=sqlserver,1433;Database=${SQLSERVER_DATABASE};User Id=sa;Password=${SQLSERVER_SA_PASSWORD};TrustServerCertificate=True
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    command: ["seed"]
+    restart: "no"
+    profiles:
+      - tools
+
+  api:
+    build:
+      context: .
+      dockerfile: src/InfinitoCoffee.Api/Dockerfile
+    container_name: infinito-coffee-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__InfinitoCoffee: Server=sqlserver,1433;Database=${SQLSERVER_DATABASE};User Id=sa;Password=${SQLSERVER_SA_PASSWORD};TrustServerCertificate=True
+      Cors__AllowedOrigins__0: ${FRONTEND_PUBLIC_ORIGIN}
+    ports:
+      - "${API_HTTP_PORT:-5165}:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: src/InfinitoCoffee.Frontend/Dockerfile
+    container_name: infinito-coffee-frontend
+    environment:
+      API_BASE_URL: ${API_PUBLIC_BASE_URL}
+      SIGNALR_HUB_URL: ${SIGNALR_HUB_PUBLIC_URL}
+    ports:
+      - "${FRONTEND_PORT:-4200}:80"
+    depends_on:
+      - api
+
+volumes:
+  sqlserver-data:

@@ -14,6 +14,7 @@ coverage/
 *.suo
 *.cache
 *.log
+.env
 
 appsettings.*.local.json
 src/InfinitoCoffee.Frontend/src/environments/*.local.ts

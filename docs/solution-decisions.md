@@ -48,9 +48,9 @@
 ## Migrations And Seed
 
 - EF Core migrations will live in `InfinitoCoffee.Infrastructure`.
-- The API project will be the startup project for migration commands.
-- Database schema updates will be applied explicitly through EF commands during development and deployment.
-- Development seed data will be idempotent and executed only in the Development environment after migrations are applied.
+- The API does not call `Database.Migrate()` on startup.
+- Database schema updates are applied explicitly through the `InfinitoCoffee.DbSetup` executable with the `migrate` command.
+- Development seed data is idempotent and runs only in the Development environment through the `seed` command after migrations are applied.
 
 ## CORS And Angular Proxy
 
@@ -58,6 +58,13 @@
 - Development will allow the Angular dev origin explicitly.
 - Production will require an explicit allowlist of origins.
 - Angular development will use a proxy for `/api` and `/hubs` to avoid CORS friction during local work.
+- The Docker frontend injects runtime URLs through `config.js`, so API and SignalR endpoints can change without rebuilding Angular.
+
+## Docker Runtime
+
+- SQL Server runs in Docker for local environments.
+- The frontend Docker image serves the Angular browser build as a static SPA with Nginx.
+- SSR stays available in the Angular workspace for host-side development, but it is not used in the Docker runtime because the MVP only needs a static browser bundle there.
 
 ## Time Zone Handling
 

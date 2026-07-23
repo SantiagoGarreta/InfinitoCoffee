@@ -1,92 +1,31 @@
-InfinitoCoffee
+# InfinitoCoffee
 
-Sistema web para la gestión de comandas de una cafetería, desarrollado con ASP.NET Core y Angular.
+Sistema web para la gestion de comandas de una cafeteria, desarrollado con ASP.NET Core, SQL Server, SignalR y Angular.
 
-Requisitos
+## Versiones usadas
+
+- .NET SDK `10.0.302`
+- Node.js `24.18.0`
+- npm `11.16.0`
+- Angular CLI `22.0.7`
+- Angular `22.0.7`
+- SQL Server en Docker `2022-latest`
+
+## Requisitos del host
 
 Instalar directamente en Windows:
 
-.NET SDK 10
+- .NET SDK 10
+- Node.js 24
+- npm 11 o compatible
+- Docker Desktop
+- Git
 
-Node.js 24
+No hace falta instalar Angular CLI globalmente.
 
-npm 11 o compatible
+## Estructura principal
 
-Git
-
-Visual Studio Code
-
-No es necesario instalar Angular CLI globalmente, porque el proyecto utiliza la versión instalada localmente en sus dependencias.
-
-Versiones utilizadas
-
-.NET SDK:      10.0.302
-Node.js:       24.18.0
-npm:           11.16.0
-Angular CLI:   22.0.7
-Angular:       22.0.7
-
-Se pueden utilizar versiones de parche posteriores compatibles:
-
-.NET SDK 10.x
-
-Node.js 24.x
-
-npm compatible con Node.js 24
-
-Angular 22.x
-
-1. Instalar .NET SDK 10
-
-Instalar el SDK de .NET 10 desde el sitio oficial de Microsoft.
-
-Después de instalarlo, cerrar y volver a abrir PowerShell y Visual Studio Code.
-
-Verificar:
-
-dotnet --version
-dotnet --list-sdks
-
-El resultado debe incluir una versión 10.0.x.
-
-Ejemplo:
-
-10.0.302
-
-2. Instalar Node.js 24
-
-Node.js debe instalarse directamente en Windows.
-
-Ejecutar Node.js mediante Docker no instala Node en el sistema operativo host.
-
-Se puede instalar con Winget:
-
-winget install --id OpenJS.NodeJS.LTS --exact
-
-Después de instalarlo, cerrar todas las terminales y volver a abrir Visual Studio Code.
-
-Verificar:
-
-node --version
-npm --version
-where.exe node
-
-Resultado esperado:
-
-v24.x.x
-C:\Program Files\nodejs\node.exe
-
-3. Clonar el repositorio
-
-git clone <URL_DEL_REPOSITORIO>
-cd InfinitoCoffee
-
-Si el repositorio ya está clonado:
-
-git pull
-
-4. Estructura del proyecto
-
+```text
 InfinitoCoffee/
   src/
     InfinitoCoffee.Domain/
@@ -94,195 +33,211 @@ InfinitoCoffee/
     InfinitoCoffee.Infrastructure/
     InfinitoCoffee.Api/
     InfinitoCoffee.Frontend/
+    InfinitoCoffee.DbSetup/
   tests/
     InfinitoCoffee.Domain.Tests/
     InfinitoCoffee.Application.Tests/
     InfinitoCoffee.Api.IntegrationTests/
-  docs/
-  InfinitoCoffee.sln
-  README.md
+```
 
-5. Restaurar y compilar el backend
+## Variables de entorno para Docker
 
-Desde la raíz del proyecto:
+Copiar `.env.example` a `.env` y ajustar si hace falta:
 
+```powershell
+Copy-Item .env.example .env
+```
+
+Variables principales:
+
+- `SQLSERVER_PORT`
+- `SQLSERVER_DATABASE`
+- `SQLSERVER_SA_PASSWORD`
+- `API_HTTP_PORT`
+- `FRONTEND_PORT`
+- `FRONTEND_PUBLIC_ORIGIN`
+- `API_PUBLIC_BASE_URL`
+- `SIGNALR_HUB_PUBLIC_URL`
+
+`.env` queda ignorado por Git.
+
+## Flujo hibrido: SQL Server en Docker y app en host
+
+1. Levantar solo SQL Server:
+
+```powershell
+docker compose up -d sqlserver
+```
+
+2. Aplicar migraciones explicitamente:
+
+```powershell
+$env:DOTNET_ENVIRONMENT = "Development"
+dotnet run --project .\src\InfinitoCoffee.DbSetup -- migrate
+```
+
+3. Cargar seed de desarrollo explicito e idempotente:
+
+```powershell
+$env:DOTNET_ENVIRONMENT = "Development"
+dotnet run --project .\src\InfinitoCoffee.DbSetup -- seed
+```
+
+4. Ejecutar backend:
+
+```powershell
+dotnet run --project .\src\InfinitoCoffee.Api
+```
+
+5. Ejecutar frontend:
+
+```powershell
+cd .\src\InfinitoCoffee.Frontend
+npm start
+```
+
+## Flujo full Docker
+
+1. Revisar la configuracion final:
+
+```powershell
+docker compose --env-file .env config
+```
+
+2. Construir imagenes:
+
+```powershell
+docker compose build
+```
+
+3. Levantar solo SQL Server:
+
+```powershell
+docker compose up -d sqlserver
+```
+
+4. Aplicar migraciones explicitamente:
+
+```powershell
+docker compose run --rm migrations
+```
+
+5. Ejecutar seed de desarrollo cuando se necesite:
+
+```powershell
+docker compose run --rm seed
+```
+
+6. Levantar API y frontend:
+
+```powershell
+docker compose up -d api frontend
+```
+
+7. Verificar servicios:
+
+```powershell
+docker compose ps
+Invoke-RestMethod http://localhost:5165/health
+```
+
+URLs por defecto:
+
+- Frontend: `http://localhost:4200`
+- API: `http://localhost:5165`
+- Swagger: `http://localhost:5165/swagger`
+- Health: `http://localhost:5165/health`
+- SignalR Hub: `http://localhost:5165/hubs/orders`
+
+## Estrategia de migraciones y seed
+
+- Las migraciones siguen viviendo en `InfinitoCoffee.Infrastructure`.
+- La API no ejecuta `Database.Migrate()` al arrancar.
+- El ejecutable `InfinitoCoffee.DbSetup` expone dos comandos explicitos:
+  - `migrate`
+  - `seed`
+- `seed` solo corre si `DOTNET_ENVIRONMENT=Development`.
+- El seed es idempotente y solo carga categorias y productos minimos de desarrollo.
+
+## Operaciones utiles de Docker
+
+Ver logs:
+
+```powershell
+docker compose logs sqlserver
+docker compose logs api
+docker compose logs frontend
+```
+
+Detener el entorno:
+
+```powershell
+docker compose down
+```
+
+Eliminar tambien el volumen de SQL Server:
+
+```powershell
+docker compose down -v
+```
+
+## Troubleshooting rapido
+
+- Si `sqlserver` no llega a healthy, revisar `docker compose logs sqlserver` y validar que la password de `sa` cumpla los requisitos de SQL Server.
+- Si `migrations` falla, confirmar que `sqlserver` este healthy antes de reintentar.
+- Si el frontend abre pero no carga datos, revisar `http://localhost:5165/health` y luego `docker compose logs api`.
+- Si cambias puertos publicos, actualizar `.env` y volver a levantar `frontend` para regenerar `config.js`.
+
+## Backend local
+
+Desde la raiz:
+
+```powershell
 dotnet restore .\InfinitoCoffee.sln
 dotnet build .\InfinitoCoffee.sln
-
-Actualmente puede aparecer una advertencia NU1903 relacionada con Microsoft.OpenApi 2.0.0.
-
-La advertencia no impide compilar ni ejecutar el proyecto y será atendida más adelante.
-
-6. Ejecutar el backend
-
-Desde la raíz:
-
-dotnet run --project .\src\InfinitoCoffee.Api
-
-También se puede ejecutar desde el proyecto de API:
-
-cd .\src\InfinitoCoffee.Api
-dotnet run
-
-La terminal mostrará las URLs locales disponibles:
-
-https://localhost:<puerto>
-http://localhost:<puerto>
-
-Para confiar en el certificado HTTPS de desarrollo:
-
-dotnet dev-certs https --trust
-
-7. Instalar las dependencias del frontend
-
-Desde la raíz del proyecto:
-
-cd .\src\InfinitoCoffee.Frontend
-npm install
-
-No ejecutar nuevamente ng new, porque el workspace Angular ya está creado.
-
-8. Verificar Angular
-
-Dentro de src/InfinitoCoffee.Frontend:
-
-npx ng version
-
-Debe mostrar Angular CLI 22 y Angular 22.
-
-Se utiliza npx ng para ejecutar la versión local del CLI instalada en el proyecto.
-
-9. Compilar el frontend
-
-Dentro de src/InfinitoCoffee.Frontend:
-
-npm run build
-
-La salida se genera en:
-
-src/InfinitoCoffee.Frontend/dist/InfinitoCoffee.Frontend
-
-10. Ejecutar el frontend
-
-Dentro de src/InfinitoCoffee.Frontend:
-
-npm start
-
-Alternativamente:
-
-npx ng serve
-
-Por defecto, Angular estará disponible en:
-
-http://localhost:4200
-
-11. Ejecutar backend y frontend simultáneamente
-
-Abrir dos terminales en Visual Studio Code.
-
-Terminal 1: backend
-
-Desde la raíz:
-
-dotnet run --project .\src\InfinitoCoffee.Api
-
-Terminal 2: frontend
-
-Desde la raíz:
-
-cd .\src\InfinitoCoffee.Frontend
-npm start
-
-12. Ejecutar tests
-
-Tests de .NET
-
-Desde la raíz:
-
 dotnet test .\InfinitoCoffee.sln
+dotnet run --project .\src\InfinitoCoffee.Api
+```
 
-Tests de Angular
+Puede aparecer el warning `NU1903` relacionado con OpenAPI. No bloquea el trabajo actual.
 
-Desde el frontend:
+## Frontend local
 
-cd .\src\InfinitoCoffee.Frontend
+Desde `src/InfinitoCoffee.Frontend`:
+
+```powershell
+npm install
+npm run build
 npm test
+```
 
-13. Tiempo real con SignalR
+Para desarrollo:
 
-La API expone el hub:
+```powershell
+npm start
+```
 
-`/hubs/orders`
+## Configuracion runtime del frontend
 
-Eventos emitidos:
+- En host, Angular usa los valores por defecto de `src/environments/environment.ts`.
+- En Docker, Nginx genera `config.js` al arrancar el contenedor.
+- Eso permite cambiar la URL publica de la API y del hub sin recompilar Angular.
 
-- `OrderCreated`
-- `OrderStatusChanged`
-- `OrderCancelled`
+## Decision sobre SSR
 
-Flujo del MVP:
+- El workspace Angular conserva SSR porque ya forma parte del proyecto.
+- El contenedor del frontend sirve unicamente el bundle de navegador como SPA estatica con Nginx.
+- Para este MVP es la opcion mas simple y estable; no hace falta ejecutar Node.js en el runtime del frontend.
 
-- Los cambios de estado siguen entrando por la API REST.
-- La API persiste primero.
-- DespuÃ©s intenta publicar el evento por SignalR.
-- Si la publicaciÃ³n falla, se registra el error y la respuesta HTTP puede seguir siendo exitosa porque la fuente de verdad ya fue guardada.
-- El frontend hace sincronizaciÃ³n inicial por REST y resincroniza tras reconectar para cubrir eventos perdidos.
+## Verificacion sugerida
 
-Pantallas mÃ­nimas:
-
-- `/kitchen`
-- `/pickup`
-
-Prueba manual sugerida:
-
-- Iniciar API y frontend.
-- Abrir `/kitchen` en dos pestaÃ±as.
-- Crear o cambiar comandas desde Swagger.
-- Confirmar actualizaciÃ³n en ambas pestaÃ±as sin refrescar.
-- Abrir `/pickup` y verificar la visibilidad de pedidos `Preparing` y `Ready`.
-- Reiniciar la API y confirmar que el frontend se reconecta y vuelve a sincronizar.
-
-13. Verificación completa del entorno
-
-Desde la raíz:
-
-dotnet --version
-node --version
-npm --version
-dotnet restore .\InfinitoCoffee.sln
+```powershell
+dotnet format .\InfinitoCoffee.sln
 dotnet build .\InfinitoCoffee.sln
 dotnet test .\InfinitoCoffee.sln
 
-Luego:
-
-cd .\src\InfinitoCoffee.Frontend
-npm install
-npx ng version
-npm run build
-
-Si todos estos comandos terminan correctamente, el entorno está listo para comenzar a desarrollar.
-
-Resumen rápido
-
-Primera instalación
-
-git clone <URL_DEL_REPOSITORIO>
-cd InfinitoCoffee
-
-dotnet restore .\InfinitoCoffee.sln
-dotnet build .\InfinitoCoffee.sln
-
 cd .\src\InfinitoCoffee.Frontend
 npm install
 npm run build
-
-Ejecución diaria
-
-Backend:
-
-dotnet run --project .\src\InfinitoCoffee.Api
-
-Frontend:
-
-cd .\src\InfinitoCoffee.Frontend
-npm start
+npm test
+```
