@@ -10,6 +10,8 @@ RUN npm run build
 FROM nginx:1.29-alpine
 COPY src/InfinitoCoffee.Frontend/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY src/InfinitoCoffee.Frontend/docker/40-generate-runtime-config.sh /docker-entrypoint.d/40-generate-runtime-config.sh
-RUN chmod +x /docker-entrypoint.d/40-generate-runtime-config.sh
+RUN sed -i 's/\r$//' /docker-entrypoint.d/40-generate-runtime-config.sh \
+    && chmod +x /docker-entrypoint.d/40-generate-runtime-config.sh
 COPY --from=build /app/dist/InfinitoCoffee.Frontend/browser/ /usr/share/nginx/html/
-RUN cp /usr/share/nginx/html/index.csr.html /usr/share/nginx/html/index.html
+RUN cp /usr/share/nginx/html/index.csr.html /usr/share/nginx/html/index.html \
+    && rm -rf /usr/share/nginx/html/kitchen /usr/share/nginx/html/pickup /usr/share/nginx/html/orders
