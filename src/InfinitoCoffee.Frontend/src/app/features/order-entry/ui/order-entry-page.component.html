@@ -5,6 +5,8 @@
       <h1>Nueva comanda</h1>
       <p class="order-entry__subtitle">Crea pedidos manuales para que aparezcan de inmediato en cocina y pickup.</p>
     </div>
+
+    <button type="button" class="order-entry__menu-button" [disabled]="store.loading()" (click)="openMenu()">Menu</button>
   </header>
 
   @if (store.loading()) {
@@ -12,6 +14,19 @@
   } @else if (store.loadError()) {
     <app-error-message [message]="store.loadError()!" retryLabel="Reintentar carga" (retry)="store.initialize()" />
   } @else {
+    @if (menuOpen()) {
+      <app-menu-editor
+        [categories]="store.activeCategories()"
+        [products]="store.products()"
+        [saving]="store.menuSaving()"
+        [errorMessage]="store.menuError()"
+        [successMessage]="store.menuSuccessMessage()"
+        (close)="closeMenu()"
+        (createProduct)="store.createMenuProduct($event)"
+        (updateProduct)="store.updateMenuProduct($event.productId, $event.request)"
+        (deleteProduct)="store.deleteMenuProduct($event)" />
+    }
+
     <div class="order-entry__layout">
       <section class="order-entry__catalog">
         <div class="order-entry__form-card">

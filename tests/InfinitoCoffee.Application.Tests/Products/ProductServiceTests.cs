@@ -103,6 +103,21 @@ public class ProductServiceTests
     }
 
     [Fact]
+    public async Task DeleteProductAsync_ExistingProduct_RemovesProduct()
+    {
+        var productRepository = new FakeProductRepository();
+        var product = new Product(Guid.NewGuid(), "Mocha", 8m);
+        productRepository.Seed(product);
+        var service = CreateProductService(productRepository, new FakeProductCategoryRepository());
+
+        await service.DeleteProductAsync(new DeleteProductCommand(product.Id));
+
+        var remainingProducts = await productRepository.GetAllAsync();
+        Assert.Empty(remainingProducts);
+        Assert.Equal(1, productRepository.SaveChangesCalls);
+    }
+
+    [Fact]
     public async Task GetProductsAsync_MultipleProducts_ReturnsProductsOrderedByName()
     {
         var productRepository = new FakeProductRepository();

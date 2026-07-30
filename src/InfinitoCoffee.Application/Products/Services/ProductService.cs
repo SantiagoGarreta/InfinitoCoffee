@@ -110,6 +110,19 @@ public sealed class ProductService
         return MapProduct(product);
     }
 
+    public async Task DeleteProductAsync(
+        DeleteProductCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        var product = await _productRepository.GetByIdAsync(command.ProductId, cancellationToken)
+            ?? throw new NotFoundException("Product", command.ProductId);
+
+        _productRepository.Remove(product);
+        await _productRepository.SaveChangesAsync(cancellationToken);
+    }
+
     private async Task<ProductCategory> GetActiveCategoryAsync(Guid categoryId, CancellationToken cancellationToken)
     {
         var category = await _productCategoryRepository.GetByIdAsync(categoryId, cancellationToken)
