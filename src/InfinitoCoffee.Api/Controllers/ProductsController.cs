@@ -79,9 +79,19 @@ public sealed class ProductsController : ControllerBase
 
     [HttpPost("{id:guid}/deactivate")]
     [ProducesResponseType(typeof(ProductResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ProductResponse>> Deactivate(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Deactivate(
+        Guid id,
+        [FromBody] DeactivateProductRequest? request,
+        CancellationToken cancellationToken)
     {
+        if (request?.HardDelete == true)
+        {
+            await _productService.DeleteProductAsync(new DeleteProductCommand(id), cancellationToken);
+            return NoContent();
+        }
+
         var product = await _productService.DeactivateProductAsync(new DeactivateProductCommand(id), cancellationToken);
         return Ok(ApiContractMapper.MapProduct(product));
     }

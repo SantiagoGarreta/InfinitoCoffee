@@ -6,7 +6,7 @@ import { ORDER_NUMBER_MAX_LENGTH } from '../../../core/orders/order.constants';
 import { OrdersApiService } from '../../../core/orders/data-access/orders-api.service';
 import { ProductCategoriesApiService } from '../../../core/product-categories/data-access/product-categories-api.service';
 import { ProductCategory } from '../../../core/product-categories/models/product-category.model';
-import { ProductsApiService } from '../../../core/products/data-access/products-api.service';
+import { ProductsApiService, SaveProductRequest } from '../../../core/products/data-access/products-api.service';
 import { Product } from '../../../core/products/models/product.model';
 
 export interface EntryOrderItem {
@@ -24,6 +24,9 @@ export class OrderEntryStore {
   readonly submitting = signal(false);
   readonly submitError = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
+  readonly menuSaving = signal(false);
+  readonly menuError = signal<string | null>(null);
+  readonly menuSuccessMessage = signal<string | null>(null);
   readonly categories = signal<ProductCategory[]>([]);
   readonly products = signal<Product[]>([]);
   readonly selectedCategoryId = signal<string | null>(null);
@@ -68,12 +71,9 @@ export class OrderEntryStore {
         this.productsApiService.getProducts(),
       ]);
 
-      const activeCategories = categories.filter((category) => category.isActive);
-      const activeProducts = products.filter((product) => product.isActive);
-
-      this.categories.set(activeCategories);
-      this.products.set(activeProducts);
-      this.selectedCategoryId.set(activeCategories[0]?.id ?? null);
+      this.categories.set(categories);
+      this.products.set(products);
+      this.ensureSelectedCategory();
     } catch (error: unknown) {
       this.loadError.set(toUserMessage(error, 'No fue posible cargar categorias y productos.'));
     } finally {
@@ -184,11 +184,100 @@ export class OrderEntryStore {
     };
   }
 
+  clearMenuFeedback(): void {
+    this.menuError.set(null);
+    this.menuSuccessMessage.set(null);
+  }
+
+  async createMenuProduct(request: SaveProductRequest): Promise<void> {
+    await this.runMenuMutation(
+      async () => this.productsApiService.createProduct(request),
+      (product) => {
+        this.upsertProduct(product);
+        this.menuSuccessMessage.set(`Producto "${product.name}" agregado al menu.`);
+      },
+      'No fue posible agregar el producto.',
+    );
+  }
+
+  async updateMenuProduct(productId: string, request: SaveProductRequest): Promise<void> {
+    await this.runMenuMutation(
+      async () => this.productsApiService.updateProduct(productId, request),
+      (product) => {
+        this.upsertProduct(product);
+        this.items.update((currentItems) => currentItems.map((item) =>
+          item.productId === product.id
+            ? { ...item, productName: product.name, unitPrice: product.price }
+            : item));
+        this.menuSuccessMessage.set(`Producto "${product.name}" actualizado.`);
+      },
+      'No fue posible actualizar el producto.',
+    );
+  }
+
+  async deleteMenuProduct(productId: string): Promise<void> {
+    const existingProduct = this.products().find((product) => product.id === productId);
+
+    this.menuSaving.set(true);
+    this.menuError.set(null);
+    this.menuSuccessMessage.set(null);
+
+    try {
+      await this.productsApiService.deleteProduct(productId);
+      this.products.update((currentProducts) => currentProducts.filter((product) => product.id !== productId));
+      this.items.update((currentItems) => currentItems.filter((item) => item.productId !== productId));
+      this.menuSuccessMessage.set(`Producto "${existingProduct?.name ?? 'seleccionado'}" eliminado del menu.`);
+      this.ensureSelectedCategory();
+    } catch (error: unknown) {
+      this.menuError.set(toUserMessage(error, 'No fue posible eliminar el producto.'));
+    } finally {
+      this.menuSaving.set(false);
+    }
+  }
+
   private resetForm(): void {
     this.orderNumber.set('');
     this.source.set('Counter');
     this.notes.set('');
     this.items.set([]);
+  }
+
+  private async runMenuMutation(
+    action: () => Promise<Product>,
+    onSuccess: (product: Product) => void,
+    fallbackMessage: string,
+  ): Promise<void> {
+    this.menuSaving.set(true);
+    this.menuError.set(null);
+    this.menuSuccessMessage.set(null);
+
+    try {
+      const product = await action();
+      onSuccess(product);
+      this.ensureSelectedCategory();
+    } catch (error: unknown) {
+      this.menuError.set(toUserMessage(error, fallbackMessage));
+    } finally {
+      this.menuSaving.set(false);
+    }
+  }
+
+  private ensureSelectedCategory(): void {
+    const activeCategories = this.activeCategories();
+    const selectedCategoryId = this.selectedCategoryId();
+    const selectedCategoryStillActive = activeCategories.some((category) => category.id === selectedCategoryId);
+
+    if (!selectedCategoryStillActive) {
+      this.selectedCategoryId.set(activeCategories[0]?.id ?? null);
+    }
+  }
+
+  private upsertProduct(product: Product): void {
+    this.products.update((currentProducts) => {
+      const nextProducts = currentProducts.filter((currentProduct) => currentProduct.id !== product.id);
+      nextProducts.push(product);
+      return nextProducts.sort((left, right) => left.name.localeCompare(right.name, 'es'));
+    });
   }
 }
 

@@ -36,6 +36,11 @@ internal sealed class FakeProductRepository : IProductRepository
         return Task.CompletedTask;
     }
 
+    public void Remove(Product product)
+    {
+        _products.Remove(product);
+    }
+
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         LastSaveChangesToken = cancellationToken;
