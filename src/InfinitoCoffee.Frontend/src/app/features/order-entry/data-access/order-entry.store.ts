@@ -2,7 +2,6 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { toUserMessage } from '../../../core/http/api-error.utils';
 import { OrderSource, type CreateOrderRequest } from '../../../core/orders/models/order.model';
-import { ORDER_NUMBER_MAX_LENGTH } from '../../../core/orders/order.constants';
 import { OrdersApiService } from '../../../core/orders/data-access/orders-api.service';
 import { ProductCategoriesApiService } from '../../../core/product-categories/data-access/product-categories-api.service';
 import { ProductCategory } from '../../../core/product-categories/models/product-category.model';
@@ -30,7 +29,6 @@ export class OrderEntryStore {
   readonly categories = signal<ProductCategory[]>([]);
   readonly products = signal<Product[]>([]);
   readonly selectedCategoryId = signal<string | null>(null);
-  readonly orderNumber = signal('');
   readonly source = signal<OrderSource>('Counter');
   readonly notes = signal('');
   readonly items = signal<EntryOrderItem[]>([]);
@@ -50,12 +48,7 @@ export class OrderEntryStore {
   readonly visualTotal = computed(() =>
     this.items().reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0),
   );
-  readonly canSubmit = computed(() =>
-    !this.submitting()
-    && this.items().length > 0
-    && this.orderNumber().trim().length > 0
-    && this.orderNumber().trim().length <= ORDER_NUMBER_MAX_LENGTH,
-  );
+  readonly canSubmit = computed(() => !this.submitting() && this.items().length > 0);
 
   private readonly ordersApiService = inject(OrdersApiService);
   private readonly productsApiService = inject(ProductsApiService);
@@ -83,10 +76,6 @@ export class OrderEntryStore {
 
   selectCategory(categoryId: string): void {
     this.selectedCategoryId.set(categoryId);
-  }
-
-  setOrderNumber(orderNumber: string): void {
-    this.orderNumber.set(orderNumber);
   }
 
   setSource(source: OrderSource): void {
@@ -146,7 +135,7 @@ export class OrderEntryStore {
   async submit(): Promise<void> {
     const request = this.buildRequest();
     if (!request) {
-      this.submitError.set('Completa el numero de pedido y agrega al menos un producto.');
+      this.submitError.set('Agrega al menos un producto para crear la comanda.');
       return;
     }
 
@@ -166,14 +155,11 @@ export class OrderEntryStore {
   }
 
   buildRequest(): CreateOrderRequest | null {
-    const trimmedOrderNumber = this.orderNumber().trim();
-
-    if (trimmedOrderNumber.length === 0 || this.items().length === 0 || trimmedOrderNumber.length > ORDER_NUMBER_MAX_LENGTH) {
+    if (this.items().length === 0) {
       return null;
     }
 
     return {
-      orderNumber: trimmedOrderNumber,
       source: this.source(),
       notes: normalizeOptionalString(this.notes()),
       items: this.items().map((item) => ({
@@ -236,7 +222,6 @@ export class OrderEntryStore {
   }
 
   private resetForm(): void {
-    this.orderNumber.set('');
     this.source.set('Counter');
     this.notes.set('');
     this.items.set([]);

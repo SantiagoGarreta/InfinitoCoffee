@@ -17,7 +17,7 @@ class FakeOrdersApiService {
       return Promise.reject(this.createOrderError);
     }
 
-    return Promise.resolve({ orderNumber: 'A-101' });
+    return Promise.resolve({ orderNumber: '1' });
   }
 }
 
@@ -98,14 +98,12 @@ describe('OrderEntryStore', () => {
     await store.initialize();
 
     const product = store.visibleProducts()[0]!;
-    store.setOrderNumber('  A-101  ');
     store.setNotes(' Mesa 2 ');
     store.addProduct(product);
     store.updateItemNotes(product.id, ' Sin canela ');
 
     expect(store.visualTotal()).toBe(8);
     expect(store.buildRequest()).toEqual({
-      orderNumber: 'A-101',
       source: 'Counter',
       notes: 'Mesa 2',
       items: [
@@ -123,24 +121,21 @@ describe('OrderEntryStore', () => {
     await store.initialize();
 
     const product = store.visibleProducts()[0]!;
-    store.setOrderNumber('A-101');
     store.addProduct(product);
 
     await store.submit();
 
-    expect(store.orderNumber()).toBe('');
     expect(store.items()).toEqual([]);
     expect(store.source()).toBe('Counter');
-    expect(store.successMessage()).toContain('A-101');
+    expect(store.successMessage()).toContain('1');
   });
 
-  it('shows a friendly duplicate order number error', async () => {
+  it('shows the backend error message when create order fails', async () => {
     const store = TestBed.inject(OrderEntryStore);
     const ordersApi = TestBed.inject(OrdersApiService) as unknown as FakeOrdersApiService;
     await store.initialize();
 
     const product = store.visibleProducts()[0]!;
-    store.setOrderNumber('A-101');
     store.addProduct(product);
     ordersApi.createOrderError = new HttpErrorResponse({
       status: 409,

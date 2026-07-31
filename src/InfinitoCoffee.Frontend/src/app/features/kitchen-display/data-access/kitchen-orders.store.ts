@@ -3,6 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { toUserMessage } from '../../../core/http/api-error.utils';
 import { OrdersApiService } from '../../../core/orders/data-access/orders-api.service';
 import { toOrder } from '../../../core/orders/order.mappers';
+import { compareOrderNumbers } from '../../../core/orders/order-view.utils';
 import { Order, OrderApiDto, OrderRealtimeDto, OrderStatus } from '../../../core/orders/models/order.model';
 import { OrdersRealtimeService } from '../../../core/realtime/orders-realtime.service';
 import { RealtimeConnectionState } from '../../../core/realtime/realtime-connection-state';
@@ -168,7 +169,7 @@ export class KitchenOrdersStore {
   private sortOrders(orders: Order[]): Order[] {
     return [...orders].sort((left, right) =>
       left.createdAtUtc.localeCompare(right.createdAtUtc)
-      || left.orderNumber.localeCompare(right.orderNumber),
+      || compareOrderNumbers(left.orderNumber, right.orderNumber),
     );
   }
 

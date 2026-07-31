@@ -74,6 +74,15 @@
   gap: 0.35rem;
 }
 
+.order-entry__auto-number {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.8rem;
+  border-radius: 0.85rem;
+  background: #f7f0e7;
+  color: #5d4635;
+}
+
 .order-entry__notes {
   grid-column: 1 / -1;
 }
