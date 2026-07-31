@@ -20,6 +20,16 @@ export interface OrderItem {
   lineTotal: number;
 }
 
+export interface OrderApiItemDto {
+  id: string;
+  productId: string;
+  productNameSnapshot: string;
+  unitPriceSnapshot: number;
+  quantity: number;
+  notes: string | null;
+  lineTotal: number;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;
@@ -35,7 +45,7 @@ export interface Order {
   items: OrderItem[];
 }
 
-export interface OrderRealtime {
+export interface OrderApiDto {
   id: string;
   orderNumber: string;
   source: OrderSource;
@@ -47,12 +57,37 @@ export interface OrderRealtime {
   cancelledAtUtc: string | null;
   notes: string | null;
   total: number;
-  items: OrderItem[];
+  items: OrderApiItemDto[];
 }
 
-export type OrderDto = Order;
-export type OrderItemDto = OrderItem;
-export type OrderRealtimeDto = OrderRealtime;
+export interface OrderRealtimeItemDto {
+  id: string;
+  productId: string;
+  productName: string;
+  unitPrice: number;
+  quantity: number;
+  notes: string | null;
+  lineTotal: number;
+}
+
+export interface OrderRealtimeDto {
+  id: string;
+  orderNumber: string;
+  source: OrderSource;
+  status: OrderStatus;
+  createdAtUtc: string;
+  startedAtUtc: string | null;
+  readyAtUtc: string | null;
+  deliveredAtUtc: string | null;
+  cancelledAtUtc: string | null;
+  notes: string | null;
+  total: number;
+  items: OrderRealtimeItemDto[];
+}
+
+export type OrderDto = OrderApiDto;
+export type OrderItemDto = OrderApiItemDto;
+export type OrderRealtime = OrderRealtimeDto;
 
 export interface CreateOrderItemRequest {
   productId: string;
