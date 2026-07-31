@@ -26,12 +26,11 @@ public class OrderServiceTests
         var service = CreateOrderService(orderRepository, productRepository, dateTimeProvider, eventPublisher);
 
         var result = await service.CreateOrderAsync(new CreateOrderCommand(
-            "260721-0001",
             OrderSource.Counter,
             "Sin azucar",
             [new CreateOrderItemCommand(product.Id, 2, "Extra hot")]));
 
-        Assert.Equal("260721-0001", result.OrderNumber);
+        Assert.Equal("1", result.OrderNumber);
         Assert.Equal(OrderStatus.Pending, result.Status);
         Assert.Equal(dateTimeProvider.UtcNow, result.CreatedAtUtc);
         Assert.Equal(13m, result.Total);
@@ -58,7 +57,6 @@ public class OrderServiceTests
         var service = CreateOrderService(orderRepository, productRepository, dateTimeProvider);
 
         var result = await service.CreateOrderAsync(new CreateOrderCommand(
-            "260721-0001",
             OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(product.Id, 1, null)]));
@@ -72,23 +70,58 @@ public class OrderServiceTests
     }
 
     [Fact]
-    public async Task CreateOrderAsync_DuplicateOrderNumber_ThrowsConflictException()
+    public async Task CreateOrderAsync_WithExistingDisplayOrderNumber_IncrementsOrderNumber()
     {
         var orderRepository = new FakeOrderRepository();
-        orderRepository.Seed(CreatePendingOrder("260721-0001"));
+        orderRepository.Seed(CreatePendingOrder("7"));
         var productRepository = new FakeProductRepository();
         var product = new Product(Guid.NewGuid(), "Espresso", 4m);
         productRepository.Seed(product);
         var service = CreateOrderService(orderRepository, productRepository);
 
-        var action = () => service.CreateOrderAsync(new CreateOrderCommand(
-            "260721-0001",
+        var result = await service.CreateOrderAsync(new CreateOrderCommand(
             OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(product.Id, 1, null)]));
 
-        await Assert.ThrowsAsync<ConflictException>(action);
-        Assert.Equal(0, orderRepository.SaveChangesCalls);
+        Assert.Equal("8", result.OrderNumber);
+        Assert.Equal(1, orderRepository.SaveChangesCalls);
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_WhenLatestDisplayOrderNumberIs99_WrapsTo1()
+    {
+        var orderRepository = new FakeOrderRepository();
+        orderRepository.Seed(CreatePendingOrder("99"));
+        var productRepository = new FakeProductRepository();
+        var product = new Product(Guid.NewGuid(), "Espresso", 4m);
+        productRepository.Seed(product);
+        var service = CreateOrderService(orderRepository, productRepository);
+
+        var result = await service.CreateOrderAsync(new CreateOrderCommand(
+            OrderSource.Counter,
+            null,
+            [new CreateOrderItemCommand(product.Id, 1, null)]));
+
+        Assert.Equal("1", result.OrderNumber);
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_WithLegacyLatestOrderNumber_StartsFrom1()
+    {
+        var orderRepository = new FakeOrderRepository();
+        orderRepository.Seed(CreatePendingOrder("A-101"));
+        var productRepository = new FakeProductRepository();
+        var product = new Product(Guid.NewGuid(), "Espresso", 4m);
+        productRepository.Seed(product);
+        var service = CreateOrderService(orderRepository, productRepository);
+
+        var result = await service.CreateOrderAsync(new CreateOrderCommand(
+            OrderSource.Counter,
+            null,
+            [new CreateOrderItemCommand(product.Id, 1, null)]));
+
+        Assert.Equal("1", result.OrderNumber);
     }
 
     [Fact]
@@ -97,7 +130,6 @@ public class OrderServiceTests
         var service = CreateOrderService(new FakeOrderRepository(), new FakeProductRepository());
 
         var action = () => service.CreateOrderAsync(new CreateOrderCommand(
-            "260721-0001",
             OrderSource.Counter,
             null,
             []));
@@ -112,7 +144,6 @@ public class OrderServiceTests
         var service = CreateOrderService(new FakeOrderRepository(), new FakeProductRepository());
 
         var action = () => service.CreateOrderAsync(new CreateOrderCommand(
-            "260721-0001",
             OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(Guid.NewGuid(), 1, null)]));
@@ -130,7 +161,6 @@ public class OrderServiceTests
         var service = CreateOrderService(new FakeOrderRepository(), productRepository);
 
         var action = () => service.CreateOrderAsync(new CreateOrderCommand(
-            "260721-0001",
             OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(product.Id, 1, null)]));
@@ -150,12 +180,11 @@ public class OrderServiceTests
         var service = CreateOrderService(orderRepository, productRepository, eventPublisher: eventPublisher);
 
         await service.CreateOrderAsync(new CreateOrderCommand(
-            "260721-0001",
             OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(product.Id, 1, null)]), tokenSource.Token);
 
-        Assert.Equal(tokenSource.Token, orderRepository.LastOrderNumberExistsToken);
+        Assert.Equal(tokenSource.Token, orderRepository.LastGetLatestOrderNumberToken);
         Assert.Equal(tokenSource.Token, productRepository.LastGetByIdToken);
         Assert.Equal(tokenSource.Token, orderRepository.LastAddToken);
         Assert.Equal(tokenSource.Token, orderRepository.LastSaveChangesToken);
@@ -439,7 +468,6 @@ public class OrderServiceTests
         var service = CreateOrderService(orderRepository, productRepository, eventPublisher: eventPublisher);
 
         var action = () => service.CreateOrderAsync(new CreateOrderCommand(
-            "260721-0001",
             OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(product.Id, 1, null)]));

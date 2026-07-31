@@ -33,7 +33,6 @@ public sealed class OrdersController : ControllerBase
     {
         var order = await _orderService.CreateOrderAsync(
             new CreateOrderCommand(
-                request.OrderNumber,
                 ApiContractMapper.ParseOrderSource(request.Source),
                 request.Notes,
                 request.Items.Select(item => new CreateOrderItemCommand(item.ProductId, item.Quantity, item.Notes)).ToArray()),

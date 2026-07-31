@@ -22,7 +22,6 @@ class FakeOrderEntryStore {
     { id: 'p-1', name: 'Espresso', description: null, price: 8, categoryId: 'c-1', isActive: true },
   ]);
   readonly selectedCategoryId = signal<string | null>('c-1');
-  readonly orderNumber = signal('');
   readonly source = signal<'Counter' | 'WhatsApp' | 'Web'>('Counter');
   readonly notes = signal('');
   readonly items = signal([]);
@@ -36,7 +35,6 @@ class FakeOrderEntryStore {
   }
 
   selectCategory(): void {}
-  setOrderNumber(): void {}
   setSource(): void {}
   setNotes(): void {}
   addProduct(): void {}
@@ -118,7 +116,6 @@ describe('OrderEntryPageComponent interactions', () => {
       { id: 'p-1', name: 'Espresso', description: null, price: 8, categoryId: 'c-1', isActive: true },
     ]);
     readonly selectedCategoryId = signal<string | null>('c-1');
-    readonly orderNumber = signal('');
     readonly source = signal<'Counter' | 'WhatsApp' | 'Web'>('Counter');
     readonly notes = signal('');
     readonly items = signal<Array<{ productId: string; productName: string; unitPrice: number; quantity: number; notes: string }>>([]);
@@ -133,11 +130,6 @@ describe('OrderEntryPageComponent interactions', () => {
 
     selectCategory(categoryId: string): void {
       this.selectedCategoryId.set(categoryId);
-    }
-
-    setOrderNumber(orderNumber: string): void {
-      this.orderNumber.set(orderNumber);
-      this.recompute();
     }
 
     setSource(source: 'Counter' | 'WhatsApp' | 'Web'): void {
@@ -175,7 +167,7 @@ describe('OrderEntryPageComponent interactions', () => {
     }
 
     private recompute(): void {
-      this.canSubmit.set(this.orderNumber().trim().length > 0 && this.items().length > 0);
+      this.canSubmit.set(this.items().length > 0);
     }
   }
 
@@ -186,13 +178,8 @@ describe('OrderEntryPageComponent interactions', () => {
     }).compileComponents();
   });
 
-  it('keeps submit enabled after entering an order number and adding a product', () => {
+  it('keeps submit enabled after adding a product', () => {
     const fixture = TestBed.createComponent(OrderEntryPageComponent);
-    fixture.detectChanges();
-
-    const input = fixture.nativeElement.querySelector('input[type="text"]') as HTMLInputElement;
-    input.value = 'A-101';
-    input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
     const productButton = fixture.debugElement.query(By.css('.product-grid__card'));

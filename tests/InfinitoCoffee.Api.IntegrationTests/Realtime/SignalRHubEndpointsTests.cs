@@ -45,7 +45,6 @@ public sealed class SignalRHubEndpointsTests
 
         var response = await context.Client.PostAsJsonAsync("/api/orders", new
         {
-            orderNumber = "260722-0001",
             source = "Counter",
             notes = "Mesa 1",
             items = new[]
@@ -62,7 +61,7 @@ public sealed class SignalRHubEndpointsTests
         response.EnsureSuccessStatusCode();
 
         var order = await WaitForSingleEventAsync(receivedOrders);
-        Assert.Equal("260722-0001", order.OrderNumber);
+        Assert.Equal("1", order.OrderNumber);
         Assert.Equal("Pending", order.Status);
     }
 

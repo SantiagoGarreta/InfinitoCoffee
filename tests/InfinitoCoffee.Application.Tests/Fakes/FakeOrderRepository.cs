@@ -17,7 +17,7 @@ internal sealed class FakeOrderRepository : IOrderRepository
 
     public CancellationToken? LastAddToken { get; private set; }
 
-    public CancellationToken? LastOrderNumberExistsToken { get; private set; }
+    public CancellationToken? LastGetLatestOrderNumberToken { get; private set; }
 
     public CancellationToken? LastSaveChangesToken { get; private set; }
 
@@ -49,10 +49,14 @@ internal sealed class FakeOrderRepository : IOrderRepository
         return Task.CompletedTask;
     }
 
-    public Task<bool> OrderNumberExistsAsync(string orderNumber, CancellationToken cancellationToken = default)
+    public Task<string?> GetLatestOrderNumberAsync(CancellationToken cancellationToken = default)
     {
-        LastOrderNumberExistsToken = cancellationToken;
-        return Task.FromResult(_orders.Any(order => order.OrderNumber == orderNumber));
+        LastGetLatestOrderNumberToken = cancellationToken;
+        return Task.FromResult(
+            _orders
+                .OrderByDescending(order => order.CreatedAtUtc)
+                .Select(order => order.OrderNumber)
+                .FirstOrDefault());
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)

@@ -47,9 +47,13 @@ public sealed class OrderRepository : IOrderRepository
         return _dbContext.Orders.AddAsync(order, cancellationToken).AsTask();
     }
 
-    public Task<bool> OrderNumberExistsAsync(string orderNumber, CancellationToken cancellationToken = default)
+    public Task<string?> GetLatestOrderNumberAsync(CancellationToken cancellationToken = default)
     {
-        return _dbContext.Orders.AnyAsync(order => order.OrderNumber == orderNumber, cancellationToken);
+        return _dbContext.Orders
+            .AsNoTracking()
+            .OrderByDescending(order => order.CreatedAtUtc)
+            .Select(order => order.OrderNumber)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)

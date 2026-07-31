@@ -12,7 +12,7 @@ public interface IOrderRepository
 
     Task AddAsync(Order order, CancellationToken cancellationToken = default);
 
-    Task<bool> OrderNumberExistsAsync(string orderNumber, CancellationToken cancellationToken = default);
+    Task<string?> GetLatestOrderNumberAsync(CancellationToken cancellationToken = default);
 
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

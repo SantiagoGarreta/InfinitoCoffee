@@ -96,7 +96,6 @@ export interface CreateOrderItemRequest {
 }
 
 export interface CreateOrderRequest {
-  orderNumber: string;
   source: OrderSource;
   notes: string | null;
   items: CreateOrderItemRequest[];
