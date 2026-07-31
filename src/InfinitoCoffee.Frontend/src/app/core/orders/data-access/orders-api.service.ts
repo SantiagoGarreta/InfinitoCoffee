@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 import { APP_RUNTIME_CONFIG } from '../../config/app-runtime-config';
-import { CreateOrderRequest, Order } from '../models/order.model';
+import { CreateOrderRequest, OrderApiDto } from '../models/order.model';
 
 @Injectable({ providedIn: 'root' })
 export class OrdersApiService {
@@ -11,31 +11,31 @@ export class OrdersApiService {
   private readonly appRuntimeConfig = inject(APP_RUNTIME_CONFIG);
   private readonly ordersBaseUrl = `${this.appRuntimeConfig.apiBaseUrl}/api/orders`;
 
-  getActiveOrders(): Promise<Order[]> {
-    return firstValueFrom(this.httpClient.get<Order[]>(`${this.ordersBaseUrl}/active`));
+  getActiveOrders(): Promise<OrderApiDto[]> {
+    return firstValueFrom(this.httpClient.get<OrderApiDto[]>(`${this.ordersBaseUrl}/active`));
   }
 
-  getPickupOrders(): Promise<Order[]> {
-    return firstValueFrom(this.httpClient.get<Order[]>(`${this.ordersBaseUrl}/pickup`));
+  getPickupOrders(): Promise<OrderApiDto[]> {
+    return firstValueFrom(this.httpClient.get<OrderApiDto[]>(`${this.ordersBaseUrl}/pickup`));
   }
 
-  createOrder(request: CreateOrderRequest): Promise<Order> {
-    return firstValueFrom(this.httpClient.post<Order>(this.ordersBaseUrl, request));
+  createOrder(request: CreateOrderRequest): Promise<OrderApiDto> {
+    return firstValueFrom(this.httpClient.post<OrderApiDto>(this.ordersBaseUrl, request));
   }
 
-  startPreparation(orderId: string): Promise<Order> {
-    return firstValueFrom(this.httpClient.post<Order>(`${this.ordersBaseUrl}/${orderId}/start-preparation`, {}));
+  startPreparation(orderId: string): Promise<OrderApiDto> {
+    return firstValueFrom(this.httpClient.post<OrderApiDto>(`${this.ordersBaseUrl}/${orderId}/start-preparation`, {}));
   }
 
-  markReady(orderId: string): Promise<Order> {
-    return firstValueFrom(this.httpClient.post<Order>(`${this.ordersBaseUrl}/${orderId}/mark-ready`, {}));
+  markReady(orderId: string): Promise<OrderApiDto> {
+    return firstValueFrom(this.httpClient.post<OrderApiDto>(`${this.ordersBaseUrl}/${orderId}/mark-ready`, {}));
   }
 
-  deliver(orderId: string): Promise<Order> {
-    return firstValueFrom(this.httpClient.post<Order>(`${this.ordersBaseUrl}/${orderId}/deliver`, {}));
+  deliver(orderId: string): Promise<OrderApiDto> {
+    return firstValueFrom(this.httpClient.post<OrderApiDto>(`${this.ordersBaseUrl}/${orderId}/deliver`, {}));
   }
 
-  cancel(orderId: string): Promise<Order> {
-    return firstValueFrom(this.httpClient.post<Order>(`${this.ordersBaseUrl}/${orderId}/cancel`, {}));
+  cancel(orderId: string): Promise<OrderApiDto> {
+    return firstValueFrom(this.httpClient.post<OrderApiDto>(`${this.ordersBaseUrl}/${orderId}/cancel`, {}));
   }
 }

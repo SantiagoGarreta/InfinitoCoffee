@@ -3,7 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { toUserMessage } from '../../../core/http/api-error.utils';
 import { OrdersApiService } from '../../../core/orders/data-access/orders-api.service';
 import { toOrder } from '../../../core/orders/order.mappers';
-import { Order, OrderStatus } from '../../../core/orders/models/order.model';
+import { Order, OrderApiDto, OrderRealtimeDto, OrderStatus } from '../../../core/orders/models/order.model';
 import { OrdersRealtimeService } from '../../../core/realtime/orders-realtime.service';
 import { RealtimeConnectionState } from '../../../core/realtime/realtime-connection-state';
 
@@ -40,7 +40,7 @@ export class KitchenOrdersStore {
           return;
         }
 
-        this.upsertIfActive(order);
+        this.upsertIfActive(toOrder(order));
       });
       this.unsubscribeResync = this.realtimeService.subscribeToResyncRequested(() => {
         void this.reload();
@@ -112,7 +112,10 @@ export class KitchenOrdersStore {
     }
   }
 
-  private async runOrderAction(orderId: string, action: () => Promise<Order>): Promise<void> {
+  private async runOrderAction(
+    orderId: string,
+    action: () => Promise<Order | OrderApiDto | OrderRealtimeDto>,
+  ): Promise<void> {
     this.activeActionOrderId.set(orderId);
     this.actionError.set(null);
 
@@ -146,7 +149,7 @@ export class KitchenOrdersStore {
     this.orders.update((currentOrders) => currentOrders.filter((order) => order.id !== orderId));
   }
 
-  private normalizeOrders(orders: Order[]): Order[] {
+  private normalizeOrders(orders: ReadonlyArray<Order | OrderApiDto | OrderRealtimeDto>): Order[] {
     const nextOrders = new Map<string, Order>();
 
     for (const order of orders) {
