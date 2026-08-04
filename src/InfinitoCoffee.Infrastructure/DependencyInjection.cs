@@ -2,6 +2,7 @@ using InfinitoCoffee.Application.Common.Time;
 using InfinitoCoffee.Application.Orders.Contracts;
 using InfinitoCoffee.Application.ProductCategories.Contracts;
 using InfinitoCoffee.Application.Products.Contracts;
+using InfinitoCoffee.Application.Users.Contracts;
 using InfinitoCoffee.Infrastructure.Persistence;
 using InfinitoCoffee.Infrastructure.Persistence.Repositories;
 using InfinitoCoffee.Infrastructure.Time;
@@ -32,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 
         return services;

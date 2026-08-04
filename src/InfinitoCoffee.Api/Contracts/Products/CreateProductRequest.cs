@@ -12,7 +12,12 @@ public sealed class CreateProductRequest
     [MaxLength(1000)]
     public string? Description { get; init; }
 
-    [Range(typeof(decimal), "0.01", "79228162514264337593543950335")]
+    [Range(
+        typeof(decimal),
+        "0.01",
+        "79228162514264337593543950335",
+        ParseLimitsInInvariantCulture = true,
+        ConvertValueInInvariantCulture = true)]
     public decimal Price { get; init; }
 
     [NotEmptyGuid(ErrorMessage = "CategoryId is required.")]
