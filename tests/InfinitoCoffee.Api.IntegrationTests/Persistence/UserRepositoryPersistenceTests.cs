@@ -37,6 +37,67 @@ public sealed class UserRepositoryPersistenceTests : IDisposable
         Assert.Equal("  hash-preserved-exactly  ", persisted.PasswordHash);
         Assert.Equal(UserRole.Cashier, persisted.Role);
         Assert.True(persisted.IsActive);
+        Assert.False(persisted.IsSystemUser);
+    }
+
+    [Fact]
+    public async Task SystemUser_PersistsSystemFlag()
+    {
+        var user = CreateSystemUser("Root.One");
+
+        await using (var setupContext = _dbContextFactory.CreateDbContext())
+        {
+            var repository = new UserRepository(setupContext);
+            await repository.AddAsync(user);
+            await repository.SaveChangesAsync();
+        }
+
+        await using var verificationContext = _dbContextFactory.CreateDbContext();
+        var repositoryForVerification = new UserRepository(verificationContext);
+
+        var persisted = await repositoryForVerification.GetByIdAsync(user.Id);
+
+        Assert.NotNull(persisted);
+        Assert.True(persisted.IsSystemUser);
+        Assert.True(persisted.IsActive);
+        Assert.Equal(UserRole.Administrator, persisted.Role);
+    }
+
+    [Fact]
+    public async Task TwoSystemUsers_ThrowsDbUpdateException()
+    {
+        await using var dbContext = _dbContextFactory.CreateDbContext();
+        var repository = new UserRepository(dbContext);
+        await repository.AddAsync(CreateSystemUser("Root.One"));
+        await repository.SaveChangesAsync();
+        await repository.AddAsync(CreateSystemUser("Root.Two"));
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => repository.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task MultipleNormalAdministrators_AreAllowed()
+    {
+        await using var dbContext = _dbContextFactory.CreateDbContext();
+        var repository = new UserRepository(dbContext);
+        await repository.AddAsync(CreateUser("Admin.One", UserRole.Administrator));
+        await repository.AddAsync(CreateUser("Admin.Two", UserRole.Administrator));
+
+        await repository.SaveChangesAsync();
+
+        Assert.Equal(2, await dbContext.Users.CountAsync());
+    }
+
+    [Fact]
+    public void SystemUserIndex_IsUniqueAndFiltered()
+    {
+        using var dbContext = _dbContextFactory.CreateDbContext();
+        var index = dbContext.Model.FindEntityType(typeof(User))!
+            .GetIndexes()
+            .Single(candidate => candidate.GetDatabaseName() == "UX_Users_SingleSystemUser");
+
+        Assert.True(index.IsUnique);
+        Assert.Equal("[IsSystemUser] = 1", index.GetFilter());
     }
 
     [Fact]
@@ -247,5 +308,13 @@ public sealed class UserRepositoryPersistenceTests : IDisposable
     private static User CreateUser(string username, UserRole role)
     {
         return new User(username, $"{role} user", $"{username}-hash", role);
+    }
+
+    private static User CreateSystemUser(string username)
+    {
+        return User.CreateSystemUser(
+            username,
+            "System Administrator",
+            _ => $"{username}-hash");
     }
 }

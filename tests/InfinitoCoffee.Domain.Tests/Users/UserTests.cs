@@ -22,6 +22,99 @@ public class UserTests
         Assert.Equal(passwordHash, user.PasswordHash);
         Assert.Equal(UserRole.Cashier, user.Role);
         Assert.True(user.IsActive);
+        Assert.False(user.IsSystemUser);
+    }
+
+    [Fact]
+    public void CreateSystemUser_WithValidValues_CreatesActiveAdministratorAndHashesAtomically()
+    {
+        User? userSeenByHashFactory = null;
+
+        var user = User.CreateSystemUser(
+            "  root.admin  ",
+            "  System Administrator  ",
+            candidate =>
+            {
+                userSeenByHashFactory = candidate;
+                Assert.NotEqual(Guid.Empty, candidate.Id);
+                Assert.Equal("root.admin", candidate.Username);
+                Assert.Equal("ROOT.ADMIN", candidate.NormalizedUsername);
+                Assert.Equal(UserRole.Administrator, candidate.Role);
+                Assert.True(candidate.IsActive);
+                Assert.True(candidate.IsSystemUser);
+                return "system-password-hash";
+            });
+
+        Assert.Same(user, userSeenByHashFactory);
+        Assert.Equal("System Administrator", user.DisplayName);
+        Assert.Equal("system-password-hash", user.PasswordHash);
+    }
+
+    [Fact]
+    public void CreateSystemUser_WithNullHashFactory_ThrowsArgumentNullException()
+    {
+        var exception = Assert.Throws<ArgumentNullException>(() =>
+            User.CreateSystemUser("root", "Root", null!));
+
+        Assert.Equal("passwordHashFactory", exception.ParamName);
+    }
+
+    [Fact]
+    public void CreateSystemUser_WithInvalidHash_ThrowsWithoutReturningUser()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            User.CreateSystemUser("root", "Root", _ => "   "));
+    }
+
+    [Fact]
+    public void SystemUser_ChangeUsername_IsRejectedAndPreservesUsername()
+    {
+        var user = CreateSystemUser();
+
+        Assert.Throws<InvalidOperationException>(() => user.ChangeUsername("another-root"));
+
+        Assert.Equal("root", user.Username);
+        Assert.Equal("ROOT", user.NormalizedUsername);
+    }
+
+    [Fact]
+    public void SystemUser_ChangeDisplayName_IsRejectedAndPreservesDisplayName()
+    {
+        var user = CreateSystemUser();
+
+        Assert.Throws<InvalidOperationException>(() => user.ChangeDisplayName("Another Root"));
+
+        Assert.Equal("System Administrator", user.DisplayName);
+    }
+
+    [Fact]
+    public void SystemUser_ChangeRole_IsRejectedAndPreservesAdministratorRole()
+    {
+        var user = CreateSystemUser();
+
+        Assert.Throws<InvalidOperationException>(() => user.ChangeRole(UserRole.Cashier));
+
+        Assert.Equal(UserRole.Administrator, user.Role);
+    }
+
+    [Fact]
+    public void SystemUser_Deactivate_IsRejectedAndPreservesActiveState()
+    {
+        var user = CreateSystemUser();
+
+        Assert.Throws<InvalidOperationException>(user.Deactivate);
+
+        Assert.True(user.IsActive);
+    }
+
+    [Fact]
+    public void SystemUser_ChangePasswordHash_IsAllowed()
+    {
+        var user = CreateSystemUser();
+
+        user.ChangePasswordHash("new-system-hash");
+
+        Assert.Equal("new-system-hash", user.PasswordHash);
     }
 
     [Theory]
@@ -259,6 +352,14 @@ public class UserTests
     private static User CreateUser(string username = "admin")
     {
         return new User(username, "Administrator", "hash", UserRole.Administrator);
+    }
+
+    private static User CreateSystemUser()
+    {
+        return User.CreateSystemUser(
+            "root",
+            "System Administrator",
+            _ => "system-hash");
     }
 
     private static void AssertUserDataWasPreserved(User user, Guid expectedId)

@@ -39,6 +39,33 @@ public class User
         PasswordHash = passwordHash;
         Role = role;
         IsActive = true;
+        IsSystemUser = false;
+    }
+
+    public static User CreateSystemUser(
+        string username,
+        string displayName,
+        Func<User, string> passwordHashFactory)
+    {
+        ArgumentNullException.ThrowIfNull(passwordHashFactory);
+
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Username = ValidateUsername(username),
+            DisplayName = ValidateDisplayName(displayName),
+            Role = UserRole.Administrator,
+            IsActive = true,
+            IsSystemUser = true
+        };
+
+        user.NormalizedUsername = NormalizeUsername(user.Username);
+
+        var passwordHash = passwordHashFactory(user);
+        ValidatePasswordHash(passwordHash);
+        user.PasswordHash = passwordHash;
+
+        return user;
     }
 
     public Guid Id { get; private set; }
@@ -55,8 +82,11 @@ public class User
 
     public bool IsActive { get; private set; }
 
+    public bool IsSystemUser { get; private set; }
+
     public void ChangeUsername(string username)
     {
+        EnsureNotSystemUser("The system user's username cannot be changed.");
         var validatedUsername = ValidateUsername(username);
 
         Username = validatedUsername;
@@ -65,6 +95,7 @@ public class User
 
     public void ChangeDisplayName(string displayName)
     {
+        EnsureNotSystemUser("The system user's display name cannot be changed.");
         DisplayName = ValidateDisplayName(displayName);
     }
 
@@ -76,6 +107,7 @@ public class User
 
     public void ChangeRole(UserRole role)
     {
+        EnsureNotSystemUser("The system user's role cannot be changed.");
         ValidateRole(role);
         Role = role;
     }
@@ -87,7 +119,16 @@ public class User
 
     public void Deactivate()
     {
+        EnsureNotSystemUser("The system user cannot be deactivated.");
         IsActive = false;
+    }
+
+    private void EnsureNotSystemUser(string message)
+    {
+        if (IsSystemUser)
+        {
+            throw new InvalidOperationException(message);
+        }
     }
 
     private static string ValidateUsername(string username)

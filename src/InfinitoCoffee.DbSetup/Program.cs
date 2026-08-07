@@ -1,6 +1,8 @@
 using InfinitoCoffee.Infrastructure;
 using InfinitoCoffee.Infrastructure.Persistence;
 using InfinitoCoffee.Infrastructure.Persistence.Seed;
+using InfinitoCoffee.Domain.Users;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,7 +20,14 @@ var builder = Host.CreateApplicationBuilder();
 ConfigureApplication(builder);
 
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddScoped<DevelopmentDataSeeder>();
+
+if (command == "seed")
+{
+    builder.Services.Configure<InitialSystemUserOptions>(
+        builder.Configuration.GetSection(InitialSystemUserOptions.SectionName));
+    builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+    builder.Services.AddScoped<DevelopmentDataSeeder>();
+}
 
 using var host = builder.Build();
 using var scope = host.Services.CreateScope();

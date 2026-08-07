@@ -39,5 +39,13 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(user => user.IsActive)
             .IsRequired();
+
+        builder.Property(user => user.IsSystemUser)
+            .IsRequired();
+
+        builder.HasIndex(user => user.IsSystemUser)
+            .HasDatabaseName("UX_Users_SingleSystemUser")
+            .HasFilter("[IsSystemUser] = 1")
+            .IsUnique();
     }
 }

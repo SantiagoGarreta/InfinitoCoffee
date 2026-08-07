@@ -42,6 +42,9 @@ services:
     environment:
       DOTNET_ENVIRONMENT: Development
       ConnectionStrings__InfinitoCoffee: Server=sqlserver,1433;Database=${SQLSERVER_DATABASE};User Id=sa;Password=${SQLSERVER_SA_PASSWORD};TrustServerCertificate=True
+      InitialSystemUser__Username: ${INITIAL_ADMIN_USERNAME:-}
+      InitialSystemUser__DisplayName: ${INITIAL_ADMIN_DISPLAY_NAME:-}
+      InitialSystemUser__Password: ${INITIAL_ADMIN_PASSWORD:-}
     depends_on:
       sqlserver:
         condition: service_healthy
