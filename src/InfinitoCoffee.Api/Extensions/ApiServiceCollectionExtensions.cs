@@ -1,13 +1,16 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using InfinitoCoffee.Api.Authentication;
 using InfinitoCoffee.Api.Configuration;
 using InfinitoCoffee.Api.ErrorHandling;
 using InfinitoCoffee.Api.Health;
 using InfinitoCoffee.Api.Realtime;
+using InfinitoCoffee.Application.Authentication.Services;
 using InfinitoCoffee.Application.Orders.Contracts;
 using InfinitoCoffee.Application.Orders.Services;
 using InfinitoCoffee.Application.ProductCategories.Services;
 using InfinitoCoffee.Application.Products.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
@@ -57,6 +60,10 @@ public static class ApiServiceCollectionExtensions
 
         services.AddProblemDetails();
         services.AddExceptionHandler<GlobalExceptionHandler>();
+        services
+            .AddAuthentication(AuthenticationConstants.CookieScheme)
+            .AddCookie(AuthenticationConstants.CookieScheme);
+        services.AddAuthorization();
         services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database");
         services.AddSignalR();
         services.AddCors();
@@ -68,8 +75,12 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<OrderService>();
         services.AddScoped<ProductService>();
         services.AddScoped<ProductCategoryService>();
+        services.AddScoped<AuthenticationService>();
+        services.AddScoped<ApiCookieAuthenticationEvents>();
+        services.AddSingleton<UserClaimsPrincipalFactory>();
 
         services.AddSingleton<IConfigureOptions<CorsOptions>, ConfigureCorsOptions>();
+        services.AddSingleton<IConfigureOptions<CookieAuthenticationOptions>, ConfigureCookieAuthenticationOptions>();
 
         return services;
     }

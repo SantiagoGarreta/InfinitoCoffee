@@ -5,6 +5,24 @@ namespace InfinitoCoffee.Domain.Tests.Users;
 public class UserTests
 {
     [Fact]
+    public void NormalizeUsername_WithValidValue_UsesDomainValidationAndInvariantNormalization()
+    {
+        var normalizedUsername = User.NormalizeUsername("  Cashier.One-2  ");
+
+        Assert.Equal("CASHIER.ONE-2", normalizedUsername);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("invalid username")]
+    [InlineData("administraciÃ³n")]
+    public void NormalizeUsername_WithInvalidValue_ThrowsArgumentException(string? username)
+    {
+        Assert.ThrowsAny<ArgumentException>(() => User.NormalizeUsername(username!));
+    }
+
+    [Fact]
     public void Constructor_WithValidValues_CreatesActiveUser()
     {
         const string passwordHash = "  hash-preserved-exactly  ";

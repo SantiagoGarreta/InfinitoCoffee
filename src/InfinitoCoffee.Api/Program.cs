@@ -12,6 +12,8 @@ var app = builder.Build();
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.UseCors(ApiServiceCollectionExtensions.DevelopmentCorsPolicyName);
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {

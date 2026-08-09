@@ -26,7 +26,8 @@ public sealed class ConfigureCorsOptions : IConfigureOptions<CorsOptions>
 
             policy
                 .WithMethods("GET", "POST", "PUT")
-                .WithHeaders("Content-Type", "Authorization");
+                .WithHeaders("Content-Type", "Authorization")
+                .AllowCredentials();
         });
     }
 }

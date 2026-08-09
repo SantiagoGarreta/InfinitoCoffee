@@ -1,11 +1,15 @@
+using InfinitoCoffee.Application.Authentication.Contracts;
 using InfinitoCoffee.Application.Common.Time;
 using InfinitoCoffee.Application.Orders.Contracts;
 using InfinitoCoffee.Application.ProductCategories.Contracts;
 using InfinitoCoffee.Application.Products.Contracts;
 using InfinitoCoffee.Application.Users.Contracts;
+using InfinitoCoffee.Domain.Users;
 using InfinitoCoffee.Infrastructure.Persistence;
 using InfinitoCoffee.Infrastructure.Persistence.Repositories;
+using InfinitoCoffee.Infrastructure.Security;
 using InfinitoCoffee.Infrastructure.Time;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,6 +38,8 @@ public static class DependencyInjection
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+        services.AddScoped<IUserPasswordService, AspNetCoreUserPasswordService>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 
         return services;

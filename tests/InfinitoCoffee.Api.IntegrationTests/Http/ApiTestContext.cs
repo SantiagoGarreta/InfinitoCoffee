@@ -5,9 +5,9 @@ namespace InfinitoCoffee.Api.IntegrationTests.Http;
 
 internal sealed class ApiTestContext : IAsyncDisposable
 {
-    public ApiTestContext()
+    public ApiTestContext(string environmentName = "Development")
     {
-        Factory = new TestApiApplicationFactory();
+        Factory = new TestApiApplicationFactory(environmentName);
         Client = Factory.CreateClient();
     }
 

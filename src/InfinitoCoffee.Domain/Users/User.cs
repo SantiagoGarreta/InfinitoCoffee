@@ -34,7 +34,7 @@ public class User
 
         Id = Guid.NewGuid();
         Username = validatedUsername;
-        NormalizedUsername = NormalizeUsername(validatedUsername);
+        NormalizedUsername = NormalizeValidatedUsername(validatedUsername);
         DisplayName = validatedDisplayName;
         PasswordHash = passwordHash;
         Role = role;
@@ -59,7 +59,7 @@ public class User
             IsSystemUser = true
         };
 
-        user.NormalizedUsername = NormalizeUsername(user.Username);
+        user.NormalizedUsername = NormalizeValidatedUsername(user.Username);
 
         var passwordHash = passwordHashFactory(user);
         ValidatePasswordHash(passwordHash);
@@ -84,13 +84,18 @@ public class User
 
     public bool IsSystemUser { get; private set; }
 
+    public static string NormalizeUsername(string username)
+    {
+        return NormalizeValidatedUsername(ValidateUsername(username));
+    }
+
     public void ChangeUsername(string username)
     {
         EnsureNotSystemUser("The system user's username cannot be changed.");
         var validatedUsername = ValidateUsername(username);
 
         Username = validatedUsername;
-        NormalizedUsername = NormalizeUsername(validatedUsername);
+        NormalizedUsername = NormalizeValidatedUsername(validatedUsername);
     }
 
     public void ChangeDisplayName(string displayName)
@@ -157,7 +162,7 @@ public class User
         return trimmedUsername;
     }
 
-    private static string NormalizeUsername(string username)
+    private static string NormalizeValidatedUsername(string username)
     {
         return username.ToUpperInvariant();
     }
