@@ -41,9 +41,6 @@ class FakeKitchenOrdersStore {
   deliver(): Promise<void> {
     return Promise.resolve();
   }
-  cancel(): Promise<void> {
-    return Promise.resolve();
-  }
 }
 
 function createOrder(orderNumber: string, status: Order['status']): Order {

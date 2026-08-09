@@ -14,8 +14,48 @@
 }
 
 .hero {
-  max-width: 44rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  align-items: end;
+  max-width: 68rem;
   margin-bottom: 1.5rem;
+}
+
+.session {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0.85rem 0.75rem 1rem;
+  border: 1px solid rgba(111, 78, 55, 0.16);
+  border-radius: 1rem;
+  background: rgba(255, 251, 246, 0.82);
+}
+
+.session div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.session span {
+  color: #746252;
+  font-size: 0.78rem;
+}
+
+.session button {
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgba(138, 90, 52, 0.25);
+  border-radius: 0.7rem;
+  background: transparent;
+  color: #704425;
+  font: inherit;
+  cursor: pointer;
+}
+
+.session-error {
+  max-width: 68rem;
+  margin: -0.8rem 0 1.2rem;
+  color: #9e2f2f;
 }
 
 .hero h1 {
@@ -84,5 +124,14 @@
 
   .tabs__link {
     text-align: center;
+  }
+
+  .hero {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .session {
+    justify-content: space-between;
   }
 }

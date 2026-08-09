@@ -1,3 +1,4 @@
+using InfinitoCoffee.Api.Contracts;
 using InfinitoCoffee.Application.Orders.Contracts;
 using InfinitoCoffee.Application.Orders.Dtos;
 using Microsoft.AspNetCore.SignalR;
@@ -6,36 +7,90 @@ namespace InfinitoCoffee.Api.Realtime;
 
 public sealed class SignalROrderEventPublisher : IOrderEventPublisher
 {
-    private readonly IHubContext<OrdersHub, IOrdersClient> _hubContext;
+    private readonly IHubContext<OrdersHub, IOrdersClient> _ordersHubContext;
+    private readonly IHubContext<PickupHub, IPickupClient> _pickupHubContext;
     private readonly ILogger<SignalROrderEventPublisher> _logger;
 
     public SignalROrderEventPublisher(
-        IHubContext<OrdersHub, IOrdersClient> hubContext,
+        IHubContext<OrdersHub, IOrdersClient> ordersHubContext,
+        IHubContext<PickupHub, IPickupClient> pickupHubContext,
         ILogger<SignalROrderEventPublisher> logger)
     {
-        _hubContext = hubContext;
+        _ordersHubContext = ordersHubContext;
+        _pickupHubContext = pickupHubContext;
         _logger = logger;
     }
 
     public Task OrderCreatedAsync(OrderRealtimeDto order, CancellationToken cancellationToken = default)
     {
-        return PublishAsync("OrderCreated", order, client => client.OrderCreated(order), cancellationToken);
+        return PublishOrdersAsync("OrderCreated", order, client => client.OrderCreated(order), cancellationToken);
     }
 
     public Task OrderStatusChangedAsync(OrderRealtimeDto order, CancellationToken cancellationToken = default)
     {
-        return PublishAsync("OrderStatusChanged", order, client => client.OrderStatusChanged(order), cancellationToken);
+        return PublishToBothHubsAsync(
+            "OrderStatusChanged",
+            order,
+            client => client.OrderStatusChanged(order),
+            client => client.OrderStatusChanged(ApiContractMapper.MapPickupOrder(order)),
+            cancellationToken);
     }
 
     public Task OrderCancelledAsync(OrderRealtimeDto order, CancellationToken cancellationToken = default)
     {
-        return PublishAsync("OrderCancelled", order, client => client.OrderCancelled(order), cancellationToken);
+        return PublishToBothHubsAsync(
+            "OrderCancelled",
+            order,
+            client => client.OrderCancelled(order),
+            client => client.OrderCancelled(ApiContractMapper.MapPickupOrder(order)),
+            cancellationToken);
+    }
+
+    private async Task PublishToBothHubsAsync(
+        string eventName,
+        OrderRealtimeDto order,
+        Func<IOrdersClient, Task> publishOrdersAction,
+        Func<IPickupClient, Task> publishPickupAction,
+        CancellationToken cancellationToken)
+    {
+        await Task.WhenAll(
+            PublishOrdersAsync(eventName, order, publishOrdersAction, cancellationToken),
+            PublishPickupAsync(eventName, order, publishPickupAction, cancellationToken));
+    }
+
+    private Task PublishOrdersAsync(
+        string eventName,
+        OrderRealtimeDto order,
+        Func<IOrdersClient, Task> publishAction,
+        CancellationToken cancellationToken)
+    {
+        return PublishAsync(
+            eventName,
+            order,
+            "private orders",
+            () => publishAction(_ordersHubContext.Clients.All),
+            cancellationToken);
+    }
+
+    private Task PublishPickupAsync(
+        string eventName,
+        OrderRealtimeDto order,
+        Func<IPickupClient, Task> publishAction,
+        CancellationToken cancellationToken)
+    {
+        return PublishAsync(
+            eventName,
+            order,
+            "public pickup",
+            () => publishAction(_pickupHubContext.Clients.All),
+            cancellationToken);
     }
 
     private async Task PublishAsync(
         string eventName,
         OrderRealtimeDto order,
-        Func<IOrdersClient, Task> publishAction,
+        string hubName,
+        Func<Task> publishAction,
         CancellationToken cancellationToken)
     {
         if (cancellationToken.IsCancellationRequested)
@@ -45,15 +100,16 @@ public sealed class SignalROrderEventPublisher : IOrderEventPublisher
 
         try
         {
-            await publishAction(_hubContext.Clients.All);
+            await publishAction();
         }
         catch (Exception exception)
         {
             _logger.LogError(
                 exception,
-                "SignalR publication failed for {EventName} on order {OrderId}. The persisted state remains the source of truth and clients must resynchronize.",
+                "SignalR publication failed for {EventName} on order {OrderId} in the {HubName} hub. The persisted state remains the source of truth and clients must resynchronize.",
                 eventName,
-                order.Id);
+                order.Id,
+                hubName);
         }
     }
 }

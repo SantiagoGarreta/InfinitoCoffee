@@ -1,15 +1,15 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { toUserMessage } from '../../../core/http/api-error.utils';
-import { OrdersApiService } from '../../../core/orders/data-access/orders-api.service';
-import { toOrder } from '../../../core/orders/order.mappers';
-import { Order, OrderStatus } from '../../../core/orders/models/order.model';
-import { OrdersRealtimeService } from '../../../core/realtime/orders-realtime.service';
+import { OrderStatus } from '../../../core/orders/models/order.model';
+import { PickupApiService } from '../../../core/pickup/data-access/pickup-api.service';
+import { PickupOrder } from '../../../core/pickup/models/pickup-order.model';
+import { PickupRealtimeService } from '../../../core/realtime/pickup-realtime.service';
 import { RealtimeConnectionState } from '../../../core/realtime/realtime-connection-state';
 
 @Injectable({ providedIn: 'root' })
 export class PickupOrdersStore {
-  readonly orders = signal<Order[]>([]);
+  readonly orders = signal<PickupOrder[]>([]);
   readonly loading = signal(false);
   readonly loadError = signal<string | null>(null);
   readonly orderCount = computed(() => this.orders().length);
@@ -17,13 +17,14 @@ export class PickupOrdersStore {
   readonly preparingOrders = computed(() => this.filterByStatus('Preparing'));
   readonly readyOrders = computed(() => this.filterByStatus('Ready'));
 
-  private readonly ordersApiService = inject(OrdersApiService);
-  private readonly realtimeService = inject(OrdersRealtimeService);
+  private readonly pickupApiService = inject(PickupApiService);
+  private readonly realtimeService = inject(PickupRealtimeService);
 
   private initialized = false;
   private initializePromise: Promise<void> | null = null;
   private unsubscribeRealtime: (() => void) | null = null;
   private unsubscribeResync: (() => void) | null = null;
+  private resyncTimerId: ReturnType<typeof setInterval> | null = null;
 
   async initialize(): Promise<void> {
     if (this.initializePromise) {
@@ -43,6 +44,7 @@ export class PickupOrdersStore {
         void this.reload();
       });
       this.initialized = true;
+      this.resyncTimerId = setInterval(() => void this.reload(), 60000);
     }
 
     this.initializePromise = this.reload()
@@ -60,6 +62,11 @@ export class PickupOrdersStore {
     this.unsubscribeResync?.();
     this.unsubscribeResync = null;
     this.initialized = false;
+    if (this.resyncTimerId) {
+      clearInterval(this.resyncTimerId);
+      this.resyncTimerId = null;
+    }
+    void this.realtimeService.stop();
   }
 
   async retryConnection(): Promise<void> {
@@ -71,7 +78,7 @@ export class PickupOrdersStore {
     this.loadError.set(null);
 
     try {
-      const orders = await this.ordersApiService.getPickupOrders();
+      const orders = await this.pickupApiService.getOrders();
       this.orders.set(this.normalizeOrders(orders));
     } catch (error: unknown) {
       this.loadError.set(toUserMessage(error, 'No fue posible cargar la pantalla de pickup.'));
@@ -93,7 +100,7 @@ export class PickupOrdersStore {
     }
   }
 
-  private upsertOrder(order: Order): void {
+  private upsertOrder(order: PickupOrder): void {
     this.orders.update((currentOrders) => {
       const nextOrders = new Map(currentOrders.map((item) => [item.id, item]));
       nextOrders.set(order.id, order);
@@ -105,30 +112,28 @@ export class PickupOrdersStore {
     this.orders.update((currentOrders) => currentOrders.filter((order) => order.id !== orderId));
   }
 
-  private normalizeOrders(orders: Order[]): Order[] {
-    const nextOrders = new Map<string, Order>();
+  private normalizeOrders(orders: PickupOrder[]): PickupOrder[] {
+    const nextOrders = new Map<string, PickupOrder>();
 
     for (const order of orders) {
-      const normalizedOrder = toOrder(order);
-
-      if (!this.shouldDisplay(normalizedOrder.status)) {
+      if (!this.shouldDisplay(order.status)) {
         continue;
       }
 
-      nextOrders.set(normalizedOrder.id, normalizedOrder);
+      nextOrders.set(order.id, order);
     }
 
     return this.sortOrders([...nextOrders.values()]);
   }
 
-  private sortOrders(orders: Order[]): Order[] {
+  private sortOrders(orders: PickupOrder[]): PickupOrder[] {
     return [...orders].sort((left, right) =>
       left.createdAtUtc.localeCompare(right.createdAtUtc)
       || left.orderNumber.localeCompare(right.orderNumber),
     );
   }
 
-  private filterByStatus(status: OrderStatus): Order[] {
+  private filterByStatus(status: OrderStatus): PickupOrder[] {
     return this.orders().filter((order) => order.status === status);
   }
 

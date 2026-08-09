@@ -24,6 +24,7 @@ if (app.Environment.IsDevelopment())
 app.MapControllers();
 app.MapHealthChecks("/health", ApiServiceCollectionExtensions.CreateHealthCheckOptions());
 app.MapHub<OrdersHub>("/hubs/orders");
+app.MapHub<PickupHub>("/hubs/pickup");
 
 app.Run();
 

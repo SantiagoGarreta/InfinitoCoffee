@@ -20,6 +20,8 @@ internal sealed class ApiTestContext : IAsyncDisposable
 
     public string? CurrentCsrfToken { get; private set; }
 
+    public string? CurrentAuthenticationCookie { get; private set; }
+
     public Task ExecuteDbContextAsync(Func<InfinitoCoffeeDbContext, Task> action)
     {
         return Factory.ExecuteDbContextAsync(action);
@@ -67,7 +69,12 @@ internal sealed class ApiTestContext : IAsyncDisposable
             })
         };
         request.Headers.Add(AntiforgeryConstants.HeaderName, token);
-        (await Client.SendAsync(request)).EnsureSuccessStatusCode();
+        var response = await Client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        CurrentAuthenticationCookie = response.Headers
+            .GetValues("Set-Cookie")
+            .Single()
+            .Split(';', 2)[0];
         await GetCsrfTokenAsync();
     }
 

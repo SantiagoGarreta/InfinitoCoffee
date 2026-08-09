@@ -63,6 +63,7 @@ export class KitchenOrdersStore {
     this.unsubscribeResync?.();
     this.unsubscribeResync = null;
     this.initialized = false;
+    void this.realtimeService.stop();
   }
 
   async retryConnection(): Promise<void> {
@@ -79,10 +80,6 @@ export class KitchenOrdersStore {
 
   async deliver(orderId: string): Promise<void> {
     await this.runOrderAction(orderId, () => this.ordersApiService.deliver(orderId));
-  }
-
-  async cancel(orderId: string): Promise<void> {
-    await this.runOrderAction(orderId, () => this.ordersApiService.cancel(orderId));
   }
 
   private async reload(): Promise<void> {

@@ -25,9 +25,6 @@ class FakeOrdersApiService {
     return Promise.resolve(this.activeOrders[0]!);
   }
 
-  cancel(): Promise<Order> {
-    return Promise.resolve(this.activeOrders[0]!);
-  }
 }
 
 class FakeOrdersRealtimeService {
@@ -43,6 +40,10 @@ class FakeOrdersRealtimeService {
   }
 
   restart(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  stop(): Promise<void> {
     return Promise.resolve();
   }
 

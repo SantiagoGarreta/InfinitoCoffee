@@ -19,7 +19,6 @@ export class OrderCardComponent implements OnInit, OnDestroy {
   readonly startPreparation = output<void>();
   readonly markReady = output<void>();
   readonly deliver = output<void>();
-  readonly cancel = output<void>();
 
   private readonly now = signal(new Date());
   private timerId: ReturnType<typeof setInterval> | null = null;
@@ -67,9 +66,5 @@ export class OrderCardComponent implements OnInit, OnDestroy {
       default:
         break;
     }
-  }
-
-  showCancelAction(): boolean {
-    return this.order().status === 'Pending' || this.order().status === 'Preparing';
   }
 }

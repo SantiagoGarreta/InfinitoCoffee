@@ -22,7 +22,6 @@ export class KitchenColumnComponent {
   readonly startPreparation = output<string>();
   readonly markReady = output<string>();
   readonly deliver = output<string>();
-  readonly cancel = output<string>();
 
   actionErrorFor(orderId: string): string | null {
     return this.actionErrorOrderId() === orderId ? this.actionErrorMessage() : null;

@@ -15,10 +15,6 @@ export class OrdersApiService {
     return firstValueFrom(this.httpClient.get<Order[]>(`${this.ordersBaseUrl}/active`));
   }
 
-  getPickupOrders(): Promise<Order[]> {
-    return firstValueFrom(this.httpClient.get<Order[]>(`${this.ordersBaseUrl}/pickup`));
-  }
-
   createOrder(request: CreateOrderRequest): Promise<Order> {
     return firstValueFrom(this.httpClient.post<Order>(this.ordersBaseUrl, request));
   }

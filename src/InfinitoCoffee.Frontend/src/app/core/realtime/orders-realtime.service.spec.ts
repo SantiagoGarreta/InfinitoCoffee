@@ -2,10 +2,10 @@ import { TestBed } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
 
 import { OrderRealtimeDto } from '../orders/models/order.model';
-import { ORDERS_HUB_CONNECTION_FACTORY, OrdersHubConnection } from './orders-hub-connection';
+import { HUB_CONNECTION_FACTORY, HubConnectionLike, HubConnectionOptions } from './hub-connection';
 import { OrdersRealtimeService } from './orders-realtime.service';
 
-class FakeOrdersHubConnection implements OrdersHubConnection {
+class FakeOrdersHubConnection implements HubConnectionLike {
   private readonly eventHandlers = new Map<string, (order: OrderRealtimeDto) => void>();
   private reconnectingHandler?: (error?: Error) => void;
   private reconnectedHandler?: (connectionId?: string) => void;
@@ -75,8 +75,8 @@ describe('OrdersRealtimeService', () => {
           useValue: platformId,
         },
         {
-          provide: ORDERS_HUB_CONNECTION_FACTORY,
-          useValue: () => connection,
+          provide: HUB_CONNECTION_FACTORY,
+          useValue: (_url: string, _options: HubConnectionOptions) => connection,
         },
       ],
     });
@@ -116,6 +116,28 @@ describe('OrdersRealtimeService', () => {
     connection.emitOrder('OrderCancelled', { ...sampleOrder, status: 'Cancelled', cancelledAtUtc: '2026-07-22T12:05:00Z' });
 
     expect(receivedEvents).toEqual(['OrderCreated', 'OrderStatusChanged', 'OrderCancelled']);
+  });
+
+  it('connects the private hub with credentials', async () => {
+    const connection = new FakeOrdersHubConnection();
+    let receivedOptions: HubConnectionOptions | undefined;
+    TestBed.configureTestingModule({
+      providers: [
+        OrdersRealtimeService,
+        { provide: PLATFORM_ID, useValue: 'browser' },
+        {
+          provide: HUB_CONNECTION_FACTORY,
+          useValue: (_url: string, options: HubConnectionOptions) => {
+            receivedOptions = options;
+            return connection;
+          },
+        },
+      ],
+    });
+
+    await TestBed.inject(OrdersRealtimeService).start();
+
+    expect(receivedOptions).toEqual({ withCredentials: true });
   });
 
   it('updates connection state while reconnecting and then reconnecting back', async () => {

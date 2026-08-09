@@ -15,8 +15,7 @@
         [actionError]="actionErrorFor(order.id)"
         (startPreparation)="startPreparation.emit(order.id)"
         (markReady)="markReady.emit(order.id)"
-        (deliver)="deliver.emit(order.id)"
-        (cancel)="cancel.emit(order.id)" />
+        (deliver)="deliver.emit(order.id)" />
     } @empty {
       <p class="kitchen-column__empty">No hay pedidos en esta columna.</p>
     }

@@ -29,8 +29,7 @@
         [activeActionOrderId]="store.activeActionOrderId()"
         [actionErrorOrderId]="store.actionError()?.orderId ?? null"
         [actionErrorMessage]="store.actionError()?.message ?? null"
-        (startPreparation)="store.startPreparation($event)"
-        (cancel)="store.cancel($event)" />
+        (startPreparation)="store.startPreparation($event)" />
 
       <app-kitchen-column
         title="Preparando"
@@ -39,8 +38,7 @@
         [activeActionOrderId]="store.activeActionOrderId()"
         [actionErrorOrderId]="store.actionError()?.orderId ?? null"
         [actionErrorMessage]="store.actionError()?.message ?? null"
-        (markReady)="store.markReady($event)"
-        (cancel)="store.cancel($event)" />
+        (markReady)="store.markReady($event)" />
 
       <app-kitchen-column
         title="Listos"

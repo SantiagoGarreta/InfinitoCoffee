@@ -36,6 +36,15 @@ internal static class ApiContractMapper
             order.CreatedAtUtc);
     }
 
+    public static PickupOrderResponse MapPickupOrder(OrderRealtimeDto order)
+    {
+        return new PickupOrderResponse(
+            order.Id,
+            order.OrderNumber,
+            order.Status,
+            order.CreatedAtUtc);
+    }
+
     public static ProductResponse MapProduct(ProductDto product)
     {
         return new ProductResponse(

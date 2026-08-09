@@ -26,7 +26,11 @@ public sealed class ConfigureCorsOptions : IConfigureOptions<CorsOptions>
 
             policy
                 .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE")
-                .WithHeaders("Content-Type", "Authorization", Antiforgery.AntiforgeryConstants.HeaderName)
+                .WithHeaders(
+                    "Content-Type",
+                    "Authorization",
+                    "X-SignalR-User-Agent",
+                    Antiforgery.AntiforgeryConstants.HeaderName)
                 .AllowCredentials();
         });
     }

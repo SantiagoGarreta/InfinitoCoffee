@@ -48,17 +48,6 @@
           }
         </button>
       }
-
-      @if (showCancelAction()) {
-        <button
-          type="button"
-          class="order-card__button order-card__button--secondary"
-          [disabled]="isActionPending()"
-          [attr.aria-label]="'Cancelar pedido ' + order().orderNumber"
-          (click)="cancel.emit()">
-          Cancelar
-        </button>
-      }
     </div>
   </footer>
 

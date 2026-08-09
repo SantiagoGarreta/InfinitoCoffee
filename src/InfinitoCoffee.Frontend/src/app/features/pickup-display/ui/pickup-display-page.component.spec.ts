@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { Order } from '../../../core/orders/models/order.model';
+import { PickupOrder } from '../../../core/pickup/models/pickup-order.model';
 import { PickupOrdersStore } from '../data-access/pickup-orders.store';
 import { PickupDisplayPageComponent } from './pickup-display-page.component';
 
@@ -9,8 +9,8 @@ class FakePickupOrdersStore {
   readonly loading = signal(false);
   readonly loadError = signal<string | null>(null);
   readonly connectionState = signal<'connected' | 'reconnecting' | 'disconnected'>('connected');
-  readonly preparingOrders = signal<Order[]>([createOrder('A-100', 'Preparing')]);
-  readonly readyOrders = signal<Order[]>([createOrder('A-200', 'Ready')]);
+  readonly preparingOrders = signal<PickupOrder[]>([createOrder('A-100', 'Preparing')]);
+  readonly readyOrders = signal<PickupOrder[]>([createOrder('A-200', 'Ready')]);
   initializeCalls = 0;
   destroyCalls = 0;
 
@@ -27,20 +27,12 @@ class FakePickupOrdersStore {
   }
 }
 
-function createOrder(orderNumber: string, status: Order['status']): Order {
+function createOrder(orderNumber: string, status: PickupOrder['status']): PickupOrder {
   return {
     id: `${orderNumber}-id`,
     orderNumber,
-    source: 'Counter',
     status,
     createdAtUtc: '2026-07-22T12:00:00Z',
-    startedAtUtc: null,
-    readyAtUtc: null,
-    deliveredAtUtc: null,
-    cancelledAtUtc: null,
-    notes: null,
-    total: 9,
-    items: [],
   };
 }
 
