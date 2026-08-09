@@ -3,6 +3,7 @@ using InfinitoCoffee.Api.Contracts.Authentication;
 using InfinitoCoffee.Application.Authentication.Commands;
 using InfinitoCoffee.Application.Authentication.Dtos;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ApplicationAuthenticationService = InfinitoCoffee.Application.Authentication.Services.AuthenticationService;
@@ -15,13 +16,27 @@ public sealed class AuthController : ControllerBase
 {
     private readonly ApplicationAuthenticationService _authenticationService;
     private readonly UserClaimsPrincipalFactory _claimsPrincipalFactory;
+    private readonly IAntiforgery _antiforgery;
 
     public AuthController(
         ApplicationAuthenticationService authenticationService,
-        UserClaimsPrincipalFactory claimsPrincipalFactory)
+        UserClaimsPrincipalFactory claimsPrincipalFactory,
+        IAntiforgery antiforgery)
     {
         _authenticationService = authenticationService;
         _claimsPrincipalFactory = claimsPrincipalFactory;
+        _antiforgery = antiforgery;
+    }
+
+    [AllowAnonymous]
+    [HttpGet("csrf")]
+    [ProducesResponseType(typeof(CsrfTokenResponse), StatusCodes.Status200OK)]
+    public ActionResult<CsrfTokenResponse> Csrf()
+    {
+        var tokens = _antiforgery.GetAndStoreTokens(HttpContext);
+        return Ok(new CsrfTokenResponse(
+            tokens.RequestToken
+            ?? throw new InvalidOperationException("Antiforgery did not generate a request token.")));
     }
 
     [AllowAnonymous]

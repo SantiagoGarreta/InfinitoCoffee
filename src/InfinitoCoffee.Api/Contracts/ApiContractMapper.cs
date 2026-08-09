@@ -27,6 +27,15 @@ internal static class ApiContractMapper
             order.Items.Select(MapOrderItem).ToArray());
     }
 
+    public static PickupOrderResponse MapPickupOrder(OrderDto order)
+    {
+        return new PickupOrderResponse(
+            order.Id,
+            order.OrderNumber,
+            order.Status.ToString(),
+            order.CreatedAtUtc);
+    }
+
     public static ProductResponse MapProduct(ProductDto product)
     {
         return new ProductResponse(

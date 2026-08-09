@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using InfinitoCoffee.Api.Authentication;
+using InfinitoCoffee.Api.Antiforgery;
 using InfinitoCoffee.Api.Contracts.Authentication;
 using InfinitoCoffee.Domain.Users;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -196,7 +197,7 @@ public sealed class AuthEndpointsTests
         await api.ExecuteDbContextAsync(dbContext => TestDataSeeder.AddUserAsync(dbContext));
         (await LoginAsync(api, "admin", ValidPassword)).EnsureSuccessStatusCode();
 
-        var logoutResponse = await api.Client.PostAsync("/api/auth/logout", content: null);
+        var logoutResponse = await api.PostWithCsrfAsync("/api/auth/logout");
 
         Assert.Equal(HttpStatusCode.NoContent, logoutResponse.StatusCode);
         var deletionCookie = Assert.Single(logoutResponse.Headers.GetValues("Set-Cookie"));
@@ -264,7 +265,7 @@ public sealed class AuthEndpointsTests
         using var request = new HttpRequestMessage(HttpMethod.Options, "/api/auth/login");
         request.Headers.Add("Origin", "http://localhost:4200");
         request.Headers.Add("Access-Control-Request-Method", "POST");
-        request.Headers.Add("Access-Control-Request-Headers", "content-type");
+        request.Headers.Add("Access-Control-Request-Headers", "content-type,x-xsrf-token");
 
         var response = await api.Client.SendAsync(request);
 
@@ -275,6 +276,10 @@ public sealed class AuthEndpointsTests
         Assert.Equal(
             "true",
             Assert.Single(response.Headers.GetValues("Access-Control-Allow-Credentials")));
+        Assert.Contains(
+            AntiforgeryConstants.HeaderName,
+            Assert.Single(response.Headers.GetValues("Access-Control-Allow-Headers")),
+            StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -293,36 +298,32 @@ public sealed class AuthEndpointsTests
     }
 
     [Fact]
-    public async Task ExistingEndpoints_RemainPublic()
+    public async Task OnlyApprovedExistingEndpoints_RemainPublic()
     {
         await using var api = new ApiTestContext();
-        var categoryId = await api.ExecuteDbContextAsync(async dbContext =>
-            (await TestDataSeeder.AddCategoryAsync(dbContext)).Id);
-
-        Assert.Equal(HttpStatusCode.OK, (await api.Client.GetAsync("/api/products")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await api.Client.GetAsync("/api/products")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await api.Client.GetAsync("/api/orders/pickup")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await api.Client.GetAsync("/health")).StatusCode);
-        Assert.Equal(
-            HttpStatusCode.Created,
-            (await api.Client.PostAsJsonAsync("/api/products", new
-            {
-                name = "Public product",
-                description = "Still public during 4A",
-                price = 100m,
-                categoryId
-            })).StatusCode);
     }
 
-    private static Task<HttpResponseMessage> LoginAsync(
+    private static async Task<HttpResponseMessage> LoginAsync(
         ApiTestContext api,
         string username,
         string password)
     {
-        return api.Client.PostAsJsonAsync("/api/auth/login", new LoginRequest
+        await api.GetCsrfTokenAsync();
+        var response = await api.PostAsJsonWithCsrfAsync("/api/auth/login", new LoginRequest
         {
             Username = username,
             Password = password
         });
+
+        if (response.IsSuccessStatusCode)
+        {
+            await api.GetCsrfTokenAsync();
+        }
+
+        return response;
     }
 
     private static async Task<ProblemDetails> AssertInvalidCredentialsAsync(

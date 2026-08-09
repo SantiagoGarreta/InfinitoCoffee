@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using InfinitoCoffee.Api.IntegrationTests.Http;
 using InfinitoCoffee.Application.Orders.Dtos;
 using InfinitoCoffee.Domain.Orders;
+using InfinitoCoffee.Domain.Users;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -35,6 +36,7 @@ public sealed class SignalRHubEndpointsTests
     public async Task CreateOrder_EmitsOrderCreated()
     {
         await using var context = new ApiTestContext();
+        await context.AuthenticateAsync(UserRole.Cashier);
         await using var connection = CreateConnection(context.Factory);
         var receivedOrders = new List<OrderRealtimeDto>();
 
@@ -43,7 +45,7 @@ public sealed class SignalRHubEndpointsTests
 
         var productId = await context.ExecuteDbContextAsync(TestDataSeeder.SeedActiveProductAsync);
 
-        var response = await context.Client.PostAsJsonAsync("/api/orders", new
+        var response = await context.PostAsJsonWithCsrfAsync("/api/orders", new
         {
             orderNumber = "260722-0001",
             source = "Counter",
@@ -70,6 +72,7 @@ public sealed class SignalRHubEndpointsTests
     public async Task StartPreparation_EmitsOrderStatusChanged()
     {
         await using var context = new ApiTestContext();
+        await context.AuthenticateAsync(UserRole.Kitchen);
         await using var connection = CreateConnection(context.Factory);
         var receivedOrders = new List<OrderRealtimeDto>();
 
@@ -78,7 +81,7 @@ public sealed class SignalRHubEndpointsTests
 
         var orderId = await context.ExecuteDbContextAsync(TestDataSeeder.SeedPendingOrderAsync);
 
-        var response = await context.Client.PostAsync($"/api/orders/{orderId}/start-preparation", content: null);
+        var response = await context.PostWithCsrfAsync($"/api/orders/{orderId}/start-preparation");
 
         response.EnsureSuccessStatusCode();
 
@@ -91,6 +94,7 @@ public sealed class SignalRHubEndpointsTests
     public async Task Cancel_EmitsOrderCancelled()
     {
         await using var context = new ApiTestContext();
+        await context.AuthenticateAsync(UserRole.Cashier);
         await using var connection = CreateConnection(context.Factory);
         var receivedOrders = new List<OrderRealtimeDto>();
 
@@ -99,7 +103,7 @@ public sealed class SignalRHubEndpointsTests
 
         var orderId = await context.ExecuteDbContextAsync(TestDataSeeder.SeedPreparingOrderAsync);
 
-        var response = await context.Client.PostAsync($"/api/orders/{orderId}/cancel", content: null);
+        var response = await context.PostWithCsrfAsync($"/api/orders/{orderId}/cancel");
 
         response.EnsureSuccessStatusCode();
 
@@ -113,6 +117,7 @@ public sealed class SignalRHubEndpointsTests
     public async Task InvalidTransition_DoesNotEmitEvents()
     {
         await using var context = new ApiTestContext();
+        await context.AuthenticateAsync(UserRole.Kitchen);
         await using var connection = CreateConnection(context.Factory);
         var receivedOrders = new List<OrderRealtimeDto>();
 
@@ -121,7 +126,7 @@ public sealed class SignalRHubEndpointsTests
 
         var orderId = await context.ExecuteDbContextAsync(TestDataSeeder.SeedPendingOrderAsync);
 
-        var response = await context.Client.PostAsync($"/api/orders/{orderId}/deliver", content: null);
+        var response = await context.PostWithCsrfAsync($"/api/orders/{orderId}/deliver");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         await Task.Delay(250);

@@ -1,13 +1,16 @@
 using InfinitoCoffee.Api.Contracts;
+using InfinitoCoffee.Api.Authorization;
 using InfinitoCoffee.Api.Contracts.ProductCategories;
 using InfinitoCoffee.Application.ProductCategories.Commands;
 using InfinitoCoffee.Application.ProductCategories.Queries;
 using InfinitoCoffee.Application.ProductCategories.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace InfinitoCoffee.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/product-categories")]
 public sealed class ProductCategoriesController : ControllerBase
 {
@@ -19,6 +22,7 @@ public sealed class ProductCategoriesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOnly)]
     [ProducesResponseType(typeof(ProductCategoryResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ProductCategoryResponse>> Create(
@@ -33,6 +37,7 @@ public sealed class ProductCategoriesController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOrCashier)]
     [ProducesResponseType(typeof(IReadOnlyCollection<ProductCategoryResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyCollection<ProductCategoryResponse>>> GetAll(CancellationToken cancellationToken)
     {
@@ -41,6 +46,7 @@ public sealed class ProductCategoriesController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOrCashier)]
     [ProducesResponseType(typeof(ProductCategoryResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProductCategoryResponse>> GetById(Guid id, CancellationToken cancellationToken)
@@ -53,6 +59,7 @@ public sealed class ProductCategoriesController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOnly)]
     [ProducesResponseType(typeof(ProductCategoryResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -69,6 +76,7 @@ public sealed class ProductCategoriesController : ControllerBase
     }
 
     [HttpPost("{id:guid}/activate")]
+    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOnly)]
     [ProducesResponseType(typeof(ProductCategoryResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProductCategoryResponse>> Activate(Guid id, CancellationToken cancellationToken)
@@ -81,6 +89,7 @@ public sealed class ProductCategoriesController : ControllerBase
     }
 
     [HttpPost("{id:guid}/deactivate")]
+    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOnly)]
     [ProducesResponseType(typeof(ProductCategoryResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProductCategoryResponse>> Deactivate(Guid id, CancellationToken cancellationToken)

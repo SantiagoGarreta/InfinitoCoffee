@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using InfinitoCoffee.Api.Contracts.Products;
+using InfinitoCoffee.Domain.Users;
 
 namespace InfinitoCoffee.Api.IntegrationTests.Http;
 
@@ -10,10 +11,11 @@ public sealed class ProductEndpointsTests
     public async Task CreateProduct_WithValidCategory_ReturnsCreated()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
         var categoryId = await api.ExecuteDbContextAsync(async dbContext =>
             (await TestDataSeeder.AddCategoryAsync(dbContext)).Id);
 
-        var response = await api.Client.PostAsJsonAsync(
+        var response = await api.PostAsJsonWithCsrfAsync(
             "/api/products",
             new CreateProductRequest
             {
@@ -32,9 +34,10 @@ public sealed class ProductEndpointsTests
     public async Task CreateProduct_WithMissingCategory_ReturnsProblemDetails404()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
 
         await HttpProblemDetailsAssertions.AssertProblemDetailsAsync(
-            await api.Client.PostAsJsonAsync(
+            await api.PostAsJsonWithCsrfAsync(
                 "/api/products",
                 new CreateProductRequest
                 {
@@ -50,11 +53,12 @@ public sealed class ProductEndpointsTests
     public async Task CreateProduct_WithInactiveCategory_ReturnsProblemDetails400()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
         var categoryId = await api.ExecuteDbContextAsync(async dbContext =>
             (await TestDataSeeder.AddCategoryAsync(dbContext, isActive: false)).Id);
 
         await HttpProblemDetailsAssertions.AssertProblemDetailsAsync(
-            await api.Client.PostAsJsonAsync(
+            await api.PostAsJsonWithCsrfAsync(
                 "/api/products",
                 new CreateProductRequest
                 {
@@ -70,6 +74,7 @@ public sealed class ProductEndpointsTests
     public async Task GetProducts_ReturnsOk()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Cashier);
         await api.ExecuteDbContextAsync(async dbContext =>
         {
             var category = await TestDataSeeder.AddCategoryAsync(dbContext);
@@ -88,6 +93,7 @@ public sealed class ProductEndpointsTests
     public async Task UpdateProduct_ReturnsOk()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
         var data = await api.ExecuteDbContextAsync(async dbContext =>
         {
             var category = await TestDataSeeder.AddCategoryAsync(dbContext);
@@ -96,7 +102,7 @@ public sealed class ProductEndpointsTests
             return (ProductId: product.Id, CategoryId: nextCategory.Id);
         });
 
-        var response = await api.Client.PutAsJsonAsync(
+        var response = await api.PutAsJsonWithCsrfAsync(
             $"/api/products/{data.ProductId}",
             new UpdateProductRequest
             {
@@ -117,14 +123,15 @@ public sealed class ProductEndpointsTests
     public async Task ActivateAndDeactivateProduct_ReturnOk()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
         var productId = await api.ExecuteDbContextAsync(async dbContext =>
         {
             var category = await TestDataSeeder.AddCategoryAsync(dbContext);
             return (await TestDataSeeder.AddProductAsync(dbContext, category.Id, isActive: false)).Id;
         });
 
-        var activateResponse = await api.Client.PostAsync($"/api/products/{productId}/activate", null);
-        var deactivateResponse = await api.Client.PostAsync($"/api/products/{productId}/deactivate", null);
+        var activateResponse = await api.PostWithCsrfAsync($"/api/products/{productId}/activate");
+        var deactivateResponse = await api.PostWithCsrfAsync($"/api/products/{productId}/deactivate");
 
         Assert.Equal(HttpStatusCode.OK, activateResponse.StatusCode);
         Assert.Equal(HttpStatusCode.OK, deactivateResponse.StatusCode);
