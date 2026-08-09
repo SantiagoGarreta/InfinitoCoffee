@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 var command = args.FirstOrDefault()?.Trim().ToLowerInvariant();
 
@@ -30,8 +31,13 @@ if (command is "seed" or "reset-system-password")
 
 if (command == "seed")
 {
-    builder.Services.Configure<InitialSystemUserOptions>(
-        builder.Configuration.GetSection(InitialSystemUserOptions.SectionName));
+    builder.Services.AddSingleton<IOptions<InitialSystemUserOptions>>(
+        Options.Create(new InitialSystemUserOptions
+        {
+            Username = builder.Configuration["INITIAL_ADMIN_USERNAME"],
+            DisplayName = builder.Configuration["INITIAL_ADMIN_DISPLAY_NAME"],
+            Password = builder.Configuration["INITIAL_ADMIN_PASSWORD"]
+        }));
     builder.Services.AddScoped<DevelopmentDataSeeder>();
 }
 
