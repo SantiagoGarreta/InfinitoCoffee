@@ -141,13 +141,15 @@ public sealed class ProductEndpointsTests
     public async Task DeleteProduct_WithHardDeleteFlag_RemovesProductFromDatabase()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Administrator);
+
         var productId = await api.ExecuteDbContextAsync(async dbContext =>
         {
             var category = await TestDataSeeder.AddCategoryAsync(dbContext);
             return (await TestDataSeeder.AddProductAsync(dbContext, category.Id)).Id;
         });
 
-        var response = await api.Client.PostAsJsonAsync(
+        var response = await api.PostAsJsonWithCsrfAsync(
             $"/api/products/{productId}/deactivate",
             new { hardDelete = true });
 

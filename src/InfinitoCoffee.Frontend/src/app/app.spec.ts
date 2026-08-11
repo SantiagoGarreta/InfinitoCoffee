@@ -50,67 +50,102 @@ describe('App', () => {
     expect(text).not.toContain('Iniciar sesión');
   });
 
-  it('uses Angular route paths for shell navigation links', async () => {
-    const fixture = TestBed.createComponent(App);
-    await fixture.whenStable();
-
-    const links = getNavigationLinks(fixture.nativeElement as HTMLElement);
-
-    expect(links.Kitchen.getAttribute('href')).toBe('/kitchen');
-    expect(links.Pickup.getAttribute('href')).toBe('/pickup');
-    expect(links.Caja.getAttribute('href')).toBe('/orders/new');
+it('uses Angular route paths for shell navigation links', async () => {
+  const state = TestBed.inject(AuthenticationState);
+  state.setUser({
+    id: 'user-1',
+    username: 'admin',
+    displayName: 'Administrador',
+    role: 'Administrator',
   });
 
-  it('navigates from /kitchen to Pickup without changing origin or port', async () => {
-    const router = TestBed.inject(Router);
-    const fixture = TestBed.createComponent(App);
+  const fixture = TestBed.createComponent(App);
+  fixture.detectChanges();
+  await fixture.whenStable();
 
-    await router.navigateByUrl('/kitchen');
-    fixture.detectChanges();
-    await fixture.whenStable();
+  const links = getNavigationLinks(fixture.nativeElement as HTMLElement);
 
-    const pickupLink = getNavigationLinks(fixture.nativeElement as HTMLElement).Pickup;
-    const pickupHref = pickupLink.getAttribute('href');
-
-    expect(pickupHref).toBe('/pickup');
-    expect(resolveHref('http://localhost:4200/kitchen', pickupHref)).toBe('http://localhost:4200/pickup');
-
-    pickupLink.click();
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    expect(router.url).toBe('/pickup');
-  });
-
-  it('navigates from /pickup to Caja without changing origin or port', async () => {
-    const router = TestBed.inject(Router);
-    const fixture = TestBed.createComponent(App);
-
-    await router.navigateByUrl('/pickup');
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    const cajaLink = getNavigationLinks(fixture.nativeElement as HTMLElement).Caja;
-    const cajaHref = cajaLink.getAttribute('href');
-
-    expect(cajaHref).toBe('/orders/new');
-    expect(resolveHref('http://localhost:4200/pickup', cajaHref)).toBe('http://localhost:4200/orders/new');
-
-    cajaLink.click();
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    expect(router.url).toBe('/orders/new');
-  });
+  expect(links.Cocina.getAttribute('href')).toBe('/kitchen');
+  expect(links.Pickup.getAttribute('href')).toBe('/pickup');
+  expect(links['Nueva orden'].getAttribute('href')).toBe('/orders/new');
 });
 
-function getNavigationLinks(container: HTMLElement): Record<'Kitchen' | 'Pickup' | 'Caja', HTMLAnchorElement> {
+it('navigates from /kitchen to Pickup without changing origin or port', async () => {
+  const state = TestBed.inject(AuthenticationState);
+  state.setUser({
+    id: 'user-1',
+    username: 'admin',
+    displayName: 'Administrador',
+    role: 'Administrator',
+  });
+
+  const router = TestBed.inject(Router);
+  const fixture = TestBed.createComponent(App);
+
+  await router.navigateByUrl('/kitchen');
+  fixture.detectChanges();
+  await fixture.whenStable();
+
+  const pickupLink = getNavigationLinks(
+    fixture.nativeElement as HTMLElement
+  ).Pickup;
+
+  const pickupHref = pickupLink.getAttribute('href');
+
+  expect(pickupHref).toBe('/pickup');
+  expect(resolveHref('http://localhost:4200/kitchen', pickupHref))
+    .toBe('http://localhost:4200/pickup');
+
+  pickupLink.click();
+  fixture.detectChanges();
+  await fixture.whenStable();
+
+  expect(router.url).toBe('/pickup');
+});
+
+ it('navigates from /pickup to Nueva orden without changing origin or port', async () => {
+  const state = TestBed.inject(AuthenticationState);
+  state.setUser({
+    id: 'user-1',
+    username: 'admin',
+    displayName: 'Administrador',
+    role: 'Administrator',
+  });
+
+  const router = TestBed.inject(Router);
+  const fixture = TestBed.createComponent(App);
+
+  await router.navigateByUrl('/pickup');
+  fixture.detectChanges();
+  await fixture.whenStable();
+
+  const newOrderLink = getNavigationLinks(
+    fixture.nativeElement as HTMLElement
+  )['Nueva orden'];
+
+  const newOrderHref = newOrderLink.getAttribute('href');
+
+  expect(newOrderHref).toBe('/orders/new');
+  expect(resolveHref('http://localhost:4200/pickup', newOrderHref))
+    .toBe('http://localhost:4200/orders/new');
+
+  newOrderLink.click();
+  fixture.detectChanges();
+  await fixture.whenStable();
+
+  expect(router.url).toBe('/orders/new');
+});;
+});
+
+function getNavigationLinks(
+  container: HTMLElement
+): Record<'Cocina' | 'Pickup' | 'Nueva orden', HTMLAnchorElement> {
   const anchors = [...container.querySelectorAll('a.tabs__link')] as HTMLAnchorElement[];
 
   return {
-    Kitchen: getLinkByLabel(anchors, 'Kitchen'),
+    Cocina: getLinkByLabel(anchors, 'Cocina'),
     Pickup: getLinkByLabel(anchors, 'Pickup'),
-    Caja: getLinkByLabel(anchors, 'Caja'),
+    'Nueva orden': getLinkByLabel(anchors, 'Nueva orden'),
   };
 }
 

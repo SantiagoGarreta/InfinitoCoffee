@@ -1,12 +1,13 @@
 import { Routes } from '@angular/router';
 
-import { authGuard, guestGuard, roleGuard, roleHomeGuard } from './core/auth/auth.guards';
+import { authGuard, guestGuard, roleGuard } from './core/auth/auth.guards';
+import { roleHomeRedirect } from './core/auth/auth-navigation';
 
 export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    canActivate: [roleHomeGuard],
+    redirectTo: roleHomeRedirect,
   },
   {
     path: 'login',
@@ -33,6 +34,6 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    canActivate: [roleHomeGuard],
+    redirectTo: roleHomeRedirect,
   },
 ];
