@@ -69,32 +69,47 @@ public sealed class SignalRHubEndpointsTests
     {
         await using var context = new ApiTestContext();
         await context.AuthenticateAsync(UserRole.Administrator);
-        await using var privateConnection = CreateConnection(
-            context.Factory,
-            "/hubs/orders",
-            context.CurrentAuthenticationCookie);
-        await using var pickupConnection = CreateConnection(context.Factory, "/hubs/pickup");
+
+        await using var privateConnection = CreateConnection(context.Factory,"/hubs/orders",context.CurrentAuthenticationCookie);
+
+        await using var pickupConnection = CreateConnection(context.Factory,"/hubs/pickup");
+
         var privateEvents = new List<OrderRealtimeDto>();
         var pickupEvents = new List<JsonElement>();
+
         privateConnection.On<OrderRealtimeDto>("OrderCreated", privateEvents.Add);
         pickupConnection.On<JsonElement>("OrderCreated", pickupEvents.Add);
+
         await privateConnection.StartAsync();
         await pickupConnection.StartAsync();
 
         var productId = await context.ExecuteDbContextAsync(TestDataSeeder.SeedActiveProductAsync);
+
         var response = await context.PostAsJsonWithCsrfAsync("/api/orders", new
         {
-            orderNumber = "260809-0001",
             source = "Counter",
             notes = "Mesa 1",
-            items = new[] { new { productId, quantity = 1, notes = "Sin canela" } }
+            items = new[]
+            {
+                new
+                {
+                    productId,
+                    quantity = 1,
+                    notes = "Sin canela"
+                }
+            }
         });
 
         response.EnsureSuccessStatusCode();
+
         var order = await WaitForSingleEventAsync(privateEvents);
         await Task.Delay(250);
+
+        Assert.Equal("1", order.OrderNumber);
+        Assert.Equal("Pending", order.Status);
         Assert.Equal("Mesa 1", order.Notes);
         Assert.NotEmpty(order.Items);
+
         Assert.Empty(pickupEvents);
     }
 

@@ -136,4 +136,26 @@ public sealed class ProductEndpointsTests
         Assert.Equal(HttpStatusCode.OK, activateResponse.StatusCode);
         Assert.Equal(HttpStatusCode.OK, deactivateResponse.StatusCode);
     }
+
+    [Fact]
+    public async Task DeleteProduct_WithHardDeleteFlag_RemovesProductFromDatabase()
+    {
+        await using var api = new ApiTestContext();
+        var productId = await api.ExecuteDbContextAsync(async dbContext =>
+        {
+            var category = await TestDataSeeder.AddCategoryAsync(dbContext);
+            return (await TestDataSeeder.AddProductAsync(dbContext, category.Id)).Id;
+        });
+
+        var response = await api.Client.PostAsJsonAsync(
+            $"/api/products/{productId}/deactivate",
+            new { hardDelete = true });
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        var existsAfterDelete = await api.ExecuteDbContextAsync(async dbContext =>
+            await dbContext.Products.FindAsync(productId) is not null);
+
+        Assert.False(existsAfterDelete);
+    }
 }

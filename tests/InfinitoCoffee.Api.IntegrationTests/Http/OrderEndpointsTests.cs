@@ -23,7 +23,6 @@ public sealed class OrderEndpointsTests
             "/api/orders",
             new CreateOrderRequest
             {
-                OrderNumber = "A-101",
                 Source = "Counter",
                 Notes = "Sin azucar",
                 Items =
@@ -42,7 +41,7 @@ public sealed class OrderEndpointsTests
         Assert.Contains("/api/orders/", response.Headers.Location!.ToString(), StringComparison.Ordinal);
 
         var order = await api.ReadRequiredAsync<OrderResponse>(response);
-        Assert.Equal("A-101", order.OrderNumber);
+        Assert.Equal("1", order.OrderNumber);
         Assert.Equal("Pending", order.Status);
         Assert.Single(order.Items);
     }
@@ -58,7 +57,6 @@ public sealed class OrderEndpointsTests
                 "/api/orders",
                 new CreateOrderRequest
                 {
-                    OrderNumber = "A-101",
                     Source = "Counter",
                     Items = [new CreateOrderItemRequest { ProductId = Guid.NewGuid(), Quantity = 1 }]
                 }),
@@ -81,7 +79,6 @@ public sealed class OrderEndpointsTests
                 "/api/orders",
                 new CreateOrderRequest
                 {
-                    OrderNumber = "A-101",
                     Source = "Counter",
                     Items = [new CreateOrderItemRequest { ProductId = productId, Quantity = 1 }]
                 }),
@@ -89,7 +86,7 @@ public sealed class OrderEndpointsTests
     }
 
     [Fact]
-    public async Task CreateOrder_WithDuplicateOrderNumber_ReturnsProblemDetails409()
+    public async Task CreateOrder_WhenOrdersAlreadyExist_AssignsNextDisplayOrderNumber()
     {
         await using var api = new ApiTestContext();
         await api.AuthenticateAsync(UserRole.Cashier);
@@ -99,18 +96,65 @@ public sealed class OrderEndpointsTests
             return (await TestDataSeeder.AddProductAsync(dbContext, category.Id)).Id;
         });
 
-        var request = new CreateOrderRequest
+        await api.PostAsJsonWithCsrfAsync(
+            "/api/orders",
+            new CreateOrderRequest
+            {
+                Source = "Counter",
+                Items = [new CreateOrderItemRequest { ProductId = productId, Quantity = 1 }]
+            });
+
+        var response = await api.PostAsJsonWithCsrfAsync(
+            "/api/orders",
+            new CreateOrderRequest
+            {
+                Source = "Counter",
+                Items = [new CreateOrderItemRequest { ProductId = productId, Quantity = 1 }]
+            });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var order = await api.ReadRequiredAsync<OrderResponse>(response);
+        Assert.Equal("2", order.OrderNumber);
+    }
+
+    [Fact]
+    public async Task CreateOrder_WhenLatestDisplayOrderNumberIs99_WrapsTo1()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Cashier);
+
+        var productId = await api.ExecuteDbContextAsync(async dbContext =>
         {
-            OrderNumber = "A-101",
-            Source = "Counter",
-            Items = [new CreateOrderItemRequest { ProductId = productId, Quantity = 1 }]
-        };
+            var category = await TestDataSeeder.AddCategoryAsync(dbContext);
+            var product = await TestDataSeeder.AddProductAsync(dbContext, category.Id);
+            await TestDataSeeder.AddOrderAsync(
+                dbContext,
+                "99",
+                OrderStatus.Pending,
+                DateTime.UtcNow.AddMinutes(-1));
 
-        await api.PostAsJsonWithCsrfAsync("/api/orders", request);
+            return product.Id;
+        });
 
-        await HttpProblemDetailsAssertions.AssertProblemDetailsAsync(
-            await api.PostAsJsonWithCsrfAsync("/api/orders", request),
-            HttpStatusCode.Conflict);
+        var response = await api.PostAsJsonWithCsrfAsync(
+            "/api/orders",
+            new CreateOrderRequest
+            {
+                Source = "Counter",
+                Items =
+                [
+                    new CreateOrderItemRequest
+                    {
+                        ProductId = productId,
+                        Quantity = 1
+                    }
+                ]
+            });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var order = await api.ReadRequiredAsync<OrderResponse>(response);
+        Assert.Equal("1", order.OrderNumber);
     }
 
     [Fact]

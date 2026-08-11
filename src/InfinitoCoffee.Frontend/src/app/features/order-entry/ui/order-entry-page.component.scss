@@ -36,6 +36,22 @@
   grid-template-columns: minmax(0, 1.55fr) minmax(21rem, 0.95fr);
 }
 
+.order-entry__menu-button {
+  border: 0;
+  border-radius: 999px;
+  background: #efe4d6;
+  color: #5d4635;
+  padding: 0.85rem 1.15rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.order-entry__menu-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .order-entry__catalog,
 .order-entry__summary {
   display: grid;
@@ -56,6 +72,15 @@
 .order-entry__form-card label {
   display: grid;
   gap: 0.35rem;
+}
+
+.order-entry__auto-number {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.8rem;
+  border-radius: 0.85rem;
+  background: #f7f0e7;
+  color: #5d4635;
 }
 
 .order-entry__notes {

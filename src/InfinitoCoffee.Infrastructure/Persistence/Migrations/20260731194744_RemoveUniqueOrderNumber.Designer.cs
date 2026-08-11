@@ -4,6 +4,7 @@ using InfinitoCoffee.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(InfinitoCoffeeDbContext))]
-    partial class InfinitoCoffeeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260731194744_RemoveUniqueOrderNumber")]
+    partial class RemoveUniqueOrderNumber
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -156,57 +159,6 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ProductCategories", (string)null);
-                });
-
-            modelBuilder.Entity("InfinitoCoffee.Domain.Users.User", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsSystemUser")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("NormalizedUsername")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasMaxLength(512)
-                        .HasColumnType("nvarchar(512)");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IsSystemUser")
-                        .IsUnique()
-                        .HasDatabaseName("UX_Users_SingleSystemUser")
-                        .HasFilter("[IsSystemUser] = 1");
-
-                    b.HasIndex("NormalizedUsername")
-                        .IsUnique()
-                        .HasDatabaseName("IX_Users_NormalizedUsername");
-
-                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("InfinitoCoffee.Domain.Orders.OrderItem", b =>

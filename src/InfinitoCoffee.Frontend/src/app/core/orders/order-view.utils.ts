@@ -32,3 +32,25 @@ export function isOrderDelayed(status: OrderStatus, createdAtUtc: string, now: D
   return (status === 'Pending' && diffMinutes > PENDING_DELAY_MINUTES)
     || (status === 'Preparing' && diffMinutes > PREPARING_DELAY_MINUTES);
 }
+
+export function compareOrderNumbers(left: string, right: string): number {
+  const leftDisplayOrderNumber = toDisplayOrderNumber(left);
+  const rightDisplayOrderNumber = toDisplayOrderNumber(right);
+
+  if (leftDisplayOrderNumber !== null && rightDisplayOrderNumber !== null) {
+    return leftDisplayOrderNumber - rightDisplayOrderNumber;
+  }
+
+  return left.localeCompare(right);
+}
+
+function toDisplayOrderNumber(value: string): number | null {
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+
+  const displayOrderNumber = Number(value);
+  return Number.isInteger(displayOrderNumber) && displayOrderNumber >= 1 && displayOrderNumber <= 99
+    ? displayOrderNumber
+    : null;
+}

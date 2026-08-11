@@ -23,4 +23,17 @@ if (result.error) {
   console.error(result.error);
 }
 
-process.exit(result.status ?? 1);
+if ((result.status ?? 1) !== 0) {
+  process.exit(result.status ?? 1);
+}
+
+const verificationResult = spawnSync(process.execPath, ['./scripts/verify-spa-routing.mjs'], {
+  stdio: 'inherit',
+  shell: false,
+});
+
+if (verificationResult.error) {
+  console.error(verificationResult.error);
+}
+
+process.exit(verificationResult.status ?? 1);

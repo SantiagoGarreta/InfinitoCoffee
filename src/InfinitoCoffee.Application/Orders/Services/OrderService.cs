@@ -1,3 +1,4 @@
+using System.Globalization;
 using InfinitoCoffee.Application.Common.Exceptions;
 using InfinitoCoffee.Application.Common.Time;
 using InfinitoCoffee.Application.Orders.Commands;
@@ -11,6 +12,9 @@ namespace InfinitoCoffee.Application.Orders.Services;
 
 public sealed class OrderService
 {
+    private const int FirstDisplayOrderNumber = 1;
+    private const int LastDisplayOrderNumber = 99;
+
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IOrderEventPublisher _orderEventPublisher;
     private readonly IOrderRepository _orderRepository;
@@ -34,17 +38,11 @@ public sealed class OrderService
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var orderNumber = NormalizeRequired(command.OrderNumber, nameof(command.OrderNumber));
         var items = command.Items?.ToList() ?? throw new ArgumentNullException(nameof(command.Items));
 
         if (items.Count == 0)
         {
             throw new ArgumentException("At least one item is required.", nameof(command.Items));
-        }
-
-        if (await _orderRepository.OrderNumberExistsAsync(orderNumber, cancellationToken))
-        {
-            throw new ConflictException($"The order number '{orderNumber}' already exists.");
         }
 
         var orderItems = new List<OrderItem>(items.Count);
@@ -74,6 +72,7 @@ public sealed class OrderService
                 item.Notes));
         }
 
+        var orderNumber = await GenerateNextOrderNumberAsync(cancellationToken);
         var order = new Order(
             orderNumber,
             command.Source,
@@ -108,7 +107,7 @@ public sealed class OrderService
 
         return orders
             .OrderBy(order => order.CreatedAtUtc)
-            .ThenBy(order => order.OrderNumber, StringComparer.Ordinal)
+            .ThenBy(order => order.OrderNumber, Comparer<string>.Create(CompareOrderNumbers))
             .Select(MapOrder)
             .ToArray();
     }
@@ -133,7 +132,7 @@ public sealed class OrderService
             .Where(order => order.Status == OrderStatus.Preparing
                 || order.IsVisibleForPickup(utcNow, query.ReadyVisibilityDuration))
             .OrderBy(order => order.CreatedAtUtc)
-            .ThenBy(order => order.OrderNumber, StringComparer.Ordinal)
+            .ThenBy(order => order.OrderNumber, Comparer<string>.Create(CompareOrderNumbers))
             .Select(MapOrder)
             .ToArray();
     }
@@ -266,13 +265,43 @@ public sealed class OrderService
             item.LineTotal);
     }
 
-    private static string NormalizeRequired(string value, string parameterName)
+    private async Task<string> GenerateNextOrderNumberAsync(CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(value))
+        var latestOrderNumber = await _orderRepository.GetLatestOrderNumberAsync(cancellationToken);
+
+        if (!TryParseDisplayOrderNumber(latestOrderNumber, out var latestDisplayOrderNumber))
         {
-            throw new ArgumentException("The value is required.", parameterName);
+            return FirstDisplayOrderNumber.ToString(CultureInfo.InvariantCulture);
         }
 
-        return value.Trim();
+        var nextDisplayOrderNumber = latestDisplayOrderNumber >= LastDisplayOrderNumber
+            ? FirstDisplayOrderNumber
+            : latestDisplayOrderNumber + 1;
+
+        return nextDisplayOrderNumber.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private static int CompareOrderNumbers(string? left, string? right)
+    {
+        var leftIsDisplayNumber = TryParseDisplayOrderNumber(left, out var leftDisplayNumber);
+        var rightIsDisplayNumber = TryParseDisplayOrderNumber(right, out var rightDisplayNumber);
+
+        if (leftIsDisplayNumber && rightIsDisplayNumber)
+        {
+            return leftDisplayNumber.CompareTo(rightDisplayNumber);
+        }
+
+        return string.Compare(left, right, StringComparison.Ordinal);
+    }
+
+    private static bool TryParseDisplayOrderNumber(string? value, out int displayOrderNumber)
+    {
+        if (!int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out displayOrderNumber))
+        {
+            displayOrderNumber = default;
+            return false;
+        }
+
+        return displayOrderNumber is >= FirstDisplayOrderNumber and <= LastDisplayOrderNumber;
     }
 }

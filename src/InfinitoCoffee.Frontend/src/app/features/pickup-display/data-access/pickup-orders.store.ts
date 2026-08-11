@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { toUserMessage } from '../../../core/http/api-error.utils';
 import { OrderStatus } from '../../../core/orders/models/order.model';
+import { compareOrderNumbers } from '../../../core/orders/order-view.utils';
 import { PickupApiService } from '../../../core/pickup/data-access/pickup-api.service';
 import { PickupOrder } from '../../../core/pickup/models/pickup-order.model';
 import { PickupRealtimeService } from '../../../core/realtime/pickup-realtime.service';
@@ -32,14 +33,13 @@ export class PickupOrdersStore {
     }
 
     if (!this.initialized) {
-      this.unsubscribeRealtime = this.realtimeService.subscribe(({ order }) => {
-        if (this.shouldDisplay(order.status)) {
-          this.upsertOrder(order);
-          return;
-        }
-
-        this.removeOrder(order.id);
-      });
+     this.unsubscribeRealtime = this.realtimeService.subscribe(({ order }) => {
+      if (this.shouldDisplay(order.status)) {
+      this.upsertOrder(order);
+      return;
+    }
+    this.removeOrder(order.id);
+    });;
       this.unsubscribeResync = this.realtimeService.subscribeToResyncRequested(() => {
         void this.reload();
       });
@@ -129,7 +129,7 @@ export class PickupOrdersStore {
   private sortOrders(orders: PickupOrder[]): PickupOrder[] {
     return [...orders].sort((left, right) =>
       left.createdAtUtc.localeCompare(right.createdAtUtc)
-      || left.orderNumber.localeCompare(right.orderNumber),
+      || compareOrderNumbers(left.orderNumber, right.orderNumber),
     );
   }
 

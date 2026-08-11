@@ -103,13 +103,15 @@ public class RepositoryPersistenceTests : IDisposable
     }
 
     [Fact]
-    public async Task OrderNumber_Duplicate_ThrowsUniqueConstraintError()
+    public async Task OrderNumber_Duplicate_IsAllowed()
     {
         await using var dbContext = _dbContextFactory.CreateDbContext();
         dbContext.Orders.Add(CreatePendingOrder("260721-0001"));
         dbContext.Orders.Add(CreatePendingOrder("260721-0001"));
 
-        await Assert.ThrowsAsync<DbUpdateException>(() => dbContext.SaveChangesAsync());
+        await dbContext.SaveChangesAsync();
+
+        Assert.Equal(2, await dbContext.Orders.CountAsync());
     }
 
     [Fact]

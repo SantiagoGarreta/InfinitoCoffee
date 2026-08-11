@@ -1,27 +1,27 @@
 import { TestBed } from '@angular/core/testing';
 
 import { OrdersApiService } from '../../../core/orders/data-access/orders-api.service';
-import { Order, OrderRealtime } from '../../../core/orders/models/order.model';
+import { Order, OrderApiDto, OrderRealtime } from '../../../core/orders/models/order.model';
 import { OrdersRealtimeService } from '../../../core/realtime/orders-realtime.service';
 import { KitchenOrdersStore } from './kitchen-orders.store';
 
 class FakeOrdersApiService {
-  activeOrders: Order[] = [];
-  startPreparationResponse: Order | null = null;
+  activeOrders: OrderApiDto[] = [];
+  startPreparationResponse: OrderApiDto | null = null;
 
-  getActiveOrders(): Promise<Order[]> {
+  getActiveOrders(): Promise<OrderApiDto[]> {
     return Promise.resolve(this.activeOrders);
   }
 
-  startPreparation(): Promise<Order> {
+  startPreparation(): Promise<OrderApiDto> {
     return Promise.resolve(this.startPreparationResponse ?? this.activeOrders[0]!);
   }
 
-  markReady(): Promise<Order> {
+  markReady(): Promise<OrderApiDto> {
     return Promise.resolve(this.activeOrders[0]!);
   }
 
-  deliver(): Promise<Order> {
+  deliver(): Promise<OrderApiDto> {
     return Promise.resolve(this.activeOrders[0]!);
   }
 
@@ -71,7 +71,7 @@ class FakeOrdersRealtimeService {
 }
 
 describe('KitchenOrdersStore', () => {
-  function createOrder(orderNumber: string, status: Order['status'], createdAtUtc: string): Order {
+  function createOrder(orderNumber: string, status: Order['status'], createdAtUtc: string): OrderApiDto {
     return {
       id: `${orderNumber}-id`,
       orderNumber,
@@ -88,8 +88,8 @@ describe('KitchenOrdersStore', () => {
         {
           id: `${orderNumber}-item`,
           productId: 'product-1',
-          productName: 'Latte',
-          unitPrice: 12,
+          productNameSnapshot: 'Latte',
+          unitPriceSnapshot: 12,
           quantity: 1,
           notes: null,
           lineTotal: 12,
@@ -161,6 +161,7 @@ describe('KitchenOrdersStore', () => {
     await store.startPreparation('A-100-id');
 
     expect(store.preparingOrders().map((order) => order.orderNumber)).toEqual(['A-100']);
+    expect(store.preparingOrders()[0]?.items[0]?.productName).toBe('Latte');
     expect(store.activeActionOrderId()).toBeNull();
   });
 

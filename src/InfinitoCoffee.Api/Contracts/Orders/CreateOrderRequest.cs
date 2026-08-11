@@ -6,10 +6,6 @@ public sealed class CreateOrderRequest
 {
     [Required]
     [MaxLength(32)]
-    public string OrderNumber { get; init; } = string.Empty;
-
-    [Required]
-    [MaxLength(32)]
     public string Source { get; init; } = string.Empty;
 
     [MaxLength(1000)]
