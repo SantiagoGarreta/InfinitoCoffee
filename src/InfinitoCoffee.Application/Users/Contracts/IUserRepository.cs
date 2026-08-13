@@ -6,6 +6,8 @@ public interface IUserRepository
 {
     Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<User>> GetAllAsync(CancellationToken cancellationToken = default);
+
     Task<User?> GetByNormalizedUsernameAsync(
         string normalizedUsername,
         CancellationToken cancellationToken = default);

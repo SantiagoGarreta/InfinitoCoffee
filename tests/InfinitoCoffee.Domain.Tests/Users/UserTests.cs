@@ -5,6 +5,40 @@ namespace InfinitoCoffee.Domain.Tests.Users;
 public class UserTests
 {
     [Fact]
+    public void Create_WithValidValues_CreatesActiveNormalUserAndHashesDefinitiveInstance()
+    {
+        User? callbackUser = null;
+        var user = User.Create(" cashier.one ", " Cashier One ", UserRole.Cashier, candidate =>
+        {
+            callbackUser = candidate;
+            Assert.NotEqual(Guid.Empty, candidate.Id);
+            Assert.Equal("CASHIER.ONE", candidate.NormalizedUsername);
+            Assert.True(candidate.IsActive);
+            Assert.False(candidate.IsSystemUser);
+            return "valid-hash";
+        });
+
+        Assert.Same(user, callbackUser);
+        Assert.Equal("valid-hash", user.PasswordHash);
+    }
+
+    [Theory]
+    [InlineData("bad username", "Valid", UserRole.Cashier)]
+    [InlineData("valid.user", "   ", UserRole.Cashier)]
+    [InlineData("valid.user", "Valid", (UserRole)999)]
+    public void Create_WithInvalidDomainData_Throws(string username, string displayName, UserRole role)
+    {
+        Assert.ThrowsAny<ArgumentException>(() => User.Create(username, displayName, role, _ => "hash"));
+    }
+
+    [Fact]
+    public void Create_WithInvalidHash_DoesNotReturnUser()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            User.Create("normal.user", "Normal User", UserRole.Administrator, _ => "   "));
+    }
+
+    [Fact]
     public void NormalizeUsername_WithValidValue_UsesDomainValidationAndInvariantNormalization()
     {
         var normalizedUsername = User.NormalizeUsername("  Cashier.One-2  ");

@@ -19,13 +19,31 @@ internal static class TestDataSeeder
     {
         passwordHasher ??= new PasswordHasher<User>();
 
-        var user = new User(username, displayName, "temporary-hash", role);
-        user.ChangePasswordHash(passwordHasher.HashPassword(user, password));
+        var user = User.Create(
+            username,
+            displayName,
+            role,
+            candidate => passwordHasher.HashPassword(candidate, password));
         if (!isActive)
         {
             user.Deactivate();
         }
 
+        dbContext.Users.Add(user);
+        await dbContext.SaveChangesAsync();
+        return user;
+    }
+
+    public static async Task<User> AddSystemUserAsync(
+        InfinitoCoffeeDbContext dbContext,
+        string username = "system.admin",
+        string password = "System_password!")
+    {
+        var passwordHasher = new PasswordHasher<User>();
+        var user = User.CreateSystemUser(
+            username,
+            "System Administrator",
+            candidate => passwordHasher.HashPassword(candidate, password));
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync();
         return user;

@@ -18,6 +18,8 @@ internal sealed class FakeUserPasswordService : IUserPasswordService
 
     public string? LastPassword { get; private set; }
 
+    public User? LastUser { get; private set; }
+
     public UserPasswordVerificationResult VerifyPassword(User user, string password)
     {
         VerifyPasswordCalls++;
@@ -34,6 +36,7 @@ internal sealed class FakeUserPasswordService : IUserPasswordService
     public string HashPassword(User user, string password)
     {
         HashPasswordCalls++;
+        LastUser = user;
         LastPassword = password;
         return NewPasswordHash;
     }

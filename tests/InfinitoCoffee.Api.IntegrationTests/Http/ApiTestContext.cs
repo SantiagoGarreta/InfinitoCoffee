@@ -22,6 +22,8 @@ internal sealed class ApiTestContext : IAsyncDisposable
 
     public string? CurrentAuthenticationCookie { get; private set; }
 
+    public Guid? CurrentUserId { get; private set; }
+
     public Task ExecuteDbContextAsync(Func<InfinitoCoffeeDbContext, Task> action)
     {
         return Factory.ExecuteDbContextAsync(action);
@@ -51,13 +53,14 @@ internal sealed class ApiTestContext : IAsyncDisposable
     {
         const string password = "Correct_password!";
         var username = $"test.{role.ToString().ToLowerInvariant()}";
-        await ExecuteDbContextAsync(dbContext =>
+        var currentUser = await ExecuteDbContextAsync(dbContext =>
             TestDataSeeder.AddUserAsync(
                 dbContext,
                 username,
                 role.ToString(),
                 password,
                 role));
+        CurrentUserId = currentUser.Id;
 
         var token = await GetCsrfTokenAsync();
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/login")

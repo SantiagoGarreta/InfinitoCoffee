@@ -19,6 +19,12 @@ public sealed class UserRepository : IUserRepository
             .SingleOrDefaultAsync(user => user.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyCollection<User>> GetAllAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Users.ToArrayAsync(cancellationToken);
+    }
+
     public async Task<User?> GetByNormalizedUsernameAsync(
         string normalizedUsername,
         CancellationToken cancellationToken = default)

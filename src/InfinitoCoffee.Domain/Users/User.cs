@@ -42,6 +42,33 @@ public class User
         IsSystemUser = false;
     }
 
+    public static User Create(
+        string username,
+        string displayName,
+        UserRole role,
+        Func<User, string> passwordHashFactory)
+    {
+        ArgumentNullException.ThrowIfNull(passwordHashFactory);
+
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Username = ValidateUsername(username),
+            DisplayName = ValidateDisplayName(displayName),
+            Role = ValidateRole(role),
+            IsActive = true,
+            IsSystemUser = false
+        };
+
+        user.NormalizedUsername = NormalizeValidatedUsername(user.Username);
+
+        var passwordHash = passwordHashFactory(user);
+        ValidatePasswordHash(passwordHash);
+        user.PasswordHash = passwordHash;
+
+        return user;
+    }
+
     public static User CreateSystemUser(
         string username,
         string displayName,
@@ -113,8 +140,7 @@ public class User
     public void ChangeRole(UserRole role)
     {
         EnsureNotSystemUser("The system user's role cannot be changed.");
-        ValidateRole(role);
-        Role = role;
+        Role = ValidateRole(role);
     }
 
     public void Activate()
@@ -201,11 +227,13 @@ public class User
         }
     }
 
-    private static void ValidateRole(UserRole role)
+    private static UserRole ValidateRole(UserRole role)
     {
         if (!Enum.IsDefined(role))
         {
             throw new ArgumentOutOfRangeException(nameof(role), role, "Role is not valid.");
         }
+
+        return role;
     }
 }

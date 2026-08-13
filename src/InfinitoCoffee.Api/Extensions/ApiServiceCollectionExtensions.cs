@@ -12,6 +12,7 @@ using InfinitoCoffee.Application.Orders.Contracts;
 using InfinitoCoffee.Application.Orders.Services;
 using InfinitoCoffee.Application.ProductCategories.Services;
 using InfinitoCoffee.Application.Products.Services;
+using InfinitoCoffee.Application.Users.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -105,6 +106,7 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<ProductService>();
         services.AddScoped<ProductCategoryService>();
         services.AddScoped<AuthenticationService>();
+        services.AddScoped<UserAdministrationService>();
         services.AddScoped<ApiCookieAuthenticationEvents>();
         services.AddSingleton<UserClaimsPrincipalFactory>();
 

@@ -4,6 +4,8 @@ using InfinitoCoffee.Api.Contracts.Products;
 using InfinitoCoffee.Application.Orders.Dtos;
 using InfinitoCoffee.Application.ProductCategories.Dtos;
 using InfinitoCoffee.Application.Products.Dtos;
+using InfinitoCoffee.Api.Contracts.Users;
+using InfinitoCoffee.Application.Users.Dtos;
 using InfinitoCoffee.Domain.Orders;
 
 namespace InfinitoCoffee.Api.Contracts;
@@ -62,6 +64,17 @@ internal static class ApiContractMapper
             category.Id,
             category.Name,
             category.IsActive);
+    }
+
+    public static UserResponse MapUser(UserDto user)
+    {
+        return new UserResponse(
+            user.Id,
+            user.Username,
+            user.DisplayName,
+            user.Role,
+            user.IsActive,
+            user.IsSystemUser);
     }
 
     public static OrderSource ParseOrderSource(string source)

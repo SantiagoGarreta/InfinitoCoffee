@@ -11,6 +11,10 @@ internal sealed class FakeUserRepository : IUserRepository
 
     public Exception? SaveChangesException { get; set; }
 
+    public CancellationToken LastCancellationToken { get; private set; }
+
+    public IReadOnlyCollection<User> Users => _users;
+
     public void Seed(params User[] users)
     {
         _users.AddRange(users);
@@ -19,7 +23,15 @@ internal sealed class FakeUserRepository : IUserRepository
     public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        LastCancellationToken = cancellationToken;
         return Task.FromResult(_users.SingleOrDefault(user => user.Id == id));
+    }
+
+    public Task<IReadOnlyCollection<User>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        LastCancellationToken = cancellationToken;
+        return Task.FromResult<IReadOnlyCollection<User>>(_users.ToArray());
     }
 
     public Task<User?> GetByNormalizedUsernameAsync(
@@ -27,6 +39,7 @@ internal sealed class FakeUserRepository : IUserRepository
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        LastCancellationToken = cancellationToken;
         return Task.FromResult(
             _users.SingleOrDefault(user => user.NormalizedUsername == normalizedUsername));
     }
@@ -36,6 +49,7 @@ internal sealed class FakeUserRepository : IUserRepository
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        LastCancellationToken = cancellationToken;
         return Task.FromResult(
             _users.Any(user => user.NormalizedUsername == normalizedUsername));
     }
@@ -43,6 +57,7 @@ internal sealed class FakeUserRepository : IUserRepository
     public Task AddAsync(User user, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        LastCancellationToken = cancellationToken;
         _users.Add(user);
         return Task.CompletedTask;
     }
@@ -50,6 +65,7 @@ internal sealed class FakeUserRepository : IUserRepository
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        LastCancellationToken = cancellationToken;
         SaveChangesCalls++;
 
         return SaveChangesException is null
