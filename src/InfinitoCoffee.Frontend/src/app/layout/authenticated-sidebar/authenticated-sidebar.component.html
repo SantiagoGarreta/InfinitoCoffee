@@ -1,0 +1,53 @@
+<aside class="sidebar">
+  <div class="sidebar__brand">
+    <span class="sidebar__mark" aria-hidden="true">∞</span>
+    <div>
+      <strong>InfinitoCoffee</strong>
+      <span>Operación diaria</span>
+    </div>
+  </div>
+
+  <nav class="sidebar__navigation" aria-label="Navegación principal">
+    <div class="sidebar__group">
+      <span class="sidebar__label">Principal</span>
+      @if (isAdministrator()) {
+        <a routerLink="/admin" routerLinkActive="sidebar__link--active"
+           [routerLinkActiveOptions]="{ exact: true }" class="sidebar__link">Inicio</a>
+      }
+      @if (isAdministrator() || isCashier()) {
+        <a routerLink="/orders/new" routerLinkActive="sidebar__link--active" class="sidebar__link">Caja</a>
+      }
+      @if (isAdministrator() || isKitchen()) {
+        <a routerLink="/kitchen" routerLinkActive="sidebar__link--active" class="sidebar__link">Cocina</a>
+      }
+      <a href="/pickup" target="_blank" rel="noopener" class="sidebar__link">
+        Pickup <span aria-hidden="true">↗</span>
+        <span class="visually-hidden">(se abre en una nueva pestaña)</span>
+      </a>
+    </div>
+
+    @if (isAdministrator()) {
+      <div class="sidebar__group">
+        <span class="sidebar__label">Administración</span>
+        <a routerLink="/admin/products" routerLinkActive="sidebar__link--active" class="sidebar__link">Productos</a>
+        <a routerLink="/admin/categories" routerLinkActive="sidebar__link--active" class="sidebar__link">Categorías</a>
+        <a routerLink="/admin/users" routerLinkActive="sidebar__link--active" class="sidebar__link">Usuarios</a>
+      </div>
+    }
+  </nav>
+
+  @if (currentUser(); as user) {
+    <div class="sidebar__session">
+      <div class="sidebar__identity">
+        <strong>{{ user.displayName || user.username }}</strong>
+        <span>{{ user.role }}</span>
+      </div>
+      <button type="button" [disabled]="loggingOut()" (click)="logout()">
+        {{ loggingOut() ? 'Cerrando...' : 'Cerrar sesión' }}
+      </button>
+      @if (logoutError()) {
+        <p role="alert">{{ logoutError() }}</p>
+      }
+    </div>
+  }
+</aside>

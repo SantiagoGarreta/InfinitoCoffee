@@ -44,6 +44,15 @@ describe('PickupDisplayPageComponent', () => {
     }).compileComponents();
   });
 
+  it('renders its public fullscreen page without an authenticated shell', () => {
+    const fixture = TestBed.createComponent(PickupDisplayPageComponent);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.pickup-page')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-authenticated-sidebar')).toBeNull();
+    expect(fixture.nativeElement.querySelector('nav[aria-label="Navegación principal"]')).toBeNull();
+  });
+
   it('shows preparing and ready sections with the right orders', () => {
     const fixture = TestBed.createComponent(PickupDisplayPageComponent);
     fixture.detectChanges();

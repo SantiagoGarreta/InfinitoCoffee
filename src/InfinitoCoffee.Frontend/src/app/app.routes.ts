@@ -16,21 +16,59 @@ export const routes: Routes = [
       .then((module) => module.LoginPageComponent),
   },
   {
-    path: 'kitchen',
-    canActivate: [authGuard, roleGuard('Administrator', 'Kitchen')],
-    loadComponent: () => import('./features/kitchen-display/ui/kitchen-display-page.component')
-      .then((module) => module.KitchenDisplayPageComponent),
-  },
-  {
     path: 'pickup',
     loadComponent: () => import('./features/pickup-display/ui/pickup-display-page.component')
       .then((module) => module.PickupDisplayPageComponent),
   },
   {
-    path: 'orders/new',
-    canActivate: [authGuard, roleGuard('Administrator', 'Cashier')],
-    loadComponent: () => import('./features/order-entry/ui/order-entry-page.component')
-      .then((module) => module.OrderEntryPageComponent),
+    path: '',
+    canActivate: [authGuard],
+    loadComponent: () => import('./layout/authenticated-shell/authenticated-shell.component')
+      .then((module) => module.AuthenticatedShellComponent),
+    children: [
+      {
+        path: 'orders/new',
+        canActivate: [roleGuard('Administrator', 'Cashier')],
+        loadComponent: () => import('./features/order-entry/ui/order-entry-page.component')
+          .then((module) => module.OrderEntryPageComponent),
+      },
+      {
+        path: 'kitchen',
+        canActivate: [roleGuard('Administrator', 'Kitchen')],
+        loadComponent: () => import('./features/kitchen-display/ui/kitchen-display-page.component')
+          .then((module) => module.KitchenDisplayPageComponent),
+      },
+      {
+        path: 'admin',
+        canActivate: [roleGuard('Administrator')],
+        children: [
+          {
+            path: '',
+            pathMatch: 'full',
+            loadComponent: () => import('./features/admin/home/admin-home-page.component')
+              .then((module) => module.AdminHomePageComponent),
+          },
+          {
+            path: 'products',
+            data: { title: 'Productos' },
+            loadComponent: () => import('./features/admin/placeholder/admin-placeholder-page.component')
+              .then((module) => module.AdminPlaceholderPageComponent),
+          },
+          {
+            path: 'categories',
+            data: { title: 'Categorías' },
+            loadComponent: () => import('./features/admin/placeholder/admin-placeholder-page.component')
+              .then((module) => module.AdminPlaceholderPageComponent),
+          },
+          {
+            path: 'users',
+            data: { title: 'Usuarios' },
+            loadComponent: () => import('./features/admin/placeholder/admin-placeholder-page.component')
+              .then((module) => module.AdminPlaceholderPageComponent),
+          },
+        ],
+      },
+    ],
   },
   {
     path: '**',

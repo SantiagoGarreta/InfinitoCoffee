@@ -5,7 +5,14 @@ import { AuthenticationState } from './authentication-state.service';
 import { UserRole } from './models/authenticated-user.model';
 
 export function getRoleHome(role: UserRole): string {
-  return role === 'Kitchen' ? '/kitchen' : '/orders/new';
+  switch (role) {
+    case 'Administrator':
+      return '/admin';
+    case 'Cashier':
+      return '/orders/new';
+    case 'Kitchen':
+      return '/kitchen';
+  }
 }
 
 export const roleHomeRedirect: RedirectFunction = () => {

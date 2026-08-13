@@ -1,11 +1,16 @@
 .login {
+  min-height: 100dvh;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
   gap: clamp(2rem, 6vw, 5rem);
   align-items: center;
-  max-width: 58rem;
+  max-width: none;
   margin: 0 auto;
-  padding: clamp(1rem, 4vw, 3rem);
+  padding: clamp(1.5rem, 5vw, 4rem) max(clamp(1.25rem, 5vw, 4rem), calc((100vw - 68rem) / 2));
+  background:
+    radial-gradient(circle at top left, rgba(168, 118, 74, 0.22), transparent 24rem),
+    radial-gradient(circle at bottom right, rgba(47, 107, 86, 0.18), transparent 22rem),
+    linear-gradient(180deg, #f6efe6, #f2f6f0);
 }
 
 .login__eyebrow {

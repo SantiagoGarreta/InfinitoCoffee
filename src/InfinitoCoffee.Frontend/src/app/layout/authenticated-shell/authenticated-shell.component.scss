@@ -1,0 +1,35 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at top right, rgba(47, 107, 86, 0.15), transparent 24rem),
+    linear-gradient(145deg, #f6efe6, #f2f6f0);
+  color: #24180f;
+}
+
+.authenticated-layout {
+  display: grid;
+  grid-template-columns: 17.5rem minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+.authenticated-content {
+  min-width: 0;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+}
+
+@media (max-width: 900px) {
+  .authenticated-layout {
+    grid-template-columns: 14.5rem minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 680px) {
+  .authenticated-layout {
+    display: block;
+  }
+
+  .authenticated-content {
+    padding: 1rem;
+  }
+}
