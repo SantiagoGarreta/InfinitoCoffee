@@ -60,9 +60,8 @@ export const routes: Routes = [
           },
           {
             path: 'users',
-            data: { title: 'Usuarios' },
-            loadComponent: () => import('./features/admin/placeholder/admin-placeholder-page.component')
-              .then((module) => module.AdminPlaceholderPageComponent),
+            loadComponent: () => import('./features/admin/users/ui/admin-users-page.component')
+              .then((module) => module.AdminUsersPageComponent),
           },
         ],
       },

@@ -29,7 +29,7 @@ describe('application route structure', () => {
     expect(serverRoutes.find((route) => route.path === '**')?.renderMode).toBe(RenderMode.Client);
   });
 
-  it('uses real product and category administration pages while users remains a placeholder', async () => {
+  it('uses real product, category and user administration pages', async () => {
     const shell = routes.find((route) => route.path === '' && route.children);
     const admin = shell?.children?.find((route) => route.path === 'admin');
     const products = admin?.children?.find((route) => route.path === 'products');
@@ -42,6 +42,6 @@ describe('application route structure', () => {
 
     expect((await loadProducts()).name).toContain('AdminProductsPageComponent');
     expect((await loadCategories()).name).toContain('AdminCategoriesPageComponent');
-    expect((await loadUsers()).name).toContain('AdminPlaceholderPageComponent');
+    expect((await loadUsers()).name).toContain('AdminUsersPageComponent');
   });
 });
