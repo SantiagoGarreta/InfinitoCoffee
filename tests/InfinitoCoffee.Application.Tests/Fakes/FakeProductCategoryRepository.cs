@@ -6,6 +6,7 @@ namespace InfinitoCoffee.Application.Tests.Fakes;
 internal sealed class FakeProductCategoryRepository : IProductCategoryRepository
 {
     private readonly List<ProductCategory> _categories = [];
+    private readonly Dictionary<Guid, ProductCategory> _categoriesById = [];
 
     public int SaveChangesCalls { get; private set; }
 
@@ -20,7 +21,9 @@ internal sealed class FakeProductCategoryRepository : IProductCategoryRepository
     public Task<ProductCategory?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         LastGetByIdToken = cancellationToken;
-        return Task.FromResult(_categories.SingleOrDefault(category => category.Id == id));
+        return Task.FromResult(
+            _categoriesById.GetValueOrDefault(id)
+            ?? _categories.SingleOrDefault(category => category.Id == id));
     }
 
     public Task<IReadOnlyCollection<ProductCategory>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -46,5 +49,10 @@ internal sealed class FakeProductCategoryRepository : IProductCategoryRepository
     public void Seed(params ProductCategory[] categories)
     {
         _categories.AddRange(categories);
+    }
+
+    public void SeedForId(Guid id, ProductCategory category)
+    {
+        _categoriesById[id] = category;
     }
 }

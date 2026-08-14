@@ -86,6 +86,84 @@ public sealed class OrderEndpointsTests
     }
 
     [Fact]
+    public async Task CreateOrder_WithActiveProductInInactiveCategory_ReturnsProblemDetails400()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Cashier);
+        var productId = await api.ExecuteDbContextAsync(async dbContext =>
+        {
+            var category = await TestDataSeeder.AddCategoryAsync(dbContext, isActive: false);
+            return (await TestDataSeeder.AddProductAsync(dbContext, category.Id)).Id;
+        });
+
+        await HttpProblemDetailsAssertions.AssertProblemDetailsAsync(
+            await api.PostAsJsonWithCsrfAsync(
+                "/api/orders",
+                new CreateOrderRequest
+                {
+                    Source = "Counter",
+                    Items = [new CreateOrderItemRequest { ProductId = productId, Quantity = 1 }]
+                }),
+            HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreateOrder_AfterCategoryReactivation_SucceedsWithoutChangingProductState()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Administrator);
+        var data = await api.ExecuteDbContextAsync(async dbContext =>
+        {
+            var category = await TestDataSeeder.AddCategoryAsync(dbContext);
+            var product = await TestDataSeeder.AddProductAsync(dbContext, category.Id);
+            return (CategoryId: category.Id, ProductId: product.Id);
+        });
+
+        var deactivateResponse = await api.PostWithCsrfAsync(
+            $"/api/product-categories/{data.CategoryId}/deactivate");
+
+        Assert.Equal(HttpStatusCode.OK, deactivateResponse.StatusCode);
+        var productRemainsActive = await api.ExecuteDbContextAsync(async dbContext =>
+            (await dbContext.Products.FindAsync(data.ProductId))!.IsActive);
+        Assert.True(productRemainsActive);
+
+        var rejectedResponse = await api.PostAsJsonWithCsrfAsync(
+            "/api/orders",
+            new CreateOrderRequest
+            {
+                Source = "Counter",
+                Items = [new CreateOrderItemRequest { ProductId = data.ProductId, Quantity = 1 }]
+            });
+        Assert.Equal(HttpStatusCode.BadRequest, rejectedResponse.StatusCode);
+
+        var activateResponse = await api.PostWithCsrfAsync(
+            $"/api/product-categories/{data.CategoryId}/activate");
+        Assert.Equal(HttpStatusCode.OK, activateResponse.StatusCode);
+
+        var createdResponse = await api.PostAsJsonWithCsrfAsync(
+            "/api/orders",
+            new CreateOrderRequest
+            {
+                Source = "Counter",
+                Items = [new CreateOrderItemRequest { ProductId = data.ProductId, Quantity = 1 }]
+            });
+
+        Assert.Equal(HttpStatusCode.Created, createdResponse.StatusCode);
+        var order = await api.ReadRequiredAsync<OrderResponse>(createdResponse);
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await api.PostWithCsrfAsync($"/api/product-categories/{data.CategoryId}/deactivate")).StatusCode);
+
+        var historicalResponse = await api.Client.GetAsync($"/api/orders/{order.Id}");
+        Assert.Equal(HttpStatusCode.OK, historicalResponse.StatusCode);
+        var historicalOrder = await api.ReadRequiredAsync<OrderResponse>(historicalResponse);
+        var item = Assert.Single(historicalOrder.Items);
+        Assert.Equal(data.ProductId, item.ProductId);
+        Assert.Equal("Latte", item.ProductNameSnapshot);
+        Assert.Equal(150m, item.UnitPriceSnapshot);
+    }
+
+    [Fact]
     public async Task CreateOrder_WhenOrdersAlreadyExist_AssignsNextDisplayOrderNumber()
     {
         await using var api = new ApiTestContext();

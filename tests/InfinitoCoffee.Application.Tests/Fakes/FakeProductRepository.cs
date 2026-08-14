@@ -9,6 +9,8 @@ internal sealed class FakeProductRepository : IProductRepository
 
     public int SaveChangesCalls { get; private set; }
 
+    public IReadOnlyCollection<Product> Products => _products;
+
     public CancellationToken? LastGetByIdToken { get; private set; }
 
     public CancellationToken? LastGetAllToken { get; private set; }
@@ -34,11 +36,6 @@ internal sealed class FakeProductRepository : IProductRepository
         LastAddToken = cancellationToken;
         _products.Add(product);
         return Task.CompletedTask;
-    }
-
-    public void Remove(Product product)
-    {
-        _products.Remove(product);
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)

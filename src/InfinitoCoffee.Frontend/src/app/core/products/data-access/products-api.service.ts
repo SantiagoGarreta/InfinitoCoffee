@@ -30,9 +30,11 @@ export class ProductsApiService {
     return firstValueFrom(this.httpClient.put<Product>(`${this.productsBaseUrl}/${productId}`, request));
   }
 
-  deleteProduct(productId: string): Promise<void> {
-    return firstValueFrom(
-      this.httpClient.post<void>(`${this.productsBaseUrl}/${productId}/deactivate`, { hardDelete: true }),
-    );
+  activateProduct(productId: string): Promise<Product> {
+    return firstValueFrom(this.httpClient.post<Product>(`${this.productsBaseUrl}/${productId}/activate`, null));
+  }
+
+  deactivateProduct(productId: string): Promise<Product> {
+    return firstValueFrom(this.httpClient.post<Product>(`${this.productsBaseUrl}/${productId}/deactivate`, null));
   }
 }

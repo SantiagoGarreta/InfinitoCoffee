@@ -28,4 +28,20 @@ describe('application route structure', () => {
     expect(serverRoutes.find((route) => route.path === 'pickup')?.renderMode).toBe(RenderMode.Prerender);
     expect(serverRoutes.find((route) => route.path === '**')?.renderMode).toBe(RenderMode.Client);
   });
+
+  it('uses real product and category administration pages while users remains a placeholder', async () => {
+    const shell = routes.find((route) => route.path === '' && route.children);
+    const admin = shell?.children?.find((route) => route.path === 'admin');
+    const products = admin?.children?.find((route) => route.path === 'products');
+    const categories = admin?.children?.find((route) => route.path === 'categories');
+    const users = admin?.children?.find((route) => route.path === 'users');
+
+    const loadProducts = products?.loadComponent as () => Promise<{ name: string }>;
+    const loadCategories = categories?.loadComponent as () => Promise<{ name: string }>;
+    const loadUsers = users?.loadComponent as () => Promise<{ name: string }>;
+
+    expect((await loadProducts()).name).toContain('AdminProductsPageComponent');
+    expect((await loadCategories()).name).toContain('AdminCategoriesPageComponent');
+    expect((await loadUsers()).name).toContain('AdminPlaceholderPageComponent');
+  });
 });

@@ -76,6 +76,94 @@ public class ProductServiceTests
     }
 
     [Fact]
+    public async Task UpdateProductAsync_UnchangedInactiveCategory_UpdatesProduct()
+    {
+        var categoryRepository = new FakeProductCategoryRepository();
+        var category = new ProductCategory("Coffee");
+        category.Deactivate();
+        categoryRepository.Seed(category);
+        var productRepository = new FakeProductRepository();
+        var product = new Product(category.Id, "Latte", 7m);
+        productRepository.Seed(product);
+        var service = CreateProductService(productRepository, categoryRepository);
+
+        var result = await service.UpdateProductAsync(new UpdateProductCommand(
+            product.Id,
+            category.Id,
+            "Iced Latte",
+            7.75m,
+            "Oat milk"));
+
+        Assert.Equal("Iced Latte", result.Name);
+        Assert.Equal(category.Id, result.CategoryId);
+        Assert.Equal(7.75m, result.Price);
+    }
+
+    [Fact]
+    public async Task UpdateProductAsync_UnchangedActiveCategory_UpdatesProduct()
+    {
+        var category = new ProductCategory("Coffee");
+        var categoryRepository = new FakeProductCategoryRepository();
+        categoryRepository.Seed(category);
+        var productRepository = new FakeProductRepository();
+        var product = new Product(category.Id, "Latte", 7m);
+        productRepository.Seed(product);
+        var service = CreateProductService(productRepository, categoryRepository);
+
+        var result = await service.UpdateProductAsync(new UpdateProductCommand(
+            product.Id,
+            category.Id,
+            "Latte grande",
+            8m,
+            null));
+
+        Assert.Equal("Latte grande", result.Name);
+        Assert.Equal(category.Id, result.CategoryId);
+    }
+
+    [Fact]
+    public async Task UpdateProductAsync_ChangedInactiveCategory_ThrowsConflictException()
+    {
+        var categoryRepository = new FakeProductCategoryRepository();
+        var currentCategory = new ProductCategory("Coffee");
+        var inactiveCategory = new ProductCategory("Seasonal");
+        inactiveCategory.Deactivate();
+        categoryRepository.Seed(currentCategory, inactiveCategory);
+        var productRepository = new FakeProductRepository();
+        var product = new Product(currentCategory.Id, "Latte", 7m);
+        productRepository.Seed(product);
+        var service = CreateProductService(productRepository, categoryRepository);
+
+        var action = () => service.UpdateProductAsync(new UpdateProductCommand(
+            product.Id,
+            inactiveCategory.Id,
+            "Latte",
+            7m,
+            null));
+
+        await Assert.ThrowsAsync<ConflictException>(action);
+    }
+
+    [Fact]
+    public async Task UpdateProductAsync_ChangedMissingCategory_ThrowsNotFoundException()
+    {
+        var currentCategory = new ProductCategory("Coffee");
+        var productRepository = new FakeProductRepository();
+        var product = new Product(currentCategory.Id, "Latte", 7m);
+        productRepository.Seed(product);
+        var service = CreateProductService(productRepository, new FakeProductCategoryRepository());
+
+        var action = () => service.UpdateProductAsync(new UpdateProductCommand(
+            product.Id,
+            Guid.NewGuid(),
+            "Latte",
+            7m,
+            null));
+
+        await Assert.ThrowsAsync<NotFoundException>(action);
+    }
+
+    [Fact]
     public async Task ActivateProductAsync_ExistingProduct_ActivatesProduct()
     {
         var productRepository = new FakeProductRepository();
@@ -100,21 +188,6 @@ public class ProductServiceTests
         var result = await service.DeactivateProductAsync(new DeactivateProductCommand(product.Id));
 
         Assert.False(result.IsActive);
-    }
-
-    [Fact]
-    public async Task DeleteProductAsync_ExistingProduct_RemovesProduct()
-    {
-        var productRepository = new FakeProductRepository();
-        var product = new Product(Guid.NewGuid(), "Mocha", 8m);
-        productRepository.Seed(product);
-        var service = CreateProductService(productRepository, new FakeProductCategoryRepository());
-
-        await service.DeleteProductAsync(new DeleteProductCommand(product.Id));
-
-        var remainingProducts = await productRepository.GetAllAsync();
-        Assert.Empty(remainingProducts);
-        Assert.Equal(1, productRepository.SaveChangesCalls);
     }
 
     [Fact]

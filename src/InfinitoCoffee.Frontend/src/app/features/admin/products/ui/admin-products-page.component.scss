@@ -1,0 +1,27 @@
+.admin-catalog { display: grid; gap: 1.25rem; }
+.admin-catalog__header, .admin-catalog__section-header, .catalog-item__main, .catalog-item__actions, .inline-confirmation > div { display: flex; justify-content: space-between; align-items: start; gap: 1rem; flex-wrap: wrap; }
+.admin-catalog__eyebrow, .catalog-item__category { margin: 0 0 0.25rem; text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.75rem; color: #996c44; }
+.admin-catalog h1, .admin-catalog h2, .admin-catalog h3, .admin-catalog p { margin-top: 0; }
+.admin-catalog__link { color: #355345; font-weight: 700; }
+.admin-catalog__layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(19rem, 0.85fr); gap: 1.25rem; align-items: start; }
+.admin-catalog__list, .admin-catalog__form { padding: 1rem; border: 1px solid rgba(111, 78, 55, 0.14); border-radius: 1.2rem; background: rgba(255, 255, 255, 0.95); }
+.admin-catalog__items, .admin-catalog__form { display: grid; gap: 1rem; }
+.catalog-item { padding: 1rem; border-radius: 1rem; background: #fbf7f1; border: 1px solid rgba(111, 78, 55, 0.1); }
+.catalog-item--inactive { opacity: 0.78; }
+.catalog-item h3 { margin-bottom: 0.35rem; }
+.catalog-item p { color: #665847; }
+.catalog-item__status { font-weight: 700; }
+.catalog-item__status--available { color: #246446 !important; }
+.catalog-item__status--unavailable { color: #8b5c22 !important; }
+.catalog-item__status--inactive { color: #765252 !important; }
+.admin-catalog__form label { display: grid; gap: 0.35rem; }
+.admin-catalog__form input, .admin-catalog__form select, .admin-catalog__form textarea { width: 100%; border: 1px solid rgba(111, 78, 55, 0.2); border-radius: 0.8rem; padding: 0.75rem; font: inherit; background: #fff; }
+.admin-catalog__form small { color: #9b352f; }
+.button { border: 0; border-radius: 999px; padding: 0.7rem 1rem; background: #355345; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.button--secondary { background: #efe4d6; color: #5d4635; }
+.button--danger { background: #9b4942; }
+.button:disabled { opacity: 0.55; cursor: not-allowed; }
+.inline-confirmation, .admin-catalog__notice, .admin-catalog__success, .admin-catalog__empty { margin: 0.8rem 0 0; padding: 0.85rem; border-radius: 0.85rem; background: #f6eee4; }
+.inline-confirmation p { margin-bottom: 0.6rem; }
+.admin-catalog__success { background: #eef9f2; color: #246446; }
+@media (max-width: 900px) { .admin-catalog__layout { grid-template-columns: 1fr; } }

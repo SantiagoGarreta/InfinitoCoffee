@@ -50,15 +50,13 @@ export const routes: Routes = [
           },
           {
             path: 'products',
-            data: { title: 'Productos' },
-            loadComponent: () => import('./features/admin/placeholder/admin-placeholder-page.component')
-              .then((module) => module.AdminPlaceholderPageComponent),
+            loadComponent: () => import('./features/admin/products/ui/admin-products-page.component')
+              .then((module) => module.AdminProductsPageComponent),
           },
           {
             path: 'categories',
-            data: { title: 'Categorías' },
-            loadComponent: () => import('./features/admin/placeholder/admin-placeholder-page.component')
-              .then((module) => module.AdminPlaceholderPageComponent),
+            loadComponent: () => import('./features/admin/categories/ui/admin-categories-page.component')
+              .then((module) => module.AdminCategoriesPageComponent),
           },
           {
             path: 'users',

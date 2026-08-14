@@ -11,9 +11,6 @@ class FakeOrderEntryStore {
   readonly submitting = signal(false);
   readonly submitError = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
-  readonly menuSaving = signal(false);
-  readonly menuError = signal<string | null>(null);
-  readonly menuSuccessMessage = signal<string | null>(null);
   readonly activeCategories = signal([{ id: 'c-1', name: 'Cafe', isActive: true }]);
   readonly products = signal([
     { id: 'p-1', name: 'Espresso', description: null, price: 8, categoryId: 'c-1', isActive: true },
@@ -38,16 +35,6 @@ class FakeOrderEntryStore {
   setSource(): void {}
   setNotes(): void {}
   addProduct(): void {}
-  clearMenuFeedback(): void {}
-  createMenuProduct(): Promise<void> {
-    return Promise.resolve();
-  }
-  updateMenuProduct(): Promise<void> {
-    return Promise.resolve();
-  }
-  deleteMenuProduct(): Promise<void> {
-    return Promise.resolve();
-  }
   increaseQuantity(): void {}
   decreaseQuantity(): void {}
   updateItemNotes(): void {}
@@ -89,15 +76,12 @@ describe('OrderEntryPageComponent', () => {
     expect(submitButton.disabled).toBe(false);
   });
 
-  it('opens the menu editor when pressing the menu button', () => {
+  it('does not render menu administration controls', () => {
     const fixture = TestBed.createComponent(OrderEntryPageComponent);
     fixture.detectChanges();
 
-    const menuButton = fixture.nativeElement.querySelector('.order-entry__menu-button') as HTMLButtonElement;
-    menuButton.click();
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('app-menu-editor')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.order-entry__menu-button')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-menu-editor')).toBeNull();
   });
 });
 
@@ -108,9 +92,6 @@ describe('OrderEntryPageComponent interactions', () => {
     readonly submitting = signal(false);
     readonly submitError = signal<string | null>(null);
     readonly successMessage = signal<string | null>(null);
-    readonly menuSaving = signal(false);
-    readonly menuError = signal<string | null>(null);
-    readonly menuSuccessMessage = signal<string | null>(null);
     readonly categories = signal([{ id: 'c-1', name: 'Cafe', isActive: true }]);
     readonly products = signal([
       { id: 'p-1', name: 'Espresso', description: null, price: 8, categoryId: 'c-1', isActive: true },
@@ -149,16 +130,6 @@ describe('OrderEntryPageComponent interactions', () => {
       this.recompute();
     }
 
-    clearMenuFeedback(): void {}
-    createMenuProduct(): Promise<void> {
-      return Promise.resolve();
-    }
-    updateMenuProduct(): Promise<void> {
-      return Promise.resolve();
-    }
-    deleteMenuProduct(): Promise<void> {
-      return Promise.resolve();
-    }
     increaseQuantity(): void {}
     decreaseQuantity(): void {}
     updateItemNotes(): void {}

@@ -1,0 +1,74 @@
+<section class="admin-categories">
+  <header>
+    <p class="admin-categories__eyebrow">Administración</p>
+    <h1>Categorías</h1>
+    <p>Organizá el catálogo y controlá qué grupos están disponibles en Caja.</p>
+  </header>
+
+  @if (store.loading()) {
+    <app-loading-state label="Cargando categorías..." />
+  } @else if (store.loadError()) {
+    <app-error-message [message]="store.loadError()!" retryLabel="Reintentar" (retry)="store.load()" />
+  } @else {
+    @if (store.mutationError()) { <app-error-message [message]="store.mutationError()!" /> }
+    @if (store.successMessage()) {
+      <p class="admin-categories__success" role="status" aria-live="polite">{{ store.successMessage() }}</p>
+    }
+
+    <div class="admin-categories__layout">
+      <section class="admin-categories__list" aria-label="Categorías">
+        <div class="admin-categories__section-header">
+          <h2>Listado</h2>
+          <button type="button" class="button button--secondary" [disabled]="store.saving()" (click)="startCreate()">Nueva categoría</button>
+        </div>
+        @if (store.sortedCategories().length === 0) {
+          <p class="admin-categories__empty">Todavía no hay categorías cargadas.</p>
+        } @else {
+          <div class="admin-categories__items">
+            @for (category of store.sortedCategories(); track category.id) {
+              <article class="category-item" [class.category-item--inactive]="!category.isActive">
+                <div class="category-item__main">
+                  <div><h3>{{ category.name }}</h3><p>{{ category.isActive ? 'Activa' : 'Inactiva' }}</p></div>
+                  <div class="category-item__actions">
+                    <button type="button" class="button button--secondary" [disabled]="store.saving()" (click)="startEdit(category)">Editar</button>
+                    @if (category.isActive) {
+                      <button type="button" class="button button--danger" [disabled]="store.saving()" (click)="askToDeactivate(category.id)">Desactivar</button>
+                    } @else {
+                      <button type="button" class="button" [disabled]="store.saving()" (click)="activate(category.id)">Activar</button>
+                    }
+                  </div>
+                </div>
+                @if (confirmingDeactivateId() === category.id) {
+                  <div class="inline-confirmation">
+                    <p>Los productos conservarán su estado, pero no aparecerán en Caja hasta reactivar la categoría.</p>
+                    <div>
+                      <button type="button" class="button button--danger" [disabled]="store.saving()" (click)="confirmDeactivate(category.id)">Confirmar</button>
+                      <button type="button" class="button button--secondary" [disabled]="store.saving()" (click)="cancelDeactivate()">Cancelar</button>
+                    </div>
+                  </div>
+                }
+              </article>
+            }
+          </div>
+        }
+      </section>
+
+      <form class="admin-categories__form" (ngSubmit)="submit()">
+        <div class="admin-categories__section-header">
+          <h2>{{ editingCategoryId() ? 'Editar categoría' : 'Nueva categoría' }}</h2>
+          @if (editingCategoryId()) {
+            <button type="button" class="button button--secondary" [disabled]="store.saving()" (click)="startCreate()">Cancelar edición</button>
+          }
+        </div>
+        <label>
+          <span>Nombre</span>
+          <input name="name" required maxlength="150" [disabled]="store.saving()" [ngModel]="name()" (ngModelChange)="name.set($event)" />
+          @if (name().trim().length > 150) { <small>Máximo 150 caracteres.</small> }
+        </label>
+        <button type="submit" class="button" [disabled]="!canSubmit()">
+          {{ store.saving() ? 'Guardando...' : (editingCategoryId() ? 'Guardar cambios' : 'Crear categoría') }}
+        </button>
+      </form>
+    </div>
+  }
+</section>
