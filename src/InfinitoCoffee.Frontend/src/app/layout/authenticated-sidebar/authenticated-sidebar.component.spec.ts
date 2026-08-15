@@ -23,7 +23,7 @@ describe('AuthenticatedSidebarComponent', () => {
 
   it.each([
     ['Administrator', ['Inicio', 'Caja', 'Cocina', 'Pickup', 'Productos', 'Categorías', 'Usuarios'], []],
-    ['Cashier', ['Caja', 'Pickup'], ['Inicio', 'Cocina', 'Productos', 'Categorías', 'Usuarios']],
+    ['Cashier', ['Caja', 'Cocina', 'Pickup'], ['Inicio', 'Productos', 'Categorías', 'Usuarios']],
     ['Kitchen', ['Cocina', 'Pickup'], ['Inicio', 'Caja', 'Productos', 'Categorías', 'Usuarios']],
   ] as const)('shows exact navigation and identity for %s', (role, visible, hidden) => {
     const fixture = create(role);

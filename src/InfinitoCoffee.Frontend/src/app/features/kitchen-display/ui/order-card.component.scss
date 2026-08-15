@@ -63,15 +63,36 @@
 }
 
 .order-card__actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.7rem;
-  flex-wrap: wrap;
+  flex: 1 1 22rem;
+  min-width: 0;
+}
+
+.order-card__cancel-confirmation {
+  display: grid;
+  gap: 0.7rem;
+  width: 100%;
+  grid-column: 1 / -1;
+}
+
+.order-card__cancel-confirmation p {
+  margin: 0;
+  font-weight: 600;
+}
+
+.order-card__cancel-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
 }
 
 .order-card__button {
   border: 0;
   border-radius: 999px;
   padding: 0.85rem 1.1rem;
+  width: 100%;
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -87,8 +108,25 @@
   color: #fff;
 }
 
+.order-card__button--secondary {
+  background: #eee6dd;
+  color: #493d31;
+}
+
+.order-card__button--danger {
+  background: #a2462f;
+  color: #fff;
+}
+
 .order-card__error {
   margin: 0;
   color: #a2462f;
   font-size: 0.92rem;
+}
+
+@media (max-width: 34rem) {
+  .order-card__actions,
+  .order-card__cancel-actions {
+    grid-template-columns: 1fr;
+  }
 }

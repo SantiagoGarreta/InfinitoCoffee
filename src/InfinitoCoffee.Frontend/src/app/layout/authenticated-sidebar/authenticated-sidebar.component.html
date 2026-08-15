@@ -17,7 +17,7 @@
       @if (isAdministrator() || isCashier()) {
         <a routerLink="/orders/new" routerLinkActive="sidebar__link--active" class="sidebar__link">Caja</a>
       }
-      @if (isAdministrator() || isKitchen()) {
+      @if (isAdministrator() || isCashier() || isKitchen()) {
         <a routerLink="/kitchen" routerLinkActive="sidebar__link--active" class="sidebar__link">Cocina</a>
       }
       <a href="/pickup" target="_blank" rel="noopener" class="sidebar__link">

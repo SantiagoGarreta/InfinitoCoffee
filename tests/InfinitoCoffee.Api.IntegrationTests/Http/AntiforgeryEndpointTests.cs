@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using InfinitoCoffee.Api.Antiforgery;
 using InfinitoCoffee.Api.Contracts.Authentication;
+using InfinitoCoffee.Domain.Orders;
 using InfinitoCoffee.Domain.Users;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Http;
@@ -137,6 +138,26 @@ public sealed class AntiforgeryEndpointTests
         await api.AuthenticateAsync(UserRole.Cashier);
 
         Assert.Equal(HttpStatusCode.OK, (await api.Client.GetAsync("/api/products")).StatusCode);
+    }
+
+    [Fact]
+    public async Task CancelOrder_WithoutRequestToken_Returns400AndDoesNotMutateOrder()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Kitchen);
+        var orderId = await api.ExecuteDbContextAsync(async dbContext =>
+            (await TestDataSeeder.AddOrderAsync(
+                dbContext,
+                "CSRF-CANCEL",
+                OrderStatus.Pending,
+                DateTime.UtcNow.AddMinutes(-2))).Id);
+
+        var response = await api.Client.PostAsJsonAsync($"/api/orders/{orderId}/cancel", new { });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var persistedStatus = await api.ExecuteDbContextAsync(async dbContext =>
+            (await dbContext.Orders.FindAsync(orderId))!.Status);
+        Assert.Equal(OrderStatus.Pending, persistedStatus);
     }
 
     private static async Task AddCashierAsync(ApiTestContext api)

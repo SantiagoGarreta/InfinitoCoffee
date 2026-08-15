@@ -22,6 +22,7 @@ export class KitchenColumnComponent {
   readonly startPreparation = output<string>();
   readonly markReady = output<string>();
   readonly deliver = output<string>();
+  readonly cancelOrder = output<string>();
 
   actionErrorFor(orderId: string): string | null {
     return this.actionErrorOrderId() === orderId ? this.actionErrorMessage() : null;
@@ -29,6 +30,10 @@ export class KitchenColumnComponent {
 
   isActionPending(orderId: string): boolean {
     return this.activeActionOrderId() === orderId;
+  }
+
+  areActionsBlocked(): boolean {
+    return this.activeActionOrderId() !== null;
   }
 
   trackByOrder(index: number, order: Order): string {

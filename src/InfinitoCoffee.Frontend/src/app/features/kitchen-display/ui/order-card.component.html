@@ -34,19 +34,48 @@
     <span class="order-card__total">Total {{ order().total | currency:'UYU':'symbol':'1.0-0' }}</span>
 
     <div class="order-card__actions">
-      @if (primaryActionLabel()) {
+      @if (confirmingCancellation()) {
+        <div class="order-card__cancel-confirmation">
+          <p>¿Cancelar este pedido?</p>
+          <div class="order-card__cancel-actions">
+            <button
+              type="button"
+              class="order-card__button order-card__button--secondary"
+              [disabled]="cancellationPending() || actionsBlocked()"
+              (click)="closeCancellation()">
+              Volver
+            </button>
+            <button
+              type="button"
+              class="order-card__button order-card__button--danger"
+              [disabled]="cancellationPending() || actionsBlocked()"
+              (click)="confirmCancellation()">
+              {{ cancellationPending() ? 'Cancelando...' : 'Confirmar cancelación' }}
+            </button>
+          </div>
+        </div>
+      } @else {
         <button
           type="button"
-          class="order-card__button order-card__button--primary"
-          [disabled]="isActionPending()"
-          [attr.aria-label]="primaryActionLabel() + ' para ' + order().orderNumber"
-          (click)="handlePrimaryAction()">
-          @if (isActionPending()) {
-            <span>Procesando...</span>
-          } @else {
-            <span>{{ primaryActionLabel() }}</span>
-          }
+          class="order-card__button order-card__button--secondary"
+          [disabled]="actionsBlocked()"
+          (click)="beginCancellation()">
+          Cancelar pedido
         </button>
+        @if (primaryActionLabel()) {
+          <button
+            type="button"
+            class="order-card__button order-card__button--primary"
+            [disabled]="actionsBlocked()"
+            [attr.aria-label]="primaryActionLabel() + ' para ' + order().orderNumber"
+            (click)="handlePrimaryAction()">
+            @if (isActionPending()) {
+              <span>Procesando...</span>
+            } @else {
+              <span>{{ primaryActionLabel() }}</span>
+            }
+          </button>
+        }
       }
     </div>
   </footer>

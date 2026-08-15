@@ -34,7 +34,7 @@ export const routes: Routes = [
       },
       {
         path: 'kitchen',
-        canActivate: [roleGuard('Administrator', 'Kitchen')],
+        canActivate: [roleGuard('Administrator', 'Cashier', 'Kitchen')],
         loadComponent: () => import('./features/kitchen-display/ui/kitchen-display-page.component')
           .then((module) => module.KitchenDisplayPageComponent),
       },

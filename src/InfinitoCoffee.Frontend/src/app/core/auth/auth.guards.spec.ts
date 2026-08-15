@@ -32,14 +32,14 @@ describe('authentication navigation and guards', () => {
 
   it.each([
     ['Administrator', ['admin', 'orders', 'kitchen']],
-    ['Cashier', ['orders']],
+    ['Cashier', ['orders', 'kitchen']],
     ['Kitchen', ['kitchen']],
   ] as const)('enforces private destinations for %s', (role, allowed) => {
     setRole(role);
     const destinations = allowed as readonly string[];
     expect(guardResult(roleGuard('Administrator'))).toBe(destinations.includes('admin') ? true : getRoleHome(role));
     expect(guardResult(roleGuard('Administrator', 'Cashier'))).toBe(destinations.includes('orders') ? true : getRoleHome(role));
-    expect(guardResult(roleGuard('Administrator', 'Kitchen'))).toBe(destinations.includes('kitchen') ? true : getRoleHome(role));
+    expect(guardResult(roleGuard('Administrator', 'Cashier', 'Kitchen'))).toBe(destinations.includes('kitchen') ? true : getRoleHome(role));
   });
 
   function setRole(role: UserRole): void {

@@ -350,11 +350,14 @@ public sealed class OrderEndpointsTests
         Assert.Equal("Delivered", order.Status);
     }
 
-    [Fact]
-    public async Task Cancel_ReturnsUpdatedOrder()
+    [Theory]
+    [InlineData(UserRole.Administrator)]
+    [InlineData(UserRole.Cashier)]
+    [InlineData(UserRole.Kitchen)]
+    public async Task Cancel_AllowedRole_ReturnsUpdatedOrder(UserRole role)
     {
         await using var api = new ApiTestContext();
-        await api.AuthenticateAsync(UserRole.Cashier);
+        await api.AuthenticateAsync(role);
         var orderId = await api.ExecuteDbContextAsync(async dbContext =>
             (await TestDataSeeder.AddOrderAsync(dbContext, "A-101", OrderStatus.Pending, DateTime.UtcNow.AddMinutes(-2))).Id);
 
@@ -363,6 +366,49 @@ public sealed class OrderEndpointsTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var order = await api.ReadRequiredAsync<OrderResponse>(response);
         Assert.Equal("Cancelled", order.Status);
+    }
+
+    [Theory]
+    [InlineData(OrderStatus.Pending)]
+    [InlineData(OrderStatus.Preparing)]
+    [InlineData(OrderStatus.Ready)]
+    public async Task Cancel_CancelableStatus_ReturnsCancelled(OrderStatus status)
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Kitchen);
+        var orderId = await api.ExecuteDbContextAsync(async dbContext =>
+            (await TestDataSeeder.AddOrderAsync(dbContext, $"CANCEL-{status}", status, DateTime.UtcNow.AddMinutes(-3))).Id);
+
+        var response = await api.PostWithCsrfAsync($"/api/orders/{orderId}/cancel");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Cancelled", (await api.ReadRequiredAsync<OrderResponse>(response)).Status);
+    }
+
+    [Theory]
+    [InlineData(OrderStatus.Delivered)]
+    [InlineData(OrderStatus.Cancelled)]
+    public async Task Cancel_NonCancelableStatus_ReturnsProblemDetails400(OrderStatus status)
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Kitchen);
+        var orderId = await api.ExecuteDbContextAsync(async dbContext =>
+            (await TestDataSeeder.AddOrderAsync(dbContext, $"REJECT-{status}", status, DateTime.UtcNow.AddMinutes(-3))).Id);
+
+        await HttpProblemDetailsAssertions.AssertProblemDetailsAsync(
+            await api.PostWithCsrfAsync($"/api/orders/{orderId}/cancel"),
+            HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Cancel_MissingOrder_ReturnsProblemDetails404()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Kitchen);
+
+        await HttpProblemDetailsAssertions.AssertProblemDetailsAsync(
+            await api.PostWithCsrfAsync($"/api/orders/{Guid.NewGuid()}/cancel"),
+            HttpStatusCode.NotFound);
     }
 
     [Fact]

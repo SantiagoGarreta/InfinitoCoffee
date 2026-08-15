@@ -83,6 +83,14 @@ export class KitchenOrdersStore {
     await this.runOrderAction(orderId, () => this.ordersApiService.deliver(orderId));
   }
 
+  async cancelOrder(orderId: string): Promise<void> {
+    await this.runOrderAction(
+      orderId,
+      () => this.ordersApiService.cancel(orderId),
+      'No fue posible cancelar el pedido.',
+    );
+  }
+
   private async reload(): Promise<void> {
     this.loading.set(true);
     this.loadError.set(null);
@@ -113,7 +121,12 @@ export class KitchenOrdersStore {
   private async runOrderAction(
     orderId: string,
     action: () => Promise<Order | OrderApiDto | OrderRealtimeDto>,
+    fallbackMessage = 'No fue posible actualizar el pedido.',
   ): Promise<void> {
+    if (this.activeActionOrderId() !== null) {
+      return;
+    }
+
     this.activeActionOrderId.set(orderId);
     this.actionError.set(null);
 
@@ -123,7 +136,7 @@ export class KitchenOrdersStore {
     } catch (error: unknown) {
       this.actionError.set({
         orderId,
-        message: toUserMessage(error, 'No fue posible actualizar el pedido.'),
+        message: toUserMessage(error, fallbackMessage),
       });
     } finally {
       this.activeActionOrderId.set(null);

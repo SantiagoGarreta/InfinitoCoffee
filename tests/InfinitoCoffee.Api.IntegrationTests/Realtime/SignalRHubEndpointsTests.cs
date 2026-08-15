@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using InfinitoCoffee.Api.IntegrationTests.Http;
 using InfinitoCoffee.Application.Orders.Dtos;
+using InfinitoCoffee.Domain.Orders;
 using InfinitoCoffee.Domain.Users;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -23,6 +24,7 @@ public sealed class SignalRHubEndpointsTests
 
     [Theory]
     [InlineData(UserRole.Administrator)]
+    [InlineData(UserRole.Cashier)]
     [InlineData(UserRole.Kitchen)]
     public async Task PrivateHub_AllowedRole_CanNegotiateAndConnect(UserRole role)
     {
@@ -38,17 +40,6 @@ public sealed class SignalRHubEndpointsTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(HubConnectionState.Connected, connection.State);
-    }
-
-    [Fact]
-    public async Task PrivateHub_CashierNegotiate_ReturnsForbidden()
-    {
-        await using var context = new ApiTestContext();
-        await context.AuthenticateAsync(UserRole.Cashier);
-
-        var response = await context.Client.PostAsync("/hubs/orders/negotiate?negotiateVersion=1", null);
-
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
@@ -145,24 +136,67 @@ public sealed class SignalRHubEndpointsTests
     }
 
     [Fact]
-    public async Task Cancel_EmitsReducedPayloadToPublicHub()
+    public async Task Cancel_EmitsFullPrivateAndReducedPublicPayloads()
     {
         await using var context = new ApiTestContext();
         await context.AuthenticateAsync(UserRole.Cashier);
+        await using var privateConnection = CreateConnection(
+            context.Factory,
+            "/hubs/orders",
+            context.CurrentAuthenticationCookie);
         await using var pickupConnection = CreateConnection(context.Factory, "/hubs/pickup");
+        var privateEvents = new List<OrderRealtimeDto>();
         var pickupEvents = new List<JsonElement>();
+        privateConnection.On<OrderRealtimeDto>("OrderCancelled", privateEvents.Add);
         pickupConnection.On<JsonElement>("OrderCancelled", pickupEvents.Add);
+        await privateConnection.StartAsync();
         await pickupConnection.StartAsync();
         var orderId = await context.ExecuteDbContextAsync(TestDataSeeder.SeedPreparingOrderAsync);
 
         var response = await context.PostWithCsrfAsync($"/api/orders/{orderId}/cancel");
 
         response.EnsureSuccessStatusCode();
+        var privateOrder = await WaitForSingleEventAsync(privateEvents);
         var pickupOrder = await WaitForSingleEventAsync(pickupEvents);
+        Assert.Equal(orderId, privateOrder.Id);
+        Assert.Equal("Cancelled", privateOrder.Status);
+        Assert.Equal("Test order", privateOrder.Notes);
+        Assert.NotEmpty(privateOrder.Items);
         Assert.Equal(
             ["createdAtUtc", "id", "orderNumber", "status"],
             pickupOrder.EnumerateObject().Select(property => property.Name).Order().ToArray());
         Assert.Equal("Cancelled", pickupOrder.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task InvalidCancellation_DoesNotEmitEvents()
+    {
+        await using var context = new ApiTestContext();
+        await context.AuthenticateAsync(UserRole.Kitchen);
+        await using var privateConnection = CreateConnection(
+            context.Factory,
+            "/hubs/orders",
+            context.CurrentAuthenticationCookie);
+        await using var pickupConnection = CreateConnection(context.Factory, "/hubs/pickup");
+        var privateEvents = new List<OrderRealtimeDto>();
+        var pickupEvents = new List<JsonElement>();
+        privateConnection.On<OrderRealtimeDto>("OrderCancelled", privateEvents.Add);
+        pickupConnection.On<JsonElement>("OrderCancelled", pickupEvents.Add);
+        await privateConnection.StartAsync();
+        await pickupConnection.StartAsync();
+        var orderId = await context.ExecuteDbContextAsync(async dbContext =>
+            (await TestDataSeeder.AddOrderAsync(
+                dbContext,
+                "RTR-DELIVERED",
+                OrderStatus.Delivered,
+                DateTime.UtcNow.AddMinutes(-5))).Id);
+
+        var response = await context.PostWithCsrfAsync($"/api/orders/{orderId}/cancel");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await Task.Delay(250);
+        Assert.Empty(privateEvents);
+        Assert.Empty(pickupEvents);
     }
 
     [Fact]

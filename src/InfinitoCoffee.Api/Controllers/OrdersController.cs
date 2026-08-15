@@ -56,7 +56,7 @@ public sealed class OrdersController : ControllerBase
     }
 
     [HttpGet("active")]
-    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOrKitchen)]
+    [Authorize(Policy = AuthorizationPolicyNames.AllOperationalRoles)]
     [ProducesResponseType(typeof(IReadOnlyCollection<OrderResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyCollection<OrderResponse>>> GetActive(CancellationToken cancellationToken)
     {
@@ -75,7 +75,7 @@ public sealed class OrdersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/start-preparation")]
-    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOrKitchen)]
+    [Authorize(Policy = AuthorizationPolicyNames.AllOperationalRoles)]
     [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -86,7 +86,7 @@ public sealed class OrdersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/mark-ready")]
-    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOrKitchen)]
+    [Authorize(Policy = AuthorizationPolicyNames.AllOperationalRoles)]
     [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -97,7 +97,7 @@ public sealed class OrdersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/deliver")]
-    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOrKitchen)]
+    [Authorize(Policy = AuthorizationPolicyNames.AllOperationalRoles)]
     [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -108,7 +108,7 @@ public sealed class OrdersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/cancel")]
-    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOrCashier)]
+    [Authorize(Policy = AuthorizationPolicyNames.AllOperationalRoles)]
     [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
