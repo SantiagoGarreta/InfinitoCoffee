@@ -35,11 +35,11 @@ export class OrderCardComponent implements OnInit, OnDestroy {
   readonly primaryActionLabel = computed(() => {
     switch (this.order().status) {
       case 'Pending':
-        return 'Empezar a preparar';
+        return 'Preparar';
       case 'Preparing':
-        return 'Marcar como listo';
+        return 'Listo';
       case 'Ready':
-        return 'Entregar pedido';
+        return 'Entregar';
       default:
         return '';
     }

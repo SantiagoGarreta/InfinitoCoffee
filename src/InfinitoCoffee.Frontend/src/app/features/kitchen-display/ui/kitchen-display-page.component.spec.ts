@@ -125,7 +125,7 @@ describe('KitchenDisplayPageComponent', () => {
 
     const pendingCard = fixture.nativeElement.querySelector('app-order-card') as HTMLElement;
     const cancelButton = [...pendingCard.querySelectorAll('button')]
-      .find((button) => button.textContent?.includes('Cancelar pedido')) as HTMLButtonElement;
+      .find((button) => button.textContent?.includes('Cancelar')) as HTMLButtonElement;
     cancelButton.click();
     fixture.detectChanges();
     const confirmButton = [...pendingCard.querySelectorAll('button')]

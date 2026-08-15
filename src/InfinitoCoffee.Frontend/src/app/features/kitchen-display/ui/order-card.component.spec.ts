@@ -13,37 +13,40 @@ describe('OrderCardComponent', () => {
     const cancelSpy = vi.fn();
     fixture.componentInstance.cancelOrder.subscribe(cancelSpy);
 
-    clickButton(fixture, 'Cancelar pedido');
+    clickButton(fixture, 'Cancelar');
     expect(fixture.nativeElement.textContent).toContain('¿Cancelar este pedido?');
-    expect(fixture.nativeElement.textContent).not.toContain('Empezar a preparar');
+    expect(fixture.nativeElement.textContent).not.toContain('Preparar');
 
     clickButton(fixture, 'Volver');
-    expect(fixture.nativeElement.textContent).toContain('Cancelar pedido');
+    expect(fixture.nativeElement.textContent).toContain('Cancelar');
     expect(fixture.nativeElement.textContent).not.toContain('¿Cancelar este pedido?');
     expect(cancelSpy).not.toHaveBeenCalled();
   });
 
-  it('renders cancellation before the primary action in normal state', () => {
-    const fixture = createFixture();
+  it.each([
+    ['Pending', 'Preparar'],
+    ['Preparing', 'Listo'],
+    ['Ready', 'Entregar'],
+  ] as const)('renders cancellation before the %s primary action', (status, primaryLabel) => {
+    const fixture = createFixture(status);
 
-    expect(buttonLabels(fixture)).toEqual(['Cancelar pedido', 'Empezar a preparar']);
+    expect(buttonLabels(fixture)).toEqual(['Cancelar', primaryLabel]);
   });
 
   it('replaces normal actions with back and confirmation in that order', () => {
     const fixture = createFixture();
 
-    clickButton(fixture, 'Cancelar pedido');
+    clickButton(fixture, 'Cancelar');
 
     expect(buttonLabels(fixture)).toEqual(['Volver', 'Confirmar cancelación']);
-    expect(fixture.nativeElement.textContent).not.toContain('Empezar a preparar');
-    expect(fixture.nativeElement.textContent).not.toContain('Cancelar pedido');
+    expect(fixture.nativeElement.textContent).not.toContain('Preparar');
   });
 
   it('emits cancellation once and disables inline actions while cancelling', () => {
     const fixture = createFixture();
     const cancelSpy = vi.fn();
     fixture.componentInstance.cancelOrder.subscribe(cancelSpy);
-    clickButton(fixture, 'Cancelar pedido');
+    clickButton(fixture, 'Cancelar');
 
     fixture.componentInstance.confirmCancellation();
     fixture.componentInstance.confirmCancellation();
@@ -60,7 +63,7 @@ describe('OrderCardComponent', () => {
     const fixture = createFixture();
     const cancelSpy = vi.fn();
     fixture.componentInstance.cancelOrder.subscribe(cancelSpy);
-    clickButton(fixture, 'Cancelar pedido');
+    clickButton(fixture, 'Cancelar');
     fixture.componentInstance.confirmCancellation();
 
     fixture.componentRef.setInput('actionError', 'El pedido cambió en otro puesto.');
