@@ -29,12 +29,13 @@
 }
 
 .order-card__cancel-trigger {
-  display: inline-grid;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 2.5rem;
   width: 2.5rem;
   height: 2.5rem;
   padding: 0;
-  place-items: center;
   border: 0;
   border-radius: 50%;
   background: #a2462f;
@@ -44,6 +45,12 @@
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
+}
+
+.order-card__cancel-trigger > span {
+  display: block;
+  line-height: 1;
+  transform: translateY(-0.06em);
 }
 
 .order-card__cancel-trigger:disabled {
