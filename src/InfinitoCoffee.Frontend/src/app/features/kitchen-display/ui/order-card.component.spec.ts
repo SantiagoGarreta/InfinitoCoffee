@@ -13,40 +13,61 @@ describe('OrderCardComponent', () => {
     const cancelSpy = vi.fn();
     fixture.componentInstance.cancelOrder.subscribe(cancelSpy);
 
-    clickButton(fixture, 'Cancelar');
+    clickCancelButton(fixture);
     expect(fixture.nativeElement.textContent).toContain('¿Cancelar este pedido?');
     expect(fixture.nativeElement.textContent).not.toContain('Preparar');
 
     clickButton(fixture, 'Volver');
-    expect(fixture.nativeElement.textContent).toContain('Cancelar');
+    expect(cancelButton(fixture)).toBeDefined();
     expect(fixture.nativeElement.textContent).not.toContain('¿Cancelar este pedido?');
     expect(cancelSpy).not.toHaveBeenCalled();
+  });
+
+  it('renders cancellation as an accessible multiplication-sign button outside the footer actions', () => {
+    const fixture = createFixture();
+    const trigger = cancelButton(fixture);
+
+    expect(trigger).toBeDefined();
+    expect(trigger?.tagName).toBe('BUTTON');
+    expect(trigger?.getAttribute('aria-label')).toBe('Cancelar pedido');
+    expect(trigger?.querySelector('[aria-hidden="true"]')?.textContent).toBe('×');
+    expect(trigger?.textContent?.trim()).toBe('×');
+    expect(trigger?.textContent).not.toContain('Cancelar');
+    expect(fixture.nativeElement.querySelector('.order-card__actions')?.textContent).not.toContain('Cancelar');
   });
 
   it.each([
     ['Pending', 'Preparar'],
     ['Preparing', 'Listo'],
     ['Ready', 'Entregar'],
-  ] as const)('renders cancellation before the %s primary action', (status, primaryLabel) => {
+  ] as const)('renders the cancellation trigger and %s primary action', (status, primaryLabel) => {
     const fixture = createFixture(status);
 
-    expect(buttonLabels(fixture)).toEqual(['Cancelar', primaryLabel]);
+    expect(cancelButton(fixture)).toBeDefined();
+    expect(actionButtonLabels(fixture)).toEqual([primaryLabel]);
+  });
+
+  it.each(['Delivered', 'Cancelled'] as const)('hides cancellation for a %s order', (status) => {
+    const fixture = createFixture(status);
+
+    expect(cancelButton(fixture)).toBeUndefined();
   });
 
   it('replaces normal actions with back and confirmation in that order', () => {
     const fixture = createFixture();
 
-    clickButton(fixture, 'Cancelar');
+    clickCancelButton(fixture);
 
-    expect(buttonLabels(fixture)).toEqual(['Volver', 'Confirmar cancelación']);
+    expect(actionButtonLabels(fixture)).toEqual(['Volver', 'Confirmar cancelación']);
     expect(fixture.nativeElement.textContent).not.toContain('Preparar');
+    expect(cancelButton(fixture)).toBeUndefined();
   });
 
   it('emits cancellation once and disables inline actions while cancelling', () => {
     const fixture = createFixture();
     const cancelSpy = vi.fn();
     fixture.componentInstance.cancelOrder.subscribe(cancelSpy);
-    clickButton(fixture, 'Cancelar');
+    clickCancelButton(fixture);
 
     fixture.componentInstance.confirmCancellation();
     fixture.componentInstance.confirmCancellation();
@@ -63,7 +84,7 @@ describe('OrderCardComponent', () => {
     const fixture = createFixture();
     const cancelSpy = vi.fn();
     fixture.componentInstance.cancelOrder.subscribe(cancelSpy);
-    clickButton(fixture, 'Cancelar');
+    clickCancelButton(fixture);
     fixture.componentInstance.confirmCancellation();
 
     fixture.componentRef.setInput('actionError', 'El pedido cambió en otro puesto.');
@@ -104,8 +125,20 @@ describe('OrderCardComponent', () => {
     fixture.detectChanges();
   }
 
-  function buttonLabels(fixture: ComponentFixture<OrderCardComponent>): string[] {
+  function clickCancelButton(fixture: ComponentFixture<OrderCardComponent>): void {
+    const button = cancelButton(fixture);
+    expect(button).toBeDefined();
+    button!.click();
+    fixture.detectChanges();
+  }
+
+  function cancelButton(fixture: ComponentFixture<OrderCardComponent>): HTMLButtonElement | undefined {
     return ([...fixture.nativeElement.querySelectorAll('button')] as HTMLButtonElement[])
+      .find((button) => button.getAttribute('aria-label') === 'Cancelar pedido');
+  }
+
+  function actionButtonLabels(fixture: ComponentFixture<OrderCardComponent>): string[] {
+    return ([...fixture.nativeElement.querySelectorAll('.order-card__actions button')] as HTMLButtonElement[])
       .map((button) => button.textContent?.trim() ?? '');
   }
 

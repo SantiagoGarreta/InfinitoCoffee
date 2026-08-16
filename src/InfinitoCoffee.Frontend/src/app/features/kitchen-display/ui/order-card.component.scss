@@ -21,6 +21,36 @@
   gap: 1rem;
 }
 
+.order-card__header-primary {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.order-card__cancel-trigger {
+  display: inline-grid;
+  flex: 0 0 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #a2462f;
+  color: #fff;
+  font: inherit;
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.order-card__cancel-trigger:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .order-card__eyebrow {
   margin: 0 0 0.2rem;
   font-size: 0.78rem;
@@ -68,6 +98,11 @@
   gap: 0.7rem;
   flex: 1 1 22rem;
   min-width: 0;
+}
+
+.order-card__actions--primary-only {
+  grid-template-columns: minmax(8.5rem, 11rem);
+  justify-content: end;
 }
 
 .order-card__cancel-confirmation {
