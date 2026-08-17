@@ -22,32 +22,12 @@ class FakeOrdersApiService {
 }
 
 class FakeProductsApiService {
-  createdProducts: Array<{ id: string; name: string; description: string | null; price: number; categoryId: string; isActive: boolean }> = [];
-  updatedProducts: Array<{ id: string; name: string; description: string | null; price: number; categoryId: string; isActive: boolean }> = [];
-  deletedProductIds: string[] = [];
-
   getProducts(): Promise<Array<{ id: string; name: string; description: string | null; price: number; categoryId: string; isActive: boolean }>> {
     return Promise.resolve([
       { id: 'p-1', name: 'Espresso', description: null, price: 8, categoryId: 'c-1', isActive: true },
       { id: 'p-2', name: 'Mocha', description: null, price: 10, categoryId: 'c-2', isActive: false },
+      { id: 'p-3', name: 'Latte', description: null, price: 9, categoryId: 'c-2', isActive: true },
     ]);
-  }
-
-  createProduct(request: { name: string; description: string | null; price: number; categoryId: string }): Promise<{ id: string; name: string; description: string | null; price: number; categoryId: string; isActive: boolean }> {
-    const product = { id: 'p-3', ...request, isActive: true };
-    this.createdProducts.push(product);
-    return Promise.resolve(product);
-  }
-
-  updateProduct(productId: string, request: { name: string; description: string | null; price: number; categoryId: string }): Promise<{ id: string; name: string; description: string | null; price: number; categoryId: string; isActive: boolean }> {
-    const product = { id: productId, ...request, isActive: true };
-    this.updatedProducts.push(product);
-    return Promise.resolve(product);
-  }
-
-  deleteProduct(productId: string): Promise<void> {
-    this.deletedProductIds.push(productId);
-    return Promise.resolve();
   }
 }
 
@@ -72,13 +52,32 @@ describe('OrderEntryStore', () => {
     });
   });
 
-  it('loads only active categories and products', async () => {
+  it('shows only active products in active categories', async () => {
     const store = TestBed.inject(OrderEntryStore);
 
     await store.initialize();
 
     expect(store.activeCategories().map((category) => category.name)).toEqual(['Cafe']);
     expect(store.visibleProducts().map((product) => product.name)).toEqual(['Espresso']);
+  });
+
+  it('shows no products when there are no active categories', async () => {
+    const store = TestBed.inject(OrderEntryStore);
+    await store.initialize();
+
+    store.categories.set(store.categories().map((category) => ({ ...category, isActive: false })));
+    store.selectedCategoryId.set(null);
+
+    expect(store.visibleProducts()).toEqual([]);
+  });
+
+  it('never shows an active product whose category is inactive', async () => {
+    const store = TestBed.inject(OrderEntryStore);
+    await store.initialize();
+
+    store.selectedCategoryId.set(null);
+
+    expect(store.visibleProducts().map((product) => product.name)).not.toContain('Latte');
   });
 
   it('adds a product, increments repeated items and decreases quantity', async () => {
@@ -149,54 +148,4 @@ describe('OrderEntryStore', () => {
     expect(store.submitError()).toBe('El numero de pedido ya existe.');
   });
 
-  it('creates a menu product and makes it available in the visible catalog', async () => {
-    const store = TestBed.inject(OrderEntryStore);
-    const productsApi = TestBed.inject(ProductsApiService) as unknown as FakeProductsApiService;
-    await store.initialize();
-
-    await store.createMenuProduct({
-      name: 'Flat White',
-      description: 'Doble shot',
-      price: 12,
-      categoryId: 'c-1',
-    });
-
-    expect(productsApi.createdProducts[0]?.name).toBe('Flat White');
-    expect(store.visibleProducts().map((product) => product.name)).toEqual(['Espresso', 'Flat White']);
-    expect(store.menuSuccessMessage()).toContain('Flat White');
-  });
-
-  it('updates a menu product and synchronizes any matching order item snapshot', async () => {
-    const store = TestBed.inject(OrderEntryStore);
-    await store.initialize();
-
-    const product = store.visibleProducts()[0]!;
-    store.addProduct(product);
-
-    await store.updateMenuProduct(product.id, {
-      name: 'Espresso Largo',
-      description: 'Mas agua',
-      price: 9,
-      categoryId: 'c-1',
-    });
-
-    expect(store.visibleProducts()[0]?.name).toBe('Espresso Largo');
-    expect(store.items()[0]?.productName).toBe('Espresso Largo');
-    expect(store.items()[0]?.unitPrice).toBe(9);
-  });
-
-  it('deletes a menu product and removes it from the current order', async () => {
-    const store = TestBed.inject(OrderEntryStore);
-    const productsApi = TestBed.inject(ProductsApiService) as unknown as FakeProductsApiService;
-    await store.initialize();
-
-    const product = store.visibleProducts()[0]!;
-    store.addProduct(product);
-
-    await store.deleteMenuProduct(product.id);
-
-    expect(productsApi.deletedProductIds).toEqual([product.id]);
-    expect(store.visibleProducts()).toEqual([]);
-    expect(store.items()).toEqual([]);
-  });
 });

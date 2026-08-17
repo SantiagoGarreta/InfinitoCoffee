@@ -158,6 +158,57 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                     b.ToTable("ProductCategories", (string)null);
                 });
 
+            modelBuilder.Entity("InfinitoCoffee.Domain.Users.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSystemUser")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("NormalizedUsername")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsSystemUser")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Users_SingleSystemUser")
+                        .HasFilter("[IsSystemUser] = 1");
+
+                    b.HasIndex("NormalizedUsername")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Users_NormalizedUsername");
+
+                    b.ToTable("Users", (string)null);
+                });
+
             modelBuilder.Entity("InfinitoCoffee.Domain.Orders.OrderItem", b =>
                 {
                     b.HasOne("InfinitoCoffee.Domain.Orders.Order", null)

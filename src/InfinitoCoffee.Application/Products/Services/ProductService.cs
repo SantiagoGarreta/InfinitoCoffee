@@ -68,9 +68,12 @@ public sealed class ProductService
         var product = await _productRepository.GetByIdAsync(command.ProductId, cancellationToken)
             ?? throw new NotFoundException("Product", command.ProductId);
 
-        var category = await GetActiveCategoryAsync(command.CategoryId, cancellationToken);
+        if (product.CategoryId != command.CategoryId)
+        {
+            var category = await GetActiveCategoryAsync(command.CategoryId, cancellationToken);
+            product.ChangeCategory(category.Id);
+        }
 
-        product.ChangeCategory(category.Id);
         product.Rename(command.Name);
         product.ChangePrice(command.Price);
         product.ChangeDescription(command.Description);
@@ -108,19 +111,6 @@ public sealed class ProductService
         await _productRepository.SaveChangesAsync(cancellationToken);
 
         return MapProduct(product);
-    }
-
-    public async Task DeleteProductAsync(
-        DeleteProductCommand command,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(command);
-
-        var product = await _productRepository.GetByIdAsync(command.ProductId, cancellationToken)
-            ?? throw new NotFoundException("Product", command.ProductId);
-
-        _productRepository.Remove(product);
-        await _productRepository.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<ProductCategory> GetActiveCategoryAsync(Guid categoryId, CancellationToken cancellationToken)

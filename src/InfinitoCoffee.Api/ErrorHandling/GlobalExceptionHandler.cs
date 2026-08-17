@@ -1,3 +1,4 @@
+using InfinitoCoffee.Application.Authentication.Exceptions;
 using InfinitoCoffee.Application.Common.Exceptions;
 using InfinitoCoffee.Domain.Orders.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
@@ -58,6 +59,8 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
     {
         return exception switch
         {
+            InvalidCredentialsException invalidCredentials
+                => (StatusCodes.Status401Unauthorized, "Authentication Failed", invalidCredentials.Message, LogLevel.Information),
             NotFoundException notFound => (StatusCodes.Status404NotFound, "Resource Not Found", notFound.Message, LogLevel.Information),
             ConflictException conflict when IsInactiveBusinessRule(conflict)
                 => (StatusCodes.Status400BadRequest, "Domain Rule Violation", conflict.Message, LogLevel.Warning),

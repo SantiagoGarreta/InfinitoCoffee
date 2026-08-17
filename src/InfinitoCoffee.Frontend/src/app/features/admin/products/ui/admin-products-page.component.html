@@ -1,0 +1,128 @@
+<section class="admin-catalog">
+  <header class="admin-catalog__header">
+    <div>
+      <p class="admin-catalog__eyebrow">Administración</p>
+      <h1>Productos</h1>
+      <p>Gestioná el catálogo sin mezclar tareas administrativas con Caja.</p>
+    </div>
+    <a routerLink="/admin/categories" class="admin-catalog__link">Administrar categorías</a>
+  </header>
+
+  @if (store.loading()) {
+    <app-loading-state label="Cargando productos y categorías..." />
+  } @else if (store.loadError()) {
+    <app-error-message [message]="store.loadError()!" retryLabel="Reintentar" (retry)="store.load()" />
+  } @else {
+    @if (store.mutationError()) {
+      <app-error-message [message]="store.mutationError()!" />
+    }
+    @if (store.successMessage()) {
+      <p class="admin-catalog__success" role="status" aria-live="polite">{{ store.successMessage() }}</p>
+    }
+
+    <div class="admin-catalog__layout">
+      <section class="admin-catalog__list" aria-label="Productos">
+        <div class="admin-catalog__section-header">
+          <h2>Catálogo</h2>
+          <button type="button" class="button button--secondary" [disabled]="store.saving()" (click)="startCreate()">Nuevo producto</button>
+        </div>
+
+        @if (store.sortedProducts().length === 0) {
+          <p class="admin-catalog__empty">Todavía no hay productos cargados.</p>
+        } @else {
+          <div class="admin-catalog__items">
+            @for (product of store.sortedProducts(); track product.id) {
+              <article class="catalog-item" [class.catalog-item--inactive]="!product.isActive">
+                <div class="catalog-item__main">
+                  <div>
+                    <p class="catalog-item__category">{{ categoryFor(product)?.name ?? 'Categoría no disponible' }}</p>
+                    <h3>{{ product.name }}</h3>
+                    @if (product.description) {
+                      <p>{{ product.description }}</p>
+                    }
+                  </div>
+                  <strong>{{ product.price | currency:'UYU':'symbol-narrow':'1.2-2' }}</strong>
+                </div>
+
+                @if (!product.isActive) {
+                  <p class="catalog-item__status catalog-item__status--inactive">Inactivo</p>
+                } @else if (categoryFor(product)?.isActive) {
+                  <p class="catalog-item__status catalog-item__status--available">Activo · Disponible en Caja</p>
+                } @else {
+                  <p class="catalog-item__status catalog-item__status--unavailable">Activo · No disponible: categoría inactiva</p>
+                }
+
+                <div class="catalog-item__actions">
+                  <button type="button" class="button button--secondary" [disabled]="store.saving()" (click)="startEdit(product)">Editar</button>
+                  @if (product.isActive) {
+                    <button type="button" class="button button--danger" [disabled]="store.saving()" (click)="askToDeactivate(product.id)">Desactivar</button>
+                  } @else {
+                    <button type="button" class="button" [disabled]="store.saving()" (click)="activate(product.id)">Activar</button>
+                  }
+                </div>
+
+                @if (confirmingDeactivateId() === product.id) {
+                  <div class="inline-confirmation">
+                    <p>¿Desactivar {{ product.name }}? Dejará de aparecer en Caja.</p>
+                    <div>
+                      <button type="button" class="button button--danger" [disabled]="store.saving()" (click)="confirmDeactivate(product.id)">Confirmar</button>
+                      <button type="button" class="button button--secondary" [disabled]="store.saving()" (click)="cancelDeactivate()">Cancelar</button>
+                    </div>
+                  </div>
+                }
+              </article>
+            }
+          </div>
+        }
+      </section>
+
+      <form class="admin-catalog__form" (ngSubmit)="submit()">
+        <div class="admin-catalog__section-header">
+          <h2>{{ editingProductId() ? 'Editar producto' : 'Nuevo producto' }}</h2>
+          @if (editingProductId()) {
+            <button type="button" class="button button--secondary" [disabled]="store.saving()" (click)="startCreate()">Cancelar edición</button>
+          }
+        </div>
+
+        @if (!editingProductId() && store.activeCategories().length === 0) {
+          <p class="admin-catalog__notice">
+            Necesitás una categoría activa antes de crear productos.
+            <a routerLink="/admin/categories">Ir a categorías</a>.
+          </p>
+        }
+
+        <label>
+          <span>Nombre</span>
+          <input name="name" required maxlength="150" [disabled]="store.saving()" [ngModel]="name()" (ngModelChange)="name.set($event)" />
+          @if (name().trim().length > 150) { <small>Máximo 150 caracteres.</small> }
+        </label>
+
+        <label>
+          <span>Descripción</span>
+          <textarea name="description" rows="4" maxlength="1000" [disabled]="store.saving()" [ngModel]="description()" (ngModelChange)="description.set($event)"></textarea>
+          @if (description().trim().length > 1000) { <small>Máximo 1000 caracteres.</small> }
+        </label>
+
+        <label>
+          <span>Precio</span>
+          <input name="price" type="number" required min="0.01" step="0.01" [disabled]="store.saving()" [ngModel]="price()" (ngModelChange)="price.set($event)" />
+          @if (price() !== null && (price() ?? 0) < 0.01) { <small>El precio mínimo es 0.01.</small> }
+        </label>
+
+        <label>
+          <span>Categoría</span>
+          <select name="categoryId" required [disabled]="store.saving()" [ngModel]="categoryId()" (ngModelChange)="categoryId.set($event)">
+            <option value="" disabled>Seleccioná una categoría</option>
+            @for (category of formCategories(); track category.id) {
+              <option [value]="category.id">{{ category.name }}{{ category.isActive ? '' : ' (inactiva, actual)' }}</option>
+            }
+          </select>
+        </label>
+
+        <button type="submit" class="button" [disabled]="!canSubmit()">
+          {{ store.saving() ? 'Guardando...' : (editingProductId() ? 'Guardar cambios' : 'Crear producto') }}
+        </button>
+      </form>
+    </div>
+  }
+</section>

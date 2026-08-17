@@ -5,6 +5,7 @@ using InfinitoCoffee.Application.Orders.Commands;
 using InfinitoCoffee.Application.Orders.Contracts;
 using InfinitoCoffee.Application.Orders.Dtos;
 using InfinitoCoffee.Application.Orders.Queries;
+using InfinitoCoffee.Application.ProductCategories.Contracts;
 using InfinitoCoffee.Application.Products.Contracts;
 using InfinitoCoffee.Domain.Orders;
 
@@ -18,16 +19,19 @@ public sealed class OrderService
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IOrderEventPublisher _orderEventPublisher;
     private readonly IOrderRepository _orderRepository;
+    private readonly IProductCategoryRepository _productCategoryRepository;
     private readonly IProductRepository _productRepository;
 
     public OrderService(
         IOrderRepository orderRepository,
         IProductRepository productRepository,
+        IProductCategoryRepository productCategoryRepository,
         IDateTimeProvider dateTimeProvider,
         IOrderEventPublisher orderEventPublisher)
     {
         _orderRepository = orderRepository;
         _productRepository = productRepository;
+        _productCategoryRepository = productCategoryRepository;
         _dateTimeProvider = dateTimeProvider;
         _orderEventPublisher = orderEventPublisher;
     }
@@ -45,7 +49,7 @@ public sealed class OrderService
             throw new ArgumentException("At least one item is required.", nameof(command.Items));
         }
 
-        var orderItems = new List<OrderItem>(items.Count);
+        var validatedItems = new List<(CreateOrderItemCommand Item, Domain.Products.Product Product)>(items.Count);
 
         foreach (var item in items)
         {
@@ -64,13 +68,25 @@ public sealed class OrderService
                 throw new ConflictException($"The product '{product.Name}' is inactive.");
             }
 
-            orderItems.Add(new OrderItem(
-                product.Id,
-                product.Name,
-                product.Price,
-                item.Quantity,
-                item.Notes));
+            var category = await _productCategoryRepository.GetByIdAsync(product.CategoryId, cancellationToken)
+                ?? throw new NotFoundException("ProductCategory", product.CategoryId);
+
+            if (!category.IsActive)
+            {
+                throw new ConflictException($"The category '{category.Name}' is inactive.");
+            }
+
+            validatedItems.Add((item, product));
         }
+
+        var orderItems = validatedItems
+            .Select(validated => new OrderItem(
+                validated.Product.Id,
+                validated.Product.Name,
+                validated.Product.Price,
+                validated.Item.Quantity,
+                validated.Item.Notes))
+            .ToArray();
 
         var orderNumber = await GenerateNextOrderNumberAsync(cancellationToken);
         var order = new Order(

@@ -169,15 +169,88 @@ public class OrderServiceTests
     }
 
     [Fact]
+    public async Task CreateOrderAsync_ActiveProductWithInactiveCategory_ThrowsConflictException()
+    {
+        var category = new ProductCategory("Coffee");
+        category.Deactivate();
+        var categoryRepository = new FakeProductCategoryRepository();
+        categoryRepository.Seed(category);
+        var productRepository = new FakeProductRepository();
+        var product = new Product(category.Id, "Mocha", 8m);
+        productRepository.Seed(product);
+        var service = CreateOrderService(
+            new FakeOrderRepository(),
+            productRepository,
+            productCategoryRepository: categoryRepository);
+
+        var action = () => service.CreateOrderAsync(new CreateOrderCommand(
+            OrderSource.Counter,
+            null,
+            [new CreateOrderItemCommand(product.Id, 1, null)]));
+
+        await Assert.ThrowsAsync<ConflictException>(action);
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_WhenCategoryIsReactivated_AllowsOrderAgain()
+    {
+        var category = new ProductCategory("Coffee");
+        category.Deactivate();
+        category.Activate();
+        var categoryRepository = new FakeProductCategoryRepository();
+        categoryRepository.Seed(category);
+        var productRepository = new FakeProductRepository();
+        var product = new Product(category.Id, "Mocha", 8m);
+        productRepository.Seed(product);
+        var service = CreateOrderService(
+            new FakeOrderRepository(),
+            productRepository,
+            productCategoryRepository: categoryRepository);
+
+        var result = await service.CreateOrderAsync(new CreateOrderCommand(
+            OrderSource.Counter,
+            null,
+            [new CreateOrderItemCommand(product.Id, 1, null)]));
+
+        Assert.Single(result.Items);
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_MissingProductCategory_ThrowsNotFoundException()
+    {
+        var productRepository = new FakeProductRepository();
+        var product = new Product(Guid.NewGuid(), "Mocha", 8m);
+        productRepository.Seed(product);
+        var service = CreateOrderService(
+            new FakeOrderRepository(),
+            productRepository,
+            productCategoryRepository: new FakeProductCategoryRepository());
+
+        var action = () => service.CreateOrderAsync(new CreateOrderCommand(
+            OrderSource.Counter,
+            null,
+            [new CreateOrderItemCommand(product.Id, 1, null)]));
+
+        await Assert.ThrowsAsync<NotFoundException>(action);
+    }
+
+    [Fact]
     public async Task CreateOrderAsync_WithCancellationToken_PropagatesCancellationToken()
     {
         var tokenSource = new CancellationTokenSource();
         var orderRepository = new FakeOrderRepository();
         var productRepository = new FakeProductRepository();
+        var categoryRepository = new FakeProductCategoryRepository();
         var eventPublisher = new FakeOrderEventPublisher(() => orderRepository.SaveChangesCalls);
-        var product = new Product(Guid.NewGuid(), "Americano", 5m);
+        var category = new ProductCategory("Coffee");
+        categoryRepository.Seed(category);
+        var product = new Product(category.Id, "Americano", 5m);
         productRepository.Seed(product);
-        var service = CreateOrderService(orderRepository, productRepository, eventPublisher: eventPublisher);
+        var service = CreateOrderService(
+            orderRepository,
+            productRepository,
+            eventPublisher: eventPublisher,
+            productCategoryRepository: categoryRepository);
 
         await service.CreateOrderAsync(new CreateOrderCommand(
             OrderSource.Counter,
@@ -186,6 +259,7 @@ public class OrderServiceTests
 
         Assert.Equal(tokenSource.Token, orderRepository.LastGetLatestOrderNumberToken);
         Assert.Equal(tokenSource.Token, productRepository.LastGetByIdToken);
+        Assert.Equal(tokenSource.Token, categoryRepository.LastGetByIdToken);
         Assert.Equal(tokenSource.Token, orderRepository.LastAddToken);
         Assert.Equal(tokenSource.Token, orderRepository.LastSaveChangesToken);
         Assert.Equal(tokenSource.Token, Assert.Single(eventPublisher.Events).CancellationToken);
@@ -481,16 +555,32 @@ public class OrderServiceTests
         FakeOrderRepository orderRepository,
         FakeProductRepository productRepository,
         FakeDateTimeProvider? dateTimeProvider = null,
-        FakeOrderEventPublisher? eventPublisher = null)
+        FakeOrderEventPublisher? eventPublisher = null,
+        FakeProductCategoryRepository? productCategoryRepository = null)
     {
+        productCategoryRepository ??= CreateActiveCategoryRepository(productRepository.Products);
+
         return new OrderService(
             orderRepository,
             productRepository,
+            productCategoryRepository,
             dateTimeProvider ?? new FakeDateTimeProvider
             {
                 UtcNow = new DateTime(2026, 7, 21, 12, 0, 0, DateTimeKind.Utc)
             },
             eventPublisher ?? new FakeOrderEventPublisher(() => orderRepository.SaveChangesCalls));
+    }
+
+    private static FakeProductCategoryRepository CreateActiveCategoryRepository(
+        IReadOnlyCollection<Product> products)
+    {
+        var repository = new FakeProductCategoryRepository();
+        foreach (var categoryId in products.Select(product => product.CategoryId).Distinct())
+        {
+            repository.SeedForId(categoryId, new ProductCategory("Active category"));
+        }
+
+        return repository;
     }
 
     private static Order CreatePendingOrder(string orderNumber, DateTime? createdAtUtc = null)

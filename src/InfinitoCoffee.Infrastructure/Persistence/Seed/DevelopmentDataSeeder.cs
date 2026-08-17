@@ -1,10 +1,16 @@
 using InfinitoCoffee.Domain.Products;
+using InfinitoCoffee.Domain.Users;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace InfinitoCoffee.Infrastructure.Persistence.Seed;
 
 public sealed class DevelopmentDataSeeder
 {
+    private readonly IPasswordHasher<User> _passwordHasher;
+    private readonly IOptions<InitialSystemUserOptions> _initialSystemUserOptions;
+
     private static readonly SeedCategory[] Categories =
     [
         new("Cafes", true),
@@ -27,14 +33,88 @@ public sealed class DevelopmentDataSeeder
         new("Comidas", "Sandwich", 220m, "Sandwich tostado para almuerzo rapido.", true)
     ];
 
+    public DevelopmentDataSeeder(
+        IPasswordHasher<User> passwordHasher,
+        IOptions<InitialSystemUserOptions> initialSystemUserOptions)
+    {
+        _passwordHasher = passwordHasher;
+        _initialSystemUserOptions = initialSystemUserOptions;
+    }
+
     public async Task SeedAsync(
         InfinitoCoffeeDbContext dbContext,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(dbContext);
 
+        await SeedSystemUserAsync(dbContext, cancellationToken);
         await SeedCategoriesAsync(dbContext, cancellationToken);
         await SeedProductsAsync(dbContext, cancellationToken);
+    }
+
+    private async Task SeedSystemUserAsync(
+        InfinitoCoffeeDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var systemUser = await dbContext.Users
+            .SingleOrDefaultAsync(user => user.IsSystemUser, cancellationToken);
+
+        if (systemUser is not null)
+        {
+            EnsureValidSystemUser(systemUser);
+            return;
+        }
+
+        var options = _initialSystemUserOptions.Value;
+        var username = GetRequiredValue(options.Username, "INITIAL_ADMIN_USERNAME");
+        var displayName = GetRequiredValue(options.DisplayName, "INITIAL_ADMIN_DISPLAY_NAME");
+        var password = GetRequiredValue(options.Password, "INITIAL_ADMIN_PASSWORD");
+
+        var newSystemUser = User.CreateSystemUser(
+            username,
+            displayName,
+            user => _passwordHasher.HashPassword(user, password));
+
+        dbContext.Users.Add(newSystemUser);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            dbContext.Entry(newSystemUser).State = EntityState.Detached;
+
+            systemUser = await dbContext.Users
+                .SingleOrDefaultAsync(user => user.IsSystemUser, cancellationToken);
+
+            if (systemUser is null)
+            {
+                throw;
+            }
+
+            EnsureValidSystemUser(systemUser);
+        }
+    }
+
+    private static string GetRequiredValue(string? value, string environmentVariableName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException(
+                $"Required seed configuration '{environmentVariableName}' is missing.");
+        }
+
+        return value;
+    }
+
+    private static void EnsureValidSystemUser(User systemUser)
+    {
+        if (!systemUser.IsActive || systemUser.Role != UserRole.Administrator)
+        {
+            throw new InvalidOperationException(
+                "The existing system user must be active and have the Administrator role.");
+        }
     }
 
     private static async Task SeedCategoriesAsync(

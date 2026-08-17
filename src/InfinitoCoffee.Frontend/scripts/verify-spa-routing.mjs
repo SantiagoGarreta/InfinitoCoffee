@@ -6,13 +6,18 @@ import { fileURLToPath } from 'node:url';
 const frontendRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const appHtml = read('src/app/app.html');
-assert.match(appHtml, /routerLink="\/kitchen"/);
-assert.match(appHtml, /routerLink="\/pickup"/);
-assert.match(appHtml, /routerLink="\/orders\/new"/);
+assert.match(appHtml, /<router-outlet\s*\/>/);
+assert.doesNotMatch(appHtml, /<nav|app-authenticated-sidebar/);
+
+const sidebarHtml = read('src/app/layout/authenticated-sidebar/authenticated-sidebar.component.html');
+assert.match(sidebarHtml, /routerLink="\/admin"/);
+assert.match(sidebarHtml, /routerLink="\/kitchen"/);
+assert.match(sidebarHtml, /routerLink="\/orders\/new"/);
+assert.match(sidebarHtml, /href="\/pickup"[^>]*target="_blank"[^>]*rel="noopener"/);
 assert.doesNotMatch(appHtml, /http:\/\/localhost\/(?:kitchen|pickup|orders\/new)/);
 
 const appTs = read('src/app/app.ts');
-assert.match(appTs, /imports:\s*\[\s*RouterLink,\s*RouterLinkActive,\s*RouterOutlet\s*\]/s);
+assert.match(appTs, /imports:\s*\[\s*RouterOutlet\s*\]/s);
 
 const indexHtml = read('src/index.html');
 assert.match(indexHtml, /<base href="\/">/);

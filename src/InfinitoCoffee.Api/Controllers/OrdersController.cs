@@ -1,15 +1,18 @@
 using InfinitoCoffee.Api.Configuration;
+using InfinitoCoffee.Api.Authorization;
 using InfinitoCoffee.Api.Contracts;
 using InfinitoCoffee.Api.Contracts.Orders;
 using InfinitoCoffee.Application.Orders.Commands;
 using InfinitoCoffee.Application.Orders.Queries;
 using InfinitoCoffee.Application.Orders.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 
 namespace InfinitoCoffee.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/orders")]
 public sealed class OrdersController : ControllerBase
 {
@@ -23,6 +26,7 @@ public sealed class OrdersController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOrCashier)]
     [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -42,6 +46,7 @@ public sealed class OrdersController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicyNames.AllOperationalRoles)]
     [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<OrderResponse>> GetById(Guid id, CancellationToken cancellationToken)
@@ -51,6 +56,7 @@ public sealed class OrdersController : ControllerBase
     }
 
     [HttpGet("active")]
+    [Authorize(Policy = AuthorizationPolicyNames.AllOperationalRoles)]
     [ProducesResponseType(typeof(IReadOnlyCollection<OrderResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyCollection<OrderResponse>>> GetActive(CancellationToken cancellationToken)
     {
@@ -59,15 +65,17 @@ public sealed class OrdersController : ControllerBase
     }
 
     [HttpGet("pickup")]
-    [ProducesResponseType(typeof(IReadOnlyCollection<OrderResponse>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyCollection<OrderResponse>>> GetPickup(CancellationToken cancellationToken)
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(IReadOnlyCollection<PickupOrderResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyCollection<PickupOrderResponse>>> GetPickup(CancellationToken cancellationToken)
     {
         var visibility = TimeSpan.FromMinutes(_pickupDisplayOptions.Value.ReadyVisibilityMinutes);
         var orders = await _orderService.GetPickupOrdersAsync(new GetPickupOrdersQuery(visibility), cancellationToken);
-        return Ok(orders.Select(ApiContractMapper.MapOrder).ToArray());
+        return Ok(orders.Select(ApiContractMapper.MapPickupOrder).ToArray());
     }
 
     [HttpPost("{id:guid}/start-preparation")]
+    [Authorize(Policy = AuthorizationPolicyNames.AllOperationalRoles)]
     [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -78,6 +86,7 @@ public sealed class OrdersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/mark-ready")]
+    [Authorize(Policy = AuthorizationPolicyNames.AllOperationalRoles)]
     [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -88,6 +97,7 @@ public sealed class OrdersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/deliver")]
+    [Authorize(Policy = AuthorizationPolicyNames.AllOperationalRoles)]
     [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -98,6 +108,7 @@ public sealed class OrdersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/cancel")]
+    [Authorize(Policy = AuthorizationPolicyNames.AllOperationalRoles)]
     [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]

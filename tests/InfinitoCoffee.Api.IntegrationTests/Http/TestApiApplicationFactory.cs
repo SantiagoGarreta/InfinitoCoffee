@@ -1,6 +1,7 @@
 using System.Data.Common;
 using InfinitoCoffee.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -8,12 +9,19 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace InfinitoCoffee.Api.IntegrationTests.Http;
 
 internal sealed class TestApiApplicationFactory : WebApplicationFactory<Program>, IAsyncDisposable
 {
+    private readonly string _environmentName;
     private SqliteConnection? _connection;
+
+    public TestApiApplicationFactory(string environmentName = "Development")
+    {
+        _environmentName = environmentName;
+    }
 
     public async Task ExecuteDbContextAsync(Func<InfinitoCoffeeDbContext, Task> action)
     {
@@ -31,7 +39,9 @@ internal sealed class TestApiApplicationFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Development");
+        builder.ConfigureLogging(logging => logging.ClearProviders());
+        builder.UseEnvironment(_environmentName);
+        builder.UseSetting("ConnectionStrings:InfinitoCoffee", "Data Source=:memory:");
 
         builder.ConfigureAppConfiguration(configurationBuilder =>
         {
@@ -45,6 +55,18 @@ internal sealed class TestApiApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
+            services.RemoveAll<IDataProtectionProvider>();
+            services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy(
+                    TestAuthorizationController.ForbiddenPolicyName,
+                    policy => policy.RequireClaim("integration-test-denied-claim"));
+            });
+            services
+                .AddControllers()
+                .AddApplicationPart(typeof(TestAuthorizationController).Assembly);
+
             var sqlServerDescriptors = services
                 .Where(descriptor =>
                     descriptor.ServiceType.FullName?.Contains("SqlServer", StringComparison.OrdinalIgnoreCase) == true
@@ -89,7 +111,6 @@ internal sealed class TestApiApplicationFactory : WebApplicationFactory<Program>
             return;
         }
 
-        _connection?.Dispose();
         _connection = null;
     }
 

@@ -20,6 +20,7 @@ class FakeKitchenOrdersStore {
   readonly readyOrders = signal<Order[]>([createOrder('A-300', 'Ready')]);
   initializeCalls = 0;
   destroyCalls = 0;
+  cancelledOrderIds: string[] = [];
 
   initialize(): Promise<void> {
     this.initializeCalls++;
@@ -41,7 +42,8 @@ class FakeKitchenOrdersStore {
   deliver(): Promise<void> {
     return Promise.resolve();
   }
-  cancel(): Promise<void> {
+  cancelOrder(orderId: string): Promise<void> {
+    this.cancelledOrderIds.push(orderId);
     return Promise.resolve();
   }
 }
@@ -112,5 +114,24 @@ describe('KitchenDisplayPageComponent', () => {
     const button = fixture.nativeElement.querySelector('.order-card__button--primary') as HTMLButtonElement;
     expect(button.disabled).toBe(true);
     expect(fixture.nativeElement.textContent).toContain('No fue posible actualizar el pedido.');
+  });
+
+  it('propagates card cancellation to the store through its kitchen column', () => {
+    const fixture = TestBed.createComponent(KitchenDisplayPageComponent);
+    const store = TestBed.inject(KitchenOrdersStore) as unknown as FakeKitchenOrdersStore;
+    store.activeActionOrderId.set(null);
+    store.actionError.set(null);
+    fixture.detectChanges();
+
+    const pendingCard = fixture.nativeElement.querySelector('app-order-card') as HTMLElement;
+    const cancelButton = [...pendingCard.querySelectorAll('button')]
+      .find((button) => button.getAttribute('aria-label') === 'Cancelar pedido') as HTMLButtonElement;
+    cancelButton.click();
+    fixture.detectChanges();
+    const confirmButton = [...pendingCard.querySelectorAll('button')]
+      .find((button) => button.textContent?.includes('Confirmar cancelación')) as HTMLButtonElement;
+    confirmButton.click();
+
+    expect(store.cancelledOrderIds).toEqual(['A-100-id']);
   });
 });

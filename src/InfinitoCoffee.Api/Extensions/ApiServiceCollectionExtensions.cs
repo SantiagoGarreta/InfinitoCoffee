@@ -1,16 +1,24 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using InfinitoCoffee.Api.Authentication;
+using InfinitoCoffee.Api.Antiforgery;
+using InfinitoCoffee.Api.Authorization;
 using InfinitoCoffee.Api.Configuration;
 using InfinitoCoffee.Api.ErrorHandling;
 using InfinitoCoffee.Api.Health;
 using InfinitoCoffee.Api.Realtime;
+using InfinitoCoffee.Application.Authentication.Services;
 using InfinitoCoffee.Application.Orders.Contracts;
 using InfinitoCoffee.Application.Orders.Services;
 using InfinitoCoffee.Application.ProductCategories.Services;
 using InfinitoCoffee.Application.Products.Services;
+using InfinitoCoffee.Application.Users.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using InfinitoCoffee.Domain.Users;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -29,7 +37,10 @@ public static class ApiServiceCollectionExtensions
         services.Configure<PickupDisplayOptions>(configuration.GetSection(PickupDisplayOptions.SectionName));
 
         services
-            .AddControllers()
+            .AddControllersWithViews(options =>
+            {
+                options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
+            })
             .AddJsonOptions(options =>
             {
                 options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -57,6 +68,32 @@ public static class ApiServiceCollectionExtensions
 
         services.AddProblemDetails();
         services.AddExceptionHandler<GlobalExceptionHandler>();
+        services
+            .AddAuthentication(AuthenticationConstants.CookieScheme)
+            .AddCookie(AuthenticationConstants.CookieScheme);
+        services.AddAntiforgery();
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy(
+                AuthorizationPolicyNames.AdministratorOnly,
+                policy => policy.RequireRole(nameof(UserRole.Administrator)));
+            options.AddPolicy(
+                AuthorizationPolicyNames.AdministratorOrCashier,
+                policy => policy.RequireRole(
+                    nameof(UserRole.Administrator),
+                    nameof(UserRole.Cashier)));
+            options.AddPolicy(
+                AuthorizationPolicyNames.AdministratorOrKitchen,
+                policy => policy.RequireRole(
+                    nameof(UserRole.Administrator),
+                    nameof(UserRole.Kitchen)));
+            options.AddPolicy(
+                AuthorizationPolicyNames.AllOperationalRoles,
+                policy => policy.RequireRole(
+                    nameof(UserRole.Administrator),
+                    nameof(UserRole.Cashier),
+                    nameof(UserRole.Kitchen)));
+        });
         services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database");
         services.AddSignalR();
         services.AddCors();
@@ -68,8 +105,14 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<OrderService>();
         services.AddScoped<ProductService>();
         services.AddScoped<ProductCategoryService>();
+        services.AddScoped<AuthenticationService>();
+        services.AddScoped<UserAdministrationService>();
+        services.AddScoped<ApiCookieAuthenticationEvents>();
+        services.AddSingleton<UserClaimsPrincipalFactory>();
 
         services.AddSingleton<IConfigureOptions<CorsOptions>, ConfigureCorsOptions>();
+        services.AddSingleton<IConfigureOptions<CookieAuthenticationOptions>, ConfigureCookieAuthenticationOptions>();
+        services.AddSingleton<IConfigureOptions<Microsoft.AspNetCore.Antiforgery.AntiforgeryOptions>, ConfigureAntiforgeryOptions>();
 
         return services;
     }

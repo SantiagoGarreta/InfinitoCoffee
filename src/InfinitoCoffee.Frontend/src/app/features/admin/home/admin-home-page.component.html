@@ -1,0 +1,30 @@
+<section class="admin-home" aria-labelledby="admin-title">
+  <header>
+    <p class="admin-home__eyebrow">InfinitoCoffee</p>
+    <h1 id="admin-title">Administración</h1>
+    @if (currentUser(); as user) {
+      <p>Bienvenido, <strong>{{ user.displayName || user.username }}</strong>. Accedé a las áreas operativas y administrativas desde este panel.</p>
+    }
+  </header>
+
+  <div class="admin-home__grid" aria-label="Accesos principales">
+    <a routerLink="/orders/new" class="admin-card">
+      <span>Operación</span><strong>Caja</strong><p>Crear y gestionar nuevas comandas.</p>
+    </a>
+    <a routerLink="/kitchen" class="admin-card">
+      <span>Operación</span><strong>Cocina</strong><p>Ver el flujo actual de preparación.</p>
+    </a>
+    <a href="/pickup" target="_blank" rel="noopener" class="admin-card">
+      <span>Vista pública</span><strong>Pickup ↗</strong><p>Abrir la pantalla de retiro en otra pestaña.</p>
+    </a>
+    <a routerLink="/admin/products" class="admin-card">
+      <span>Administración</span><strong>Productos</strong><p>Acceder a la próxima gestión del catálogo.</p>
+    </a>
+    <a routerLink="/admin/categories" class="admin-card">
+      <span>Administración</span><strong>Categorías</strong><p>Acceder a la próxima gestión de categorías.</p>
+    </a>
+    <a routerLink="/admin/users" class="admin-card">
+      <span>Administración</span><strong>Usuarios</strong><p>Acceder a la próxima gestión de cuentas.</p>
+    </a>
+  </div>
+</section>

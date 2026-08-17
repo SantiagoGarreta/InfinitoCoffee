@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, input } from '@angular/core';
 
-import { Order } from '../../../core/orders/models/order.model';
+import { PickupOrder } from '../../../core/pickup/models/pickup-order.model';
 
 @Component({
   selector: 'app-pickup-order-number',
@@ -11,6 +11,6 @@ import { Order } from '../../../core/orders/models/order.model';
   styleUrl: './pickup-order-number.component.scss',
 })
 export class PickupOrderNumberComponent {
-  readonly order = input.required<Order>();
+  readonly order = input.required<PickupOrder>();
   readonly ready = input(false);
 }

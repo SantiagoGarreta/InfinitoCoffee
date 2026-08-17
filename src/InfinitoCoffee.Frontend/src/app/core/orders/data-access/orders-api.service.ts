@@ -15,13 +15,11 @@ export class OrdersApiService {
     return firstValueFrom(this.httpClient.get<OrderApiDto[]>(`${this.ordersBaseUrl}/active`));
   }
 
-  getPickupOrders(): Promise<OrderApiDto[]> {
-    return firstValueFrom(this.httpClient.get<OrderApiDto[]>(`${this.ordersBaseUrl}/pickup`));
-  }
-
-  createOrder(request: CreateOrderRequest): Promise<OrderApiDto> {
-    return firstValueFrom(this.httpClient.post<OrderApiDto>(this.ordersBaseUrl, request));
-  }
+createOrder(request: CreateOrderRequest): Promise<OrderApiDto> {
+  return firstValueFrom(
+    this.httpClient.post<OrderApiDto>(this.ordersBaseUrl, request)
+  );
+}
 
   startPreparation(orderId: string): Promise<OrderApiDto> {
     return firstValueFrom(this.httpClient.post<OrderApiDto>(`${this.ordersBaseUrl}/${orderId}/start-preparation`, {}));

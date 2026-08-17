@@ -12,6 +12,8 @@ var app = builder.Build();
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.UseCors(ApiServiceCollectionExtensions.DevelopmentCorsPolicyName);
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {
@@ -22,6 +24,7 @@ if (app.Environment.IsDevelopment())
 app.MapControllers();
 app.MapHealthChecks("/health", ApiServiceCollectionExtensions.CreateHealthCheckOptions());
 app.MapHub<OrdersHub>("/hubs/orders");
+app.MapHub<PickupHub>("/hubs/pickup");
 
 app.Run();
 

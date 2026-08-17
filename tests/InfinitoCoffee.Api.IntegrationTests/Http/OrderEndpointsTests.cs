@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using InfinitoCoffee.Api.Contracts.Orders;
 using InfinitoCoffee.Domain.Orders;
+using InfinitoCoffee.Domain.Users;
 
 namespace InfinitoCoffee.Api.IntegrationTests.Http;
 
@@ -11,13 +12,14 @@ public sealed class OrderEndpointsTests
     public async Task CreateOrder_WhenValid_ReturnsCreatedWithLocation()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Cashier);
         var productId = await api.ExecuteDbContextAsync(async dbContext =>
         {
             var category = await TestDataSeeder.AddCategoryAsync(dbContext);
             return (await TestDataSeeder.AddProductAsync(dbContext, category.Id)).Id;
         });
 
-        var response = await api.Client.PostAsJsonAsync(
+        var response = await api.PostAsJsonWithCsrfAsync(
             "/api/orders",
             new CreateOrderRequest
             {
@@ -48,9 +50,10 @@ public sealed class OrderEndpointsTests
     public async Task CreateOrder_WithMissingProduct_ReturnsProblemDetails404()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Cashier);
 
         await HttpProblemDetailsAssertions.AssertProblemDetailsAsync(
-            await api.Client.PostAsJsonAsync(
+            await api.PostAsJsonWithCsrfAsync(
                 "/api/orders",
                 new CreateOrderRequest
                 {
@@ -64,6 +67,7 @@ public sealed class OrderEndpointsTests
     public async Task CreateOrder_WithInactiveProduct_ReturnsProblemDetails400()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Cashier);
         var productId = await api.ExecuteDbContextAsync(async dbContext =>
         {
             var category = await TestDataSeeder.AddCategoryAsync(dbContext);
@@ -71,7 +75,7 @@ public sealed class OrderEndpointsTests
         });
 
         await HttpProblemDetailsAssertions.AssertProblemDetailsAsync(
-            await api.Client.PostAsJsonAsync(
+            await api.PostAsJsonWithCsrfAsync(
                 "/api/orders",
                 new CreateOrderRequest
                 {
@@ -82,16 +86,95 @@ public sealed class OrderEndpointsTests
     }
 
     [Fact]
+    public async Task CreateOrder_WithActiveProductInInactiveCategory_ReturnsProblemDetails400()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Cashier);
+        var productId = await api.ExecuteDbContextAsync(async dbContext =>
+        {
+            var category = await TestDataSeeder.AddCategoryAsync(dbContext, isActive: false);
+            return (await TestDataSeeder.AddProductAsync(dbContext, category.Id)).Id;
+        });
+
+        await HttpProblemDetailsAssertions.AssertProblemDetailsAsync(
+            await api.PostAsJsonWithCsrfAsync(
+                "/api/orders",
+                new CreateOrderRequest
+                {
+                    Source = "Counter",
+                    Items = [new CreateOrderItemRequest { ProductId = productId, Quantity = 1 }]
+                }),
+            HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreateOrder_AfterCategoryReactivation_SucceedsWithoutChangingProductState()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Administrator);
+        var data = await api.ExecuteDbContextAsync(async dbContext =>
+        {
+            var category = await TestDataSeeder.AddCategoryAsync(dbContext);
+            var product = await TestDataSeeder.AddProductAsync(dbContext, category.Id);
+            return (CategoryId: category.Id, ProductId: product.Id);
+        });
+
+        var deactivateResponse = await api.PostWithCsrfAsync(
+            $"/api/product-categories/{data.CategoryId}/deactivate");
+
+        Assert.Equal(HttpStatusCode.OK, deactivateResponse.StatusCode);
+        var productRemainsActive = await api.ExecuteDbContextAsync(async dbContext =>
+            (await dbContext.Products.FindAsync(data.ProductId))!.IsActive);
+        Assert.True(productRemainsActive);
+
+        var rejectedResponse = await api.PostAsJsonWithCsrfAsync(
+            "/api/orders",
+            new CreateOrderRequest
+            {
+                Source = "Counter",
+                Items = [new CreateOrderItemRequest { ProductId = data.ProductId, Quantity = 1 }]
+            });
+        Assert.Equal(HttpStatusCode.BadRequest, rejectedResponse.StatusCode);
+
+        var activateResponse = await api.PostWithCsrfAsync(
+            $"/api/product-categories/{data.CategoryId}/activate");
+        Assert.Equal(HttpStatusCode.OK, activateResponse.StatusCode);
+
+        var createdResponse = await api.PostAsJsonWithCsrfAsync(
+            "/api/orders",
+            new CreateOrderRequest
+            {
+                Source = "Counter",
+                Items = [new CreateOrderItemRequest { ProductId = data.ProductId, Quantity = 1 }]
+            });
+
+        Assert.Equal(HttpStatusCode.Created, createdResponse.StatusCode);
+        var order = await api.ReadRequiredAsync<OrderResponse>(createdResponse);
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await api.PostWithCsrfAsync($"/api/product-categories/{data.CategoryId}/deactivate")).StatusCode);
+
+        var historicalResponse = await api.Client.GetAsync($"/api/orders/{order.Id}");
+        Assert.Equal(HttpStatusCode.OK, historicalResponse.StatusCode);
+        var historicalOrder = await api.ReadRequiredAsync<OrderResponse>(historicalResponse);
+        var item = Assert.Single(historicalOrder.Items);
+        Assert.Equal(data.ProductId, item.ProductId);
+        Assert.Equal("Latte", item.ProductNameSnapshot);
+        Assert.Equal(150m, item.UnitPriceSnapshot);
+    }
+
+    [Fact]
     public async Task CreateOrder_WhenOrdersAlreadyExist_AssignsNextDisplayOrderNumber()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Cashier);
         var productId = await api.ExecuteDbContextAsync(async dbContext =>
         {
             var category = await TestDataSeeder.AddCategoryAsync(dbContext);
             return (await TestDataSeeder.AddProductAsync(dbContext, category.Id)).Id;
         });
 
-        await api.Client.PostAsJsonAsync(
+        await api.PostAsJsonWithCsrfAsync(
             "/api/orders",
             new CreateOrderRequest
             {
@@ -99,7 +182,7 @@ public sealed class OrderEndpointsTests
                 Items = [new CreateOrderItemRequest { ProductId = productId, Quantity = 1 }]
             });
 
-        var response = await api.Client.PostAsJsonAsync(
+        var response = await api.PostAsJsonWithCsrfAsync(
             "/api/orders",
             new CreateOrderRequest
             {
@@ -116,23 +199,38 @@ public sealed class OrderEndpointsTests
     public async Task CreateOrder_WhenLatestDisplayOrderNumberIs99_WrapsTo1()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Cashier);
+
         var productId = await api.ExecuteDbContextAsync(async dbContext =>
         {
             var category = await TestDataSeeder.AddCategoryAsync(dbContext);
             var product = await TestDataSeeder.AddProductAsync(dbContext, category.Id);
-            await TestDataSeeder.AddOrderAsync(dbContext, "99", OrderStatus.Pending, DateTime.UtcNow.AddMinutes(-1));
+            await TestDataSeeder.AddOrderAsync(
+                dbContext,
+                "99",
+                OrderStatus.Pending,
+                DateTime.UtcNow.AddMinutes(-1));
+
             return product.Id;
         });
 
-        var response = await api.Client.PostAsJsonAsync(
+        var response = await api.PostAsJsonWithCsrfAsync(
             "/api/orders",
             new CreateOrderRequest
             {
                 Source = "Counter",
-                Items = [new CreateOrderItemRequest { ProductId = productId, Quantity = 1 }]
+                Items =
+                [
+                    new CreateOrderItemRequest
+                    {
+                        ProductId = productId,
+                        Quantity = 1
+                    }
+                ]
             });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
         var order = await api.ReadRequiredAsync<OrderResponse>(response);
         Assert.Equal("1", order.OrderNumber);
     }
@@ -141,6 +239,7 @@ public sealed class OrderEndpointsTests
     public async Task GetOrder_WhenExists_ReturnsOk()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Kitchen);
         var orderId = await api.ExecuteDbContextAsync(async dbContext =>
             (await TestDataSeeder.AddOrderAsync(dbContext, "A-101", OrderStatus.Pending, DateTime.UtcNow.AddMinutes(-5))).Id);
 
@@ -155,6 +254,7 @@ public sealed class OrderEndpointsTests
     public async Task GetOrder_WhenMissing_ReturnsProblemDetails404()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Kitchen);
 
         await HttpProblemDetailsAssertions.AssertProblemDetailsAsync(
             await api.Client.GetAsync($"/api/orders/{Guid.NewGuid()}"),
@@ -165,6 +265,7 @@ public sealed class OrderEndpointsTests
     public async Task GetActive_ReturnsOnlyActiveOrders()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Kitchen);
         await api.ExecuteDbContextAsync(async dbContext =>
         {
             var now = DateTime.UtcNow;
@@ -197,7 +298,7 @@ public sealed class OrderEndpointsTests
         var response = await api.Client.GetAsync("/api/orders/pickup");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var orders = await api.ReadRequiredAsync<IReadOnlyCollection<OrderResponse>>(response);
+        var orders = await api.ReadRequiredAsync<IReadOnlyCollection<PickupOrderResponse>>(response);
         var orderNumbers = orders.Select(order => order.OrderNumber).ToArray();
         Assert.Equal(2, orderNumbers.Length);
         Assert.Contains("A-100", orderNumbers);
@@ -208,10 +309,11 @@ public sealed class OrderEndpointsTests
     public async Task StartPreparation_ReturnsUpdatedOrder()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Kitchen);
         var orderId = await api.ExecuteDbContextAsync(async dbContext =>
             (await TestDataSeeder.AddOrderAsync(dbContext, "A-101", OrderStatus.Pending, DateTime.UtcNow.AddMinutes(-2))).Id);
 
-        var response = await api.Client.PostAsync($"/api/orders/{orderId}/start-preparation", null);
+        var response = await api.PostWithCsrfAsync($"/api/orders/{orderId}/start-preparation");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var order = await api.ReadRequiredAsync<OrderResponse>(response);
@@ -222,10 +324,11 @@ public sealed class OrderEndpointsTests
     public async Task MarkReady_ReturnsUpdatedOrder()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Kitchen);
         var orderId = await api.ExecuteDbContextAsync(async dbContext =>
             (await TestDataSeeder.AddOrderAsync(dbContext, "A-101", OrderStatus.Preparing, DateTime.UtcNow.AddMinutes(-3))).Id);
 
-        var response = await api.Client.PostAsync($"/api/orders/{orderId}/mark-ready", null);
+        var response = await api.PostWithCsrfAsync($"/api/orders/{orderId}/mark-ready");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var order = await api.ReadRequiredAsync<OrderResponse>(response);
@@ -236,39 +339,88 @@ public sealed class OrderEndpointsTests
     public async Task Deliver_ReturnsUpdatedOrder()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Kitchen);
         var orderId = await api.ExecuteDbContextAsync(async dbContext =>
             (await TestDataSeeder.AddOrderAsync(dbContext, "A-101", OrderStatus.Ready, DateTime.UtcNow.AddMinutes(-5), DateTime.UtcNow.AddMinutes(-1))).Id);
 
-        var response = await api.Client.PostAsync($"/api/orders/{orderId}/deliver", null);
+        var response = await api.PostWithCsrfAsync($"/api/orders/{orderId}/deliver");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var order = await api.ReadRequiredAsync<OrderResponse>(response);
         Assert.Equal("Delivered", order.Status);
     }
 
-    [Fact]
-    public async Task Cancel_ReturnsUpdatedOrder()
+    [Theory]
+    [InlineData(UserRole.Administrator)]
+    [InlineData(UserRole.Cashier)]
+    [InlineData(UserRole.Kitchen)]
+    public async Task Cancel_AllowedRole_ReturnsUpdatedOrder(UserRole role)
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(role);
         var orderId = await api.ExecuteDbContextAsync(async dbContext =>
             (await TestDataSeeder.AddOrderAsync(dbContext, "A-101", OrderStatus.Pending, DateTime.UtcNow.AddMinutes(-2))).Id);
 
-        var response = await api.Client.PostAsync($"/api/orders/{orderId}/cancel", null);
+        var response = await api.PostWithCsrfAsync($"/api/orders/{orderId}/cancel");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var order = await api.ReadRequiredAsync<OrderResponse>(response);
         Assert.Equal("Cancelled", order.Status);
     }
 
+    [Theory]
+    [InlineData(OrderStatus.Pending)]
+    [InlineData(OrderStatus.Preparing)]
+    [InlineData(OrderStatus.Ready)]
+    public async Task Cancel_CancelableStatus_ReturnsCancelled(OrderStatus status)
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Kitchen);
+        var orderId = await api.ExecuteDbContextAsync(async dbContext =>
+            (await TestDataSeeder.AddOrderAsync(dbContext, $"CANCEL-{status}", status, DateTime.UtcNow.AddMinutes(-3))).Id);
+
+        var response = await api.PostWithCsrfAsync($"/api/orders/{orderId}/cancel");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Cancelled", (await api.ReadRequiredAsync<OrderResponse>(response)).Status);
+    }
+
+    [Theory]
+    [InlineData(OrderStatus.Delivered)]
+    [InlineData(OrderStatus.Cancelled)]
+    public async Task Cancel_NonCancelableStatus_ReturnsProblemDetails400(OrderStatus status)
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Kitchen);
+        var orderId = await api.ExecuteDbContextAsync(async dbContext =>
+            (await TestDataSeeder.AddOrderAsync(dbContext, $"REJECT-{status}", status, DateTime.UtcNow.AddMinutes(-3))).Id);
+
+        await HttpProblemDetailsAssertions.AssertProblemDetailsAsync(
+            await api.PostWithCsrfAsync($"/api/orders/{orderId}/cancel"),
+            HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Cancel_MissingOrder_ReturnsProblemDetails404()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Kitchen);
+
+        await HttpProblemDetailsAssertions.AssertProblemDetailsAsync(
+            await api.PostWithCsrfAsync($"/api/orders/{Guid.NewGuid()}/cancel"),
+            HttpStatusCode.NotFound);
+    }
+
     [Fact]
     public async Task InvalidTransition_ReturnsProblemDetails400()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Kitchen);
         var orderId = await api.ExecuteDbContextAsync(async dbContext =>
             (await TestDataSeeder.AddOrderAsync(dbContext, "A-101", OrderStatus.Pending, DateTime.UtcNow.AddMinutes(-2))).Id);
 
         await HttpProblemDetailsAssertions.AssertProblemDetailsAsync(
-            await api.Client.PostAsync($"/api/orders/{orderId}/deliver", null),
+            await api.PostWithCsrfAsync($"/api/orders/{orderId}/deliver"),
             HttpStatusCode.BadRequest);
     }
 }

@@ -1,0 +1,142 @@
+<section class="admin-users">
+  <header class="admin-users__header">
+    <div>
+      <p class="admin-users__eyebrow">Administración</p>
+      <h1>Usuarios</h1>
+      <p>Gestioná las cuentas operativas y sus permisos de acceso.</p>
+      <small>Los cambios sobre otras cuentas no cierran sesiones que ya estén abiertas.</small>
+    </div>
+    <button type="button" class="button button--secondary" [disabled]="mutationsBlocked()" (click)="startCreate()">Nuevo usuario</button>
+  </header>
+
+  @if (store.loading()) {
+    <app-loading-state label="Cargando usuarios..." />
+  } @else if (store.loadError()) {
+    <app-error-message [message]="store.loadError()!" retryLabel="Reintentar" (retry)="store.load()" />
+  } @else {
+    @if (sessionLogoutError()) {
+      <section class="session-renewal" role="alert">
+        <p>{{ sessionLogoutError() }}</p>
+        <button type="button" class="button" (click)="retryLogout()">Reintentar cerrar sesión</button>
+      </section>
+    }
+    @if (store.mutationError()) { <app-error-message [message]="store.mutationError()!" /> }
+    @if (store.successMessage() && !sessionRenewalRequired()) {
+      <p class="admin-users__success" role="status" aria-live="polite">{{ store.successMessage() }}</p>
+    }
+
+    <div class="admin-users__layout">
+      <section class="admin-users__list" aria-label="Usuarios">
+        <h2>Listado</h2>
+        @if (store.sortedUsers().length === 0) {
+          <p class="admin-users__empty">Todavía no hay usuarios cargados.</p>
+        } @else {
+          <div class="admin-users__items">
+            @for (user of store.sortedUsers(); track user.id) {
+              <article class="user-card" [class.user-card--inactive]="!user.isActive" [class.user-card--system]="user.isSystemUser" [attr.data-user-id]="user.id">
+                <div class="user-card__main">
+                  <div>
+                    <div class="user-card__title">
+                      <h3>{{ user.displayName }}</h3>
+                      @if (isCurrentUser(user)) { <span class="badge badge--self">Tu cuenta</span> }
+                      @if (user.isSystemUser) { <span class="badge">Sistema</span> }
+                    </div>
+                    <p class="user-card__username">&#64;{{ user.username }}</p>
+                    <p>{{ user.role }} · {{ user.isActive ? 'Activo' : 'Inactivo' }}</p>
+                  </div>
+                </div>
+
+                @if (user.isSystemUser) {
+                  <p class="user-card__system-note">Cuenta técnica gestionada mediante herramientas del sistema.</p>
+                } @else {
+                  <div class="user-card__actions">
+                    <button type="button" class="button button--secondary action-edit" [disabled]="mutationsBlocked()" (click)="startEdit(user)">Editar</button>
+                    <button type="button" class="button button--secondary action-reset" [disabled]="mutationsBlocked()" (click)="openPasswordReset(user)">Resetear contraseña</button>
+                    @if (!isCurrentUser(user)) {
+                      @if (user.isActive) {
+                        <button type="button" class="button button--danger action-deactivate" [disabled]="mutationsBlocked()" (click)="askToDeactivate(user)">Desactivar</button>
+                      } @else {
+                        <button type="button" class="button action-activate" [disabled]="mutationsBlocked()" (click)="activate(user)">Activar</button>
+                      }
+                    }
+                  </div>
+                }
+
+                @if (confirmingDeactivateId() === user.id) {
+                  <div class="inline-confirmation">
+                    <p>El usuario quedará desactivado para futuros accesos. Las sesiones que ya estén abiertas no se cierran inmediatamente.</p>
+                    <div>
+                      <button type="button" class="button button--danger" [disabled]="mutationsBlocked()" (click)="confirmDeactivate(user)">Confirmar</button>
+                      <button type="button" class="button button--secondary" [disabled]="mutationsBlocked()" (click)="cancelDeactivate()">Cancelar</button>
+                    </div>
+                  </div>
+                }
+
+                @if (resettingPasswordId() === user.id) {
+                  <form class="password-reset" (ngSubmit)="confirmPasswordReset(user)">
+                    <label>
+                      <span>Nueva contraseña</span>
+                      <input name="newPassword" type="password" required maxlength="256" autocomplete="new-password" [disabled]="mutationsBlocked()" [ngModel]="newPassword()" (ngModelChange)="newPassword.set($event)" />
+                      @if (newPassword().length > 0 && !newPasswordIsValid()) { <small>Ingresá una contraseña no vacía de hasta 256 caracteres.</small> }
+                    </label>
+                    <div>
+                      <button type="submit" class="button" [disabled]="!canResetPassword()">Confirmar</button>
+                      <button type="button" class="button button--secondary" [disabled]="mutationsBlocked()" (click)="closePasswordReset()">Cancelar</button>
+                    </div>
+                  </form>
+                }
+              </article>
+            }
+          </div>
+        }
+      </section>
+
+      <form class="admin-users__form" (ngSubmit)="submit()">
+        <div class="admin-users__section-header">
+          <h2>{{ editingUserId() ? 'Editar usuario' : 'Nuevo usuario' }}</h2>
+          @if (editingUserId()) {
+            <button type="button" class="button button--secondary" [disabled]="mutationsBlocked()" (click)="cancelForm()">Cancelar edición</button>
+          }
+        </div>
+
+        <label>
+          <span>Username</span>
+          <input name="username" required minlength="3" maxlength="50" pattern="[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?" autocomplete="username" [disabled]="mutationsBlocked()" [ngModel]="username()" (ngModelChange)="username.set($event)" />
+          @if (username().length > 0 && !usernameIsValid()) { <small>Usá entre 3 y 50 caracteres ASCII; debe empezar y terminar con letra o número.</small> }
+        </label>
+
+        <label>
+          <span>Nombre visible</span>
+          <input name="displayName" required maxlength="100" [disabled]="mutationsBlocked()" [ngModel]="displayName()" (ngModelChange)="displayName.set($event)" />
+          @if (displayName().length > 0 && !displayNameIsValid()) { <small>Ingresá un nombre no vacío de hasta 100 caracteres.</small> }
+        </label>
+
+        @if (!editingUserId()) {
+          <label>
+            <span>Contraseña inicial</span>
+            <input name="password" type="password" required maxlength="256" autocomplete="new-password" [disabled]="mutationsBlocked()" [ngModel]="password()" (ngModelChange)="password.set($event)" />
+            @if (password().length > 0 && !passwordIsValid()) { <small>Ingresá una contraseña no vacía de hasta 256 caracteres.</small> }
+          </label>
+        }
+
+        <label>
+          <span>Rol</span>
+          @if (isSelfEditing()) {
+            <span class="role-readonly" aria-readonly="true">{{ editingUser()?.role }}</span>
+            <small>Tu propio rol no puede modificarse desde esta sesión.</small>
+          } @else {
+            <select name="role" required [disabled]="mutationsBlocked()" [ngModel]="role()" (ngModelChange)="role.set($event)">
+              @for (availableRole of roles; track availableRole) {
+                <option [ngValue]="availableRole">{{ availableRole }}</option>
+              }
+            </select>
+          }
+        </label>
+
+        <button type="submit" class="button" [disabled]="!canSubmit()">
+          {{ store.saving() ? 'Guardando...' : (editingUserId() ? 'Guardar cambios' : 'Crear usuario') }}
+        </button>
+      </form>
+    </div>
+  }
+</section>

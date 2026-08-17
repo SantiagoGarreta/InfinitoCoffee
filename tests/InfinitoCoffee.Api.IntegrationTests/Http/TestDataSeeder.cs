@@ -1,11 +1,54 @@
 using InfinitoCoffee.Domain.Orders;
 using InfinitoCoffee.Domain.Products;
+using InfinitoCoffee.Domain.Users;
 using InfinitoCoffee.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Identity;
 
 namespace InfinitoCoffee.Api.IntegrationTests.Http;
 
 internal static class TestDataSeeder
 {
+    public static async Task<User> AddUserAsync(
+        InfinitoCoffeeDbContext dbContext,
+        string username = "admin",
+        string displayName = "Administrator",
+        string password = "Correct_password!",
+        UserRole role = UserRole.Administrator,
+        bool isActive = true,
+        IPasswordHasher<User>? passwordHasher = null)
+    {
+        passwordHasher ??= new PasswordHasher<User>();
+
+        var user = User.Create(
+            username,
+            displayName,
+            role,
+            candidate => passwordHasher.HashPassword(candidate, password));
+        if (!isActive)
+        {
+            user.Deactivate();
+        }
+
+        dbContext.Users.Add(user);
+        await dbContext.SaveChangesAsync();
+        return user;
+    }
+
+    public static async Task<User> AddSystemUserAsync(
+        InfinitoCoffeeDbContext dbContext,
+        string username = "system.admin",
+        string password = "System_password!")
+    {
+        var passwordHasher = new PasswordHasher<User>();
+        var user = User.CreateSystemUser(
+            username,
+            "System Administrator",
+            candidate => passwordHasher.HashPassword(candidate, password));
+        dbContext.Users.Add(user);
+        await dbContext.SaveChangesAsync();
+        return user;
+    }
+
     public static async Task<Guid> SeedActiveProductAsync(InfinitoCoffeeDbContext dbContext)
     {
         var category = await AddCategoryAsync(dbContext);

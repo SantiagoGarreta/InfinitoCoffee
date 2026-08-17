@@ -32,11 +32,6 @@ public class ProductRepository : IProductRepository
         return _dbContext.Products.AddAsync(product, cancellationToken).AsTask();
     }
 
-    public void Remove(Product product)
-    {
-        _dbContext.Products.Remove(product);
-    }
-
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         return EfRepositorySaveChanges.SaveAsync(_dbContext, cancellationToken);

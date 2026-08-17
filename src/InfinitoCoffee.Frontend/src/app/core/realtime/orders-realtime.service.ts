@@ -3,7 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 
 import { APP_RUNTIME_CONFIG } from '../config/app-runtime-config';
 import { OrderRealtimeDto } from '../orders/models/order.model';
-import { ORDERS_HUB_CONNECTION_FACTORY, OrdersHubConnection } from './orders-hub-connection';
+import { HUB_CONNECTION_FACTORY, HubConnectionLike } from './hub-connection';
 import { OrdersRealtimeEvent, OrdersRealtimeEventName } from './orders-realtime.types';
 import { RealtimeConnectionState } from './realtime-connection-state';
 
@@ -14,14 +14,14 @@ type ResyncListener = () => void;
 export class OrdersRealtimeService {
   readonly connectionState = signal<RealtimeConnectionState>('disconnected');
 
-  private readonly hubConnectionFactory = inject(ORDERS_HUB_CONNECTION_FACTORY);
+  private readonly hubConnectionFactory = inject(HUB_CONNECTION_FACTORY);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly appRuntimeConfig = inject(APP_RUNTIME_CONFIG);
   private readonly eventListeners = new Set<EventListener>();
   private readonly resyncListeners = new Set<ResyncListener>();
   private readonly devLoggingEnabled = isDevMode();
 
-  private connection: OrdersHubConnection | null = null;
+  private connection: HubConnectionLike | null = null;
   private startPromise: Promise<void> | null = null;
 
   async start(): Promise<void> {
@@ -91,12 +91,15 @@ export class OrdersRealtimeService {
     };
   }
 
-  private ensureConnection(): OrdersHubConnection {
+  private ensureConnection(): HubConnectionLike {
     if (this.connection) {
       return this.connection;
     }
 
-    const connection = this.hubConnectionFactory(this.appRuntimeConfig.signalRHubUrl);
+    const connection = this.hubConnectionFactory(
+      this.appRuntimeConfig.signalRHubUrl,
+      { withCredentials: true },
+    );
     this.registerOrderHandler(connection, 'OrderCreated');
     this.registerOrderHandler(connection, 'OrderStatusChanged');
     this.registerOrderHandler(connection, 'OrderCancelled');
@@ -120,7 +123,7 @@ export class OrdersRealtimeService {
   }
 
   private registerOrderHandler(
-    connection: OrdersHubConnection,
+    connection: HubConnectionLike,
     eventName: OrdersRealtimeEventName,
   ): void {
     connection.on<OrderRealtimeDto>(eventName, (order) => {
@@ -128,7 +131,7 @@ export class OrdersRealtimeService {
     });
   }
 
-  private detachOrderHandlers(connection: OrdersHubConnection): void {
+  private detachOrderHandlers(connection: HubConnectionLike): void {
     connection.off('OrderCreated');
     connection.off('OrderStatusChanged');
     connection.off('OrderCancelled');

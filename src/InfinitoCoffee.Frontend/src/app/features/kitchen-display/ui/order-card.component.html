@@ -1,8 +1,23 @@
 <article class="order-card" [class.order-card--delayed]="delayed()">
   <header class="order-card__header">
-    <div>
-      <p class="order-card__eyebrow">{{ order().source }}</p>
-      <h3>{{ order().orderNumber }}</h3>
+    <div class="order-card__header-primary">
+      @if (!confirmingCancellation()
+        && order().status !== 'Delivered'
+        && order().status !== 'Cancelled') {
+        <button
+          type="button"
+          class="order-card__cancel-trigger"
+          aria-label="Cancelar pedido"
+          [disabled]="actionsBlocked()"
+          (click)="beginCancellation()">
+          <span aria-hidden="true">×</span>
+        </button>
+      }
+
+      <div>
+        <p class="order-card__eyebrow">{{ order().source }}</p>
+        <h3>{{ order().orderNumber }}</h3>
+      </div>
     </div>
 
     <div class="order-card__meta">
@@ -33,31 +48,44 @@
   <footer class="order-card__footer">
     <span class="order-card__total">Total {{ order().total | currency:'UYU':'symbol':'1.0-0' }}</span>
 
-    <div class="order-card__actions">
-      @if (primaryActionLabel()) {
-        <button
-          type="button"
-          class="order-card__button order-card__button--primary"
-          [disabled]="isActionPending()"
-          [attr.aria-label]="primaryActionLabel() + ' para ' + order().orderNumber"
-          (click)="handlePrimaryAction()">
-          @if (isActionPending()) {
-            <span>Procesando...</span>
-          } @else {
-            <span>{{ primaryActionLabel() }}</span>
-          }
-        </button>
-      }
-
-      @if (showCancelAction()) {
-        <button
-          type="button"
-          class="order-card__button order-card__button--secondary"
-          [disabled]="isActionPending()"
-          [attr.aria-label]="'Cancelar pedido ' + order().orderNumber"
-          (click)="cancel.emit()">
-          Cancelar
-        </button>
+    <div
+      class="order-card__actions"
+      [class.order-card__actions--primary-only]="!confirmingCancellation()">
+      @if (confirmingCancellation()) {
+        <div class="order-card__cancel-confirmation">
+          <p>¿Cancelar este pedido?</p>
+          <div class="order-card__cancel-actions">
+            <button
+              type="button"
+              class="order-card__button order-card__button--secondary"
+              [disabled]="cancellationPending() || actionsBlocked()"
+              (click)="closeCancellation()">
+              Volver
+            </button>
+            <button
+              type="button"
+              class="order-card__button order-card__button--danger"
+              [disabled]="cancellationPending() || actionsBlocked()"
+              (click)="confirmCancellation()">
+              {{ cancellationPending() ? 'Cancelando...' : 'Confirmar cancelación' }}
+            </button>
+          </div>
+        </div>
+      } @else {
+        @if (primaryActionLabel()) {
+          <button
+            type="button"
+            class="order-card__button order-card__button--primary"
+            [disabled]="actionsBlocked()"
+            [attr.aria-label]="primaryActionLabel() + ' para ' + order().orderNumber"
+            (click)="handlePrimaryAction()">
+            @if (isActionPending()) {
+              <span>Procesando...</span>
+            } @else {
+              <span>{{ primaryActionLabel() }}</span>
+            }
+          </button>
+        }
       }
     </div>
   </footer>

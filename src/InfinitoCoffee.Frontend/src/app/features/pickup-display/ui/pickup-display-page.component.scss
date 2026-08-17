@@ -1,6 +1,13 @@
 .pickup-page {
+  min-height: 100dvh;
   display: grid;
+  align-content: start;
   gap: 1.5rem;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  background:
+    radial-gradient(circle at top right, rgba(47, 130, 98, 0.2), transparent 28rem),
+    linear-gradient(145deg, #f3eee5, #edf5ef);
+  color: #24180f;
 }
 
 .pickup-page__header {

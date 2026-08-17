@@ -1,5 +1,6 @@
 using InfinitoCoffee.Domain.Orders;
 using InfinitoCoffee.Domain.Products;
+using InfinitoCoffee.Domain.Users;
 using InfinitoCoffee.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,12 +21,15 @@ public class InfinitoCoffeeDbContext : DbContext
 
     public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
 
+    public DbSet<User> Users => Set<User>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new OrderConfiguration());
         modelBuilder.ApplyConfiguration(new OrderItemConfiguration());
         modelBuilder.ApplyConfiguration(new ProductConfiguration());
         modelBuilder.ApplyConfiguration(new ProductCategoryConfiguration());
+        modelBuilder.ApplyConfiguration(new UserConfiguration());
 
         base.OnModelCreating(modelBuilder);
     }

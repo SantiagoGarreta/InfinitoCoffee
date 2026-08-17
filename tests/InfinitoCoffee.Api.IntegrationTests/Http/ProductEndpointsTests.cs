@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using InfinitoCoffee.Api.Contracts.Products;
+using InfinitoCoffee.Domain.Users;
 
 namespace InfinitoCoffee.Api.IntegrationTests.Http;
 
@@ -10,10 +11,11 @@ public sealed class ProductEndpointsTests
     public async Task CreateProduct_WithValidCategory_ReturnsCreated()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
         var categoryId = await api.ExecuteDbContextAsync(async dbContext =>
             (await TestDataSeeder.AddCategoryAsync(dbContext)).Id);
 
-        var response = await api.Client.PostAsJsonAsync(
+        var response = await api.PostAsJsonWithCsrfAsync(
             "/api/products",
             new CreateProductRequest
             {
@@ -32,9 +34,10 @@ public sealed class ProductEndpointsTests
     public async Task CreateProduct_WithMissingCategory_ReturnsProblemDetails404()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
 
         await HttpProblemDetailsAssertions.AssertProblemDetailsAsync(
-            await api.Client.PostAsJsonAsync(
+            await api.PostAsJsonWithCsrfAsync(
                 "/api/products",
                 new CreateProductRequest
                 {
@@ -50,11 +53,12 @@ public sealed class ProductEndpointsTests
     public async Task CreateProduct_WithInactiveCategory_ReturnsProblemDetails400()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
         var categoryId = await api.ExecuteDbContextAsync(async dbContext =>
             (await TestDataSeeder.AddCategoryAsync(dbContext, isActive: false)).Id);
 
         await HttpProblemDetailsAssertions.AssertProblemDetailsAsync(
-            await api.Client.PostAsJsonAsync(
+            await api.PostAsJsonWithCsrfAsync(
                 "/api/products",
                 new CreateProductRequest
                 {
@@ -70,6 +74,7 @@ public sealed class ProductEndpointsTests
     public async Task GetProducts_ReturnsOk()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Cashier);
         await api.ExecuteDbContextAsync(async dbContext =>
         {
             var category = await TestDataSeeder.AddCategoryAsync(dbContext);
@@ -88,6 +93,7 @@ public sealed class ProductEndpointsTests
     public async Task UpdateProduct_ReturnsOk()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
         var data = await api.ExecuteDbContextAsync(async dbContext =>
         {
             var category = await TestDataSeeder.AddCategoryAsync(dbContext);
@@ -96,7 +102,7 @@ public sealed class ProductEndpointsTests
             return (ProductId: product.Id, CategoryId: nextCategory.Id);
         });
 
-        var response = await api.Client.PutAsJsonAsync(
+        var response = await api.PutAsJsonWithCsrfAsync(
             $"/api/products/{data.ProductId}",
             new UpdateProductRequest
             {
@@ -114,41 +120,114 @@ public sealed class ProductEndpointsTests
     }
 
     [Fact]
+    public async Task UpdateProduct_KeepingInactiveCategory_ReturnsOk()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
+        var data = await api.ExecuteDbContextAsync(async dbContext =>
+        {
+            var category = await TestDataSeeder.AddCategoryAsync(dbContext, isActive: false);
+            var product = await TestDataSeeder.AddProductAsync(dbContext, category.Id);
+            return (ProductId: product.Id, CategoryId: category.Id);
+        });
+
+        var response = await api.PutAsJsonWithCsrfAsync(
+            $"/api/products/{data.ProductId}",
+            new UpdateProductRequest
+            {
+                Name = "Latte grande",
+                Description = "Updated while category is inactive",
+                Price = 180m,
+                CategoryId = data.CategoryId
+            });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var product = await api.ReadRequiredAsync<ProductResponse>(response);
+        Assert.Equal(data.CategoryId, product.CategoryId);
+        Assert.Equal("Latte grande", product.Name);
+    }
+
+    [Fact]
+    public async Task UpdateProduct_ChangingToInactiveCategory_ReturnsProblemDetails400()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
+        var data = await api.ExecuteDbContextAsync(async dbContext =>
+        {
+            var category = await TestDataSeeder.AddCategoryAsync(dbContext);
+            var inactiveCategory = await TestDataSeeder.AddCategoryAsync(dbContext, "Seasonal", isActive: false);
+            var product = await TestDataSeeder.AddProductAsync(dbContext, category.Id);
+            return (ProductId: product.Id, CategoryId: inactiveCategory.Id);
+        });
+
+        await HttpProblemDetailsAssertions.AssertProblemDetailsAsync(
+            await api.PutAsJsonWithCsrfAsync(
+                $"/api/products/{data.ProductId}",
+                new UpdateProductRequest
+                {
+                    Name = "Latte",
+                    Price = 180m,
+                    CategoryId = data.CategoryId
+                }),
+            HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task ActivateAndDeactivateProduct_ReturnOk()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
         var productId = await api.ExecuteDbContextAsync(async dbContext =>
         {
             var category = await TestDataSeeder.AddCategoryAsync(dbContext);
             return (await TestDataSeeder.AddProductAsync(dbContext, category.Id, isActive: false)).Id;
         });
 
-        var activateResponse = await api.Client.PostAsync($"/api/products/{productId}/activate", null);
-        var deactivateResponse = await api.Client.PostAsync($"/api/products/{productId}/deactivate", null);
+        var activateResponse = await api.PostWithCsrfAsync($"/api/products/{productId}/activate");
+        var deactivateResponse = await api.PostWithCsrfAsync($"/api/products/{productId}/deactivate");
 
         Assert.Equal(HttpStatusCode.OK, activateResponse.StatusCode);
         Assert.Equal(HttpStatusCode.OK, deactivateResponse.StatusCode);
     }
 
     [Fact]
-    public async Task DeleteProduct_WithHardDeleteFlag_RemovesProductFromDatabase()
+    public async Task DeactivateProduct_WithHistoricalHardDeletePayload_KeepsProductInDatabase()
     {
         await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Administrator);
+
         var productId = await api.ExecuteDbContextAsync(async dbContext =>
         {
             var category = await TestDataSeeder.AddCategoryAsync(dbContext);
             return (await TestDataSeeder.AddProductAsync(dbContext, category.Id)).Id;
         });
 
-        var response = await api.Client.PostAsJsonAsync(
+        var response = await api.PostAsJsonWithCsrfAsync(
             $"/api/products/{productId}/deactivate",
             new { hardDelete = true });
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var existsAfterDelete = await api.ExecuteDbContextAsync(async dbContext =>
-            await dbContext.Products.FindAsync(productId) is not null);
+        var productAfterDeactivate = await api.ExecuteDbContextAsync(async dbContext =>
+            await dbContext.Products.FindAsync(productId));
 
-        Assert.False(existsAfterDelete);
+        Assert.NotNull(productAfterDeactivate);
+        Assert.False(productAfterDeactivate.IsActive);
+    }
+
+    [Fact]
+    public async Task DeleteProduct_HttpDeleteEndpointDoesNotExist()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Administrator);
+        var productId = await api.ExecuteDbContextAsync(async dbContext =>
+        {
+            var category = await TestDataSeeder.AddCategoryAsync(dbContext);
+            return (await TestDataSeeder.AddProductAsync(dbContext, category.Id)).Id;
+        });
+
+        var response = await api.Client.DeleteAsync($"/api/products/{productId}");
+
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
     }
 }
