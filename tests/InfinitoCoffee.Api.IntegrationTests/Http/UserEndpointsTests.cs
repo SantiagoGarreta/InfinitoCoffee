@@ -49,7 +49,10 @@ public sealed class UserEndpointsTests
         await api.AuthenticateAsync();
         var response = await api.PostAsJsonWithCsrfAsync("/api/users", new
         {
-            username = $"new.{role.ToString().ToLowerInvariant()}", displayName = " New User ", password = " secret preserved ", role
+            username = $"new.{role.ToString().ToLowerInvariant()}",
+            displayName = " New User ",
+            password = " secret preserved ",
+            role
         });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var raw = await response.Content.ReadAsStringAsync();

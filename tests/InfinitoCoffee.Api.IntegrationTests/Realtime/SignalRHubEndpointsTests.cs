@@ -61,9 +61,9 @@ public sealed class SignalRHubEndpointsTests
         await using var context = new ApiTestContext();
         await context.AuthenticateAsync(UserRole.Administrator);
 
-        await using var privateConnection = CreateConnection(context.Factory,"/hubs/orders",context.CurrentAuthenticationCookie);
+        await using var privateConnection = CreateConnection(context.Factory, "/hubs/orders", context.CurrentAuthenticationCookie);
 
-        await using var pickupConnection = CreateConnection(context.Factory,"/hubs/pickup");
+        await using var pickupConnection = CreateConnection(context.Factory, "/hubs/pickup");
 
         var privateEvents = new List<OrderRealtimeDto>();
         var pickupEvents = new List<JsonElement>();
