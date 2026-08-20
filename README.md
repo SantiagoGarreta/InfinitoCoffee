@@ -235,3 +235,57 @@ npm install
 npm run build
 npm test
 ```
+
+## Arranque consistente recomendado
+
+Para evitar problemas de migraciones desactualizadas, seed incompleto, credenciales faltantes o cookies viejas, conviene usar siempre este flujo cuando trabajes con Docker:
+
+1. Bajar el stack si ya estaba corriendo:
+
+```powershell
+docker compose down
+```
+
+2. Levantar SQL Server:
+
+```powershell
+docker compose up -d sqlserver
+```
+
+3. Reconstruir las herramientas de mantenimiento si cambiaste codigo de infraestructura, migraciones, seed o autenticacion:
+
+```powershell
+docker compose build migrations seed
+```
+
+4. Aplicar migraciones:
+
+```powershell
+docker compose run --rm migrations
+```
+
+5. Ejecutar seed:
+
+```powershell
+docker compose run --rm seed
+```
+
+6. Reconstruir y levantar API y frontend:
+
+```powershell
+docker compose up -d --build api frontend
+```
+
+7. Verificar salud basica:
+
+```powershell
+docker compose ps
+Invoke-RestMethod http://localhost:5165/health
+```
+
+Notas practicas:
+
+- Si cambiaste solo frontend o API, normalmente alcanza con `docker compose up -d --build api frontend`.
+- Si cambiaste migraciones, seed, usuarios o autenticacion, volve a correr `docker compose build migrations seed`, luego `migrations` y despues `seed`.
+- Si el login falla despues de reiniciar contenedores con errores de antiforgery o comportamiento raro en `localhost:4200`, hace un hard refresh o borra los datos del sitio para `localhost:4200` y `localhost:5165`. La API genera nuevas claves de Data Protection al recrear el contenedor y las cookies viejas pueden quedar invalidas.
+- Si queres reiniciar contenedores sin perder la base, usa `docker compose down`. No uses `docker compose down -v` salvo que realmente quieras borrar los datos de SQL Server.

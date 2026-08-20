@@ -30,7 +30,7 @@ const dockerfile = read('Dockerfile');
 assert.match(dockerfile, /cp \/usr\/share\/nginx\/html\/index\.csr\.html \/usr\/share\/nginx\/html\/index\.html/s);
 assert.match(
   dockerfile,
-  /rm -rf \/usr\/share\/nginx\/html\/kitchen \/usr\/share\/nginx\/html\/pickup \/usr\/share\/nginx\/html\/orders/,
+  /rm -rf \/usr\/share\/nginx\/html\/login \/usr\/share\/nginx\/html\/kitchen \/usr\/share\/nginx\/html\/pickup \/usr\/share\/nginx\/html\/orders/,
 );
 
 function read(relativePath) {

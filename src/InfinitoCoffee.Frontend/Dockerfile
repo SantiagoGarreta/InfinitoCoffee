@@ -14,4 +14,4 @@ RUN sed -i 's/\r$//' /docker-entrypoint.d/40-generate-runtime-config.sh \
     && chmod +x /docker-entrypoint.d/40-generate-runtime-config.sh
 COPY --from=build /app/dist/InfinitoCoffee.Frontend/browser/ /usr/share/nginx/html/
 RUN cp /usr/share/nginx/html/index.csr.html /usr/share/nginx/html/index.html \
-    && rm -rf /usr/share/nginx/html/kitchen /usr/share/nginx/html/pickup /usr/share/nginx/html/orders
+    && rm -rf /usr/share/nginx/html/login /usr/share/nginx/html/kitchen /usr/share/nginx/html/pickup /usr/share/nginx/html/orders
