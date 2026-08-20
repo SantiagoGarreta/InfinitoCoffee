@@ -9,6 +9,7 @@ export interface SaveProductRequest {
   name: string;
   description: string | null;
   price: number;
+  cost: number;
   categoryId: string;
 }
 

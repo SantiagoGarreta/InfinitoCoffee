@@ -90,7 +90,6 @@ describe('OrdersRealtimeService', () => {
   const sampleOrder: OrderRealtimeDto = {
     id: 'order-1',
     orderNumber: 'A-100',
-    source: 'Counter',
     status: 'Pending',
     createdAtUtc: '2026-07-22T12:00:00Z',
     startedAtUtc: null,

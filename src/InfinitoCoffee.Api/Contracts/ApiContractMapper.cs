@@ -6,7 +6,6 @@ using InfinitoCoffee.Application.ProductCategories.Dtos;
 using InfinitoCoffee.Application.Products.Dtos;
 using InfinitoCoffee.Api.Contracts.Users;
 using InfinitoCoffee.Application.Users.Dtos;
-using InfinitoCoffee.Domain.Orders;
 
 namespace InfinitoCoffee.Api.Contracts;
 
@@ -17,7 +16,6 @@ internal static class ApiContractMapper
         return new OrderResponse(
             order.Id,
             order.OrderNumber,
-            order.Source.ToString(),
             order.Status.ToString(),
             order.CreatedAtUtc,
             order.StartedAtUtc,
@@ -47,6 +45,19 @@ internal static class ApiContractMapper
             order.CreatedAtUtc);
     }
 
+    public static OrderResultsResponse MapOrderResults(OrderResultsDto results)
+    {
+        return new OrderResultsResponse(
+            results.GroupBy.ToString(),
+            results.PeriodStartDate,
+            results.PeriodEndDate,
+            MapOrderPeriodSummary(results.CurrentPeriod),
+            MapOrderPeriodSummary(results.PreviousPeriod),
+            MapOperationalSnapshot(results.OperationalSnapshot),
+            results.TopSellingProducts.Select(MapTopSellingProduct).ToArray(),
+            results.History.Select(MapHistoryPoint).ToArray());
+    }
+
     public static ProductResponse MapProduct(ProductDto product)
     {
         return new ProductResponse(
@@ -54,6 +65,7 @@ internal static class ApiContractMapper
             product.Name,
             product.Description,
             product.Price,
+            product.Cost,
             product.CategoryId,
             product.IsActive);
     }
@@ -77,19 +89,19 @@ internal static class ApiContractMapper
             user.IsSystemUser);
     }
 
-    public static OrderSource ParseOrderSource(string source)
+    public static OrderResultsGroupBy ParseOrderResultsGroupBy(string? groupBy)
     {
-        if (string.IsNullOrWhiteSpace(source))
+        if (string.IsNullOrWhiteSpace(groupBy))
         {
-            throw new ArgumentException("Order source is required.", nameof(source));
+            return OrderResultsGroupBy.Daily;
         }
 
-        if (!Enum.TryParse<OrderSource>(source, ignoreCase: true, out var parsed)
+        if (!Enum.TryParse<OrderResultsGroupBy>(groupBy, ignoreCase: true, out var parsed)
             || !Enum.IsDefined(parsed))
         {
             throw new ArgumentException(
-                $"Order source '{source}' is invalid. Allowed values: {string.Join(", ", Enum.GetNames<OrderSource>())}.",
-                nameof(source));
+                $"Order results groupBy '{groupBy}' is invalid. Allowed values: {string.Join(", ", Enum.GetNames<OrderResultsGroupBy>())}.",
+                nameof(groupBy));
         }
 
         return parsed;
@@ -105,5 +117,56 @@ internal static class ApiContractMapper
             item.Quantity,
             item.Notes,
             item.LineTotal);
+    }
+
+    private static OrderPeriodSummaryResponse MapOrderPeriodSummary(OrderPeriodSummaryDto summary)
+    {
+        return new OrderPeriodSummaryResponse(
+            summary.StartDate,
+            summary.EndDate,
+            summary.TotalRevenue,
+            summary.TotalCost,
+            summary.TotalProfit,
+            summary.TotalOrdersCount,
+            summary.DeliveredOrdersCount,
+            summary.CancelledOrdersCount,
+            summary.DeliveredItemsCount,
+            summary.AverageDeliveredOrderTotal);
+    }
+
+    private static OrderOperationalSnapshotResponse MapOperationalSnapshot(OrderOperationalSnapshotDto snapshot)
+    {
+        return new OrderOperationalSnapshotResponse(
+            snapshot.TotalOrdersCount,
+            snapshot.ActiveOrdersCount,
+            snapshot.PendingOrdersCount,
+            snapshot.PreparingOrdersCount,
+            snapshot.ReadyOrdersCount,
+            snapshot.DeliveredOrdersCount,
+            snapshot.CancelledOrdersCount);
+    }
+
+    private static OrderHistoryPointResponse MapHistoryPoint(OrderHistoryPointDto historyPoint)
+    {
+        return new OrderHistoryPointResponse(
+            historyPoint.StartDate,
+            historyPoint.EndDate,
+            historyPoint.TotalRevenue,
+            historyPoint.TotalCost,
+            historyPoint.TotalProfit,
+            historyPoint.TotalOrdersCount,
+            historyPoint.DeliveredOrdersCount,
+            historyPoint.CancelledOrdersCount,
+            historyPoint.DeliveredItemsCount,
+            historyPoint.AverageDeliveredOrderTotal);
+    }
+
+    private static TopSellingProductResponse MapTopSellingProduct(TopSellingProductDto product)
+    {
+        return new TopSellingProductResponse(
+            product.ProductId,
+            product.ProductName,
+            product.QuantitySold,
+            product.Revenue);
     }
 }

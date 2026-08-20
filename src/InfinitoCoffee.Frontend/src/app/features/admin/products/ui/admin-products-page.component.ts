@@ -23,6 +23,7 @@ export class AdminProductsPageComponent implements OnInit {
   readonly name = signal('');
   readonly description = signal('');
   readonly price = signal<number | null>(null);
+  readonly cost = signal<number | null>(null);
   readonly categoryId = signal('');
 
   readonly formCategories = computed(() => {
@@ -45,11 +46,14 @@ export class AdminProductsPageComponent implements OnInit {
     const trimmedName = this.name().trim();
     const description = this.description().trim();
     const price = this.price();
+    const cost = this.cost();
     return trimmedName.length > 0
       && trimmedName.length <= 150
       && description.length <= 1000
       && price !== null
       && price >= 0.01
+      && cost !== null
+      && cost >= 0
       && this.categoryId().length > 0
       && !this.store.saving();
   });
@@ -83,6 +87,7 @@ export class AdminProductsPageComponent implements OnInit {
     this.name.set(product.name);
     this.description.set(product.description ?? '');
     this.price.set(product.price);
+    this.cost.set(product.cost);
     this.categoryId.set(product.categoryId);
   }
 
@@ -96,6 +101,7 @@ export class AdminProductsPageComponent implements OnInit {
       name: this.name().trim(),
       description: normalizeOptionalString(this.description()),
       price: this.price()!,
+      cost: this.cost()!,
       categoryId: this.categoryId(),
     };
     const result = productId
@@ -134,6 +140,7 @@ export class AdminProductsPageComponent implements OnInit {
     this.name.set('');
     this.description.set('');
     this.price.set(null);
+    this.cost.set(null);
     this.categoryId.set(this.store.activeCategories()[0]?.id ?? '');
   }
 }

@@ -26,6 +26,10 @@ internal sealed class OrderItemConfiguration : IEntityTypeConfiguration<OrderIte
             .HasPrecision(18, 2)
             .IsRequired();
 
+        builder.Property(item => item.UnitCostSnapshot)
+            .HasPrecision(18, 2)
+            .IsRequired();
+
         builder.Property(item => item.Quantity)
             .IsRequired();
 

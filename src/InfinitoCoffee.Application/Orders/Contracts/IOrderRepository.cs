@@ -6,6 +6,8 @@ public interface IOrderRepository
 {
     Task<Order?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<Order>> GetAllAsync(CancellationToken cancellationToken = default);
+
     Task<IReadOnlyCollection<Order>> GetActiveAsync(CancellationToken cancellationToken = default);
 
     Task<IReadOnlyCollection<Order>> GetPickupCandidatesAsync(CancellationToken cancellationToken = default);

@@ -22,11 +22,11 @@ class FakeOrdersApiService {
 }
 
 class FakeProductsApiService {
-  getProducts(): Promise<Array<{ id: string; name: string; description: string | null; price: number; categoryId: string; isActive: boolean }>> {
+  getProducts(): Promise<Array<{ id: string; name: string; description: string | null; price: number; cost: number; categoryId: string; isActive: boolean }>> {
     return Promise.resolve([
-      { id: 'p-1', name: 'Espresso', description: null, price: 8, categoryId: 'c-1', isActive: true },
-      { id: 'p-2', name: 'Mocha', description: null, price: 10, categoryId: 'c-2', isActive: false },
-      { id: 'p-3', name: 'Latte', description: null, price: 9, categoryId: 'c-2', isActive: true },
+      { id: 'p-1', name: 'Espresso', description: null, price: 8, cost: 3, categoryId: 'c-1', isActive: true },
+      { id: 'p-2', name: 'Mocha', description: null, price: 10, cost: 4, categoryId: 'c-2', isActive: false },
+      { id: 'p-3', name: 'Latte', description: null, price: 9, cost: 3.5, categoryId: 'c-2', isActive: true },
     ]);
   }
 }
@@ -103,7 +103,6 @@ describe('OrderEntryStore', () => {
 
     expect(store.visualTotal()).toBe(8);
     expect(store.buildRequest()).toEqual({
-      source: 'Counter',
       notes: 'Mesa 2',
       items: [
         {
@@ -125,7 +124,6 @@ describe('OrderEntryStore', () => {
     await store.submit();
 
     expect(store.items()).toEqual([]);
-    expect(store.source()).toBe('Counter');
     expect(store.successMessage()).toContain('1');
   });
 

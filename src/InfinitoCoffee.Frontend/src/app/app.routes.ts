@@ -63,6 +63,11 @@ export const routes: Routes = [
             loadComponent: () => import('./features/admin/users/ui/admin-users-page.component')
               .then((module) => module.AdminUsersPageComponent),
           },
+          {
+            path: 'results',
+            loadComponent: () => import('./features/admin/results/ui/admin-results-page.component')
+              .then((module) => module.AdminResultsPageComponent),
+          },
         ],
       },
     ],

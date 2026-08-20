@@ -1,5 +1,6 @@
 using InfinitoCoffee.Application.Common.Exceptions;
 using InfinitoCoffee.Application.Orders.Commands;
+using InfinitoCoffee.Application.Orders.Dtos;
 using InfinitoCoffee.Application.Orders.Queries;
 using InfinitoCoffee.Application.Orders.Services;
 using InfinitoCoffee.Application.Tests.Fakes;
@@ -21,12 +22,11 @@ public class OrderServiceTests
         var orderRepository = new FakeOrderRepository();
         var productRepository = new FakeProductRepository();
         var eventPublisher = new FakeOrderEventPublisher(() => orderRepository.SaveChangesCalls);
-        var product = new Product(Guid.NewGuid(), "Flat White", 6.50m, "Double shot");
+        var product = new Product(Guid.NewGuid(), "Flat White", 6.50m, 2.75m, "Double shot");
         productRepository.Seed(product);
         var service = CreateOrderService(orderRepository, productRepository, dateTimeProvider, eventPublisher);
 
         var result = await service.CreateOrderAsync(new CreateOrderCommand(
-            OrderSource.Counter,
             "Sin azucar",
             [new CreateOrderItemCommand(product.Id, 2, "Extra hot")]));
 
@@ -35,6 +35,8 @@ public class OrderServiceTests
         Assert.Equal(dateTimeProvider.UtcNow, result.CreatedAtUtc);
         Assert.Equal(13m, result.Total);
         Assert.Single(result.Items);
+        var storedOrder = Assert.Single(await orderRepository.GetAllAsync());
+        Assert.Equal(5.50m, storedOrder.TotalCost);
         Assert.Equal(1, orderRepository.SaveChangesCalls);
         var publishedEvent = Assert.Single(eventPublisher.Events);
         Assert.Equal("OrderCreated", publishedEvent.EventName);
@@ -52,21 +54,23 @@ public class OrderServiceTests
         var orderRepository = new FakeOrderRepository();
         var productRepository = new FakeProductRepository();
         var categoryId = Guid.NewGuid();
-        var product = new Product(categoryId, "Latte", 7.25m, "Oat milk");
+        var product = new Product(categoryId, "Latte", 7.25m, 2.80m, "Oat milk");
         productRepository.Seed(product);
         var service = CreateOrderService(orderRepository, productRepository, dateTimeProvider);
 
         var result = await service.CreateOrderAsync(new CreateOrderCommand(
-            OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(product.Id, 1, null)]));
 
         product.Rename("Changed");
         product.ChangePrice(99m);
+        product.ChangeCost(0.50m);
 
         var item = Assert.Single(result.Items);
         Assert.Equal("Latte", item.ProductName);
         Assert.Equal(7.25m, item.UnitPrice);
+        var storedOrder = Assert.Single(await orderRepository.GetAllAsync());
+        Assert.Equal(4.45m, storedOrder.Profit);
     }
 
     [Fact]
@@ -80,7 +84,6 @@ public class OrderServiceTests
         var service = CreateOrderService(orderRepository, productRepository);
 
         var result = await service.CreateOrderAsync(new CreateOrderCommand(
-            OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(product.Id, 1, null)]));
 
@@ -99,7 +102,6 @@ public class OrderServiceTests
         var service = CreateOrderService(orderRepository, productRepository);
 
         var result = await service.CreateOrderAsync(new CreateOrderCommand(
-            OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(product.Id, 1, null)]));
 
@@ -117,7 +119,6 @@ public class OrderServiceTests
         var service = CreateOrderService(orderRepository, productRepository);
 
         var result = await service.CreateOrderAsync(new CreateOrderCommand(
-            OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(product.Id, 1, null)]));
 
@@ -130,7 +131,6 @@ public class OrderServiceTests
         var service = CreateOrderService(new FakeOrderRepository(), new FakeProductRepository());
 
         var action = () => service.CreateOrderAsync(new CreateOrderCommand(
-            OrderSource.Counter,
             null,
             []));
 
@@ -144,7 +144,6 @@ public class OrderServiceTests
         var service = CreateOrderService(new FakeOrderRepository(), new FakeProductRepository());
 
         var action = () => service.CreateOrderAsync(new CreateOrderCommand(
-            OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(Guid.NewGuid(), 1, null)]));
 
@@ -161,7 +160,6 @@ public class OrderServiceTests
         var service = CreateOrderService(new FakeOrderRepository(), productRepository);
 
         var action = () => service.CreateOrderAsync(new CreateOrderCommand(
-            OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(product.Id, 1, null)]));
 
@@ -184,7 +182,6 @@ public class OrderServiceTests
             productCategoryRepository: categoryRepository);
 
         var action = () => service.CreateOrderAsync(new CreateOrderCommand(
-            OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(product.Id, 1, null)]));
 
@@ -208,7 +205,6 @@ public class OrderServiceTests
             productCategoryRepository: categoryRepository);
 
         var result = await service.CreateOrderAsync(new CreateOrderCommand(
-            OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(product.Id, 1, null)]));
 
@@ -227,7 +223,6 @@ public class OrderServiceTests
             productCategoryRepository: new FakeProductCategoryRepository());
 
         var action = () => service.CreateOrderAsync(new CreateOrderCommand(
-            OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(product.Id, 1, null)]));
 
@@ -253,7 +248,6 @@ public class OrderServiceTests
             productCategoryRepository: categoryRepository);
 
         await service.CreateOrderAsync(new CreateOrderCommand(
-            OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(product.Id, 1, null)]), tokenSource.Token);
 
@@ -319,6 +313,68 @@ public class OrderServiceTests
             result,
             first => Assert.Equal("260721-0002", first.OrderNumber),
             second => Assert.Equal("260721-0003", second.OrderNumber));
+    }
+
+    [Fact]
+    public async Task GetOrderResultsAsync_GroupsSalesByCurrentDayAndBuildsComparisons()
+    {
+        var dateTimeProvider = new FakeDateTimeProvider
+        {
+            UtcNow = new DateTime(2026, 8, 20, 12, 0, 0, DateTimeKind.Utc)
+        };
+        var deliveredCounter = CreateDeliveredOrder(
+            "260820-0001",
+            createdAtUtc: new DateTime(2026, 8, 20, 9, 0, 0, DateTimeKind.Utc),
+            totalItems: [new OrderItem(Guid.Parse("11111111-1111-1111-1111-111111111111"), "Latte", 7.5m, 3m, 2)]);
+        var deliveredPreviousDay = CreateDeliveredOrder(
+            "260819-0002",
+            createdAtUtc: new DateTime(2026, 8, 19, 15, 0, 0, DateTimeKind.Utc),
+            totalItems:
+            [
+                new OrderItem(Guid.Parse("22222222-2222-2222-2222-222222222222"), "Brownie", 5m, 2m, 3),
+                new OrderItem(Guid.Parse("11111111-1111-1111-1111-111111111111"), "Latte", 7.5m, 3m, 1),
+            ]);
+        var pending = CreatePendingOrder("260820-0003", createdAtUtc: new DateTime(2026, 8, 20, 11, 0, 0, DateTimeKind.Utc));
+        var cancelled = CreateCancelledOrder("260820-0004", createdAtUtc: new DateTime(2026, 8, 20, 10, 30, 0, DateTimeKind.Utc));
+        var orderRepository = new FakeOrderRepository();
+        orderRepository.Seed(deliveredCounter, deliveredPreviousDay, pending, cancelled);
+        var service = CreateOrderService(orderRepository, new FakeProductRepository(), dateTimeProvider);
+
+        var result = await service.GetOrderResultsAsync();
+
+        Assert.Equal(OrderResultsGroupBy.Daily, result.GroupBy);
+        Assert.Equal(new DateOnly(2026, 8, 20), result.PeriodStartDate);
+        Assert.Equal(new DateOnly(2026, 8, 20), result.PeriodEndDate);
+        Assert.Equal(15m, result.CurrentPeriod.TotalRevenue);
+        Assert.Equal(6m, result.CurrentPeriod.TotalCost);
+        Assert.Equal(9m, result.CurrentPeriod.TotalProfit);
+        Assert.Equal(3, result.CurrentPeriod.TotalOrdersCount);
+        Assert.Equal(1, result.CurrentPeriod.DeliveredOrdersCount);
+        Assert.Equal(1, result.CurrentPeriod.CancelledOrdersCount);
+        Assert.Equal(2, result.CurrentPeriod.DeliveredItemsCount);
+        Assert.Equal(15m, result.CurrentPeriod.AverageDeliveredOrderTotal);
+        Assert.Equal(22.5m, result.PreviousPeriod.TotalRevenue);
+        Assert.Equal(1, result.PreviousPeriod.DeliveredOrdersCount);
+        Assert.Equal(4, result.OperationalSnapshot.TotalOrdersCount);
+        Assert.Equal(1, result.OperationalSnapshot.ActiveOrdersCount);
+        Assert.Equal(1, result.OperationalSnapshot.PendingOrdersCount);
+        Assert.Equal(0, result.OperationalSnapshot.PreparingOrdersCount);
+        Assert.Equal(0, result.OperationalSnapshot.ReadyOrdersCount);
+        Assert.Equal(2, result.OperationalSnapshot.DeliveredOrdersCount);
+        Assert.Equal(1, result.OperationalSnapshot.CancelledOrdersCount);
+        Assert.Collection(
+            result.TopSellingProducts,
+            first =>
+            {
+                Assert.Equal("Latte", first.ProductName);
+                Assert.Equal(2, first.QuantitySold);
+                Assert.Equal(15m, first.Revenue);
+            });
+        Assert.Equal(7, result.History.Count);
+        var latestHistoryPoint = result.History.Last();
+        Assert.Equal(new DateOnly(2026, 8, 20), latestHistoryPoint.StartDate);
+        Assert.Equal(15m, latestHistoryPoint.TotalRevenue);
+        Assert.Equal(1, latestHistoryPoint.DeliveredOrdersCount);
     }
 
     [Fact]
@@ -542,7 +598,6 @@ public class OrderServiceTests
         var service = CreateOrderService(orderRepository, productRepository, eventPublisher: eventPublisher);
 
         var action = () => service.CreateOrderAsync(new CreateOrderCommand(
-            OrderSource.Counter,
             null,
             [new CreateOrderItemCommand(product.Id, 1, null)]));
 
@@ -583,32 +638,44 @@ public class OrderServiceTests
         return repository;
     }
 
-    private static Order CreatePendingOrder(string orderNumber, DateTime? createdAtUtc = null)
+    private static Order CreatePendingOrder(
+        string orderNumber,
+        DateTime? createdAtUtc = null,
+        params OrderItem[] totalItems)
     {
         return new Order(
             orderNumber,
-            OrderSource.Counter,
             createdAtUtc ?? new DateTime(2026, 7, 21, 12, 0, 0, DateTimeKind.Utc),
-            [new OrderItem(Guid.NewGuid(), "Latte", 7.25m, 1)]);
+            totalItems.Length == 0 ? [new OrderItem(Guid.NewGuid(), "Latte", 7.25m, 1)] : totalItems);
     }
 
-    private static Order CreatePreparingOrder(string orderNumber, DateTime? createdAtUtc = null)
+    private static Order CreatePreparingOrder(
+        string orderNumber,
+        DateTime? createdAtUtc = null,
+        params OrderItem[] totalItems)
     {
-        var order = CreatePendingOrder(orderNumber, createdAtUtc);
+        var order = CreatePendingOrder(orderNumber, createdAtUtc, totalItems);
         order.StartPreparing(order.CreatedAtUtc.AddMinutes(2));
         return order;
     }
 
-    private static Order CreateReadyOrder(string orderNumber, DateTime? createdAtUtc = null, DateTime? readyAtUtc = null)
+    private static Order CreateReadyOrder(
+        string orderNumber,
+        DateTime? createdAtUtc = null,
+        DateTime? readyAtUtc = null,
+        params OrderItem[] totalItems)
     {
-        var order = CreatePreparingOrder(orderNumber, createdAtUtc);
+        var order = CreatePreparingOrder(orderNumber, createdAtUtc, totalItems);
         order.MarkReady(readyAtUtc ?? order.CreatedAtUtc.AddMinutes(5));
         return order;
     }
 
-    private static Order CreateDeliveredOrder(string orderNumber, DateTime? createdAtUtc = null)
+    private static Order CreateDeliveredOrder(
+        string orderNumber,
+        DateTime? createdAtUtc = null,
+        params OrderItem[] totalItems)
     {
-        var order = CreateReadyOrder(orderNumber, createdAtUtc);
+        var order = CreateReadyOrder(orderNumber, createdAtUtc, totalItems: totalItems);
         order.Deliver(order.ReadyAtUtc!.Value.AddMinutes(2));
         return order;
     }

@@ -7,8 +7,8 @@ import { AdminProductsStore } from './admin-products.store';
 
 class FakeProductsApiService {
   products: Product[] = [
-    { id: 'p-2', name: 'Latte', description: null, price: 10, categoryId: 'c-2', isActive: true },
-    { id: 'p-1', name: 'Espresso', description: null, price: 8, categoryId: 'c-1', isActive: false },
+    { id: 'p-2', name: 'Latte', description: null, price: 10, cost: 4, categoryId: 'c-2', isActive: true },
+    { id: 'p-1', name: 'Espresso', description: null, price: 8, cost: 3, categoryId: 'c-1', isActive: false },
   ];
   error: unknown = null;
 
@@ -56,9 +56,10 @@ describe('AdminProductsStore', () => {
   it('creates and updates products from backend responses', async () => {
     const store = TestBed.inject(AdminProductsStore);
     await store.load();
-    await store.create({ name: 'Mocha', description: null, price: 12, categoryId: 'c-1' });
-    await store.update('p-3', { name: 'Mocaccino', description: null, price: 13, categoryId: 'c-1' });
+    await store.create({ name: 'Mocha', description: null, price: 12, cost: 5, categoryId: 'c-1' });
+    await store.update('p-3', { name: 'Mocaccino', description: null, price: 13, cost: 5.5, categoryId: 'c-1' });
     expect(store.products().find((product) => product.id === 'p-3')?.name).toBe('Mocaccino');
+    expect(store.products().find((product) => product.id === 'p-3')?.cost).toBe(5.5);
     expect(store.successMessage()).toContain('actualizado');
   });
 
@@ -77,7 +78,7 @@ describe('AdminProductsStore', () => {
     api.error = new Error('failed');
     await store.load();
     expect(store.loadError()).not.toBeNull();
-    await store.create({ name: 'Mocha', description: null, price: 12, categoryId: 'c-1' });
+    await store.create({ name: 'Mocha', description: null, price: 12, cost: 5, categoryId: 'c-1' });
     expect(store.mutationError()).not.toBeNull();
   });
 });

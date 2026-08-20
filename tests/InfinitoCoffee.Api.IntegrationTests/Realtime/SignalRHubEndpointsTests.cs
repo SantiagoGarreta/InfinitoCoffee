@@ -78,7 +78,6 @@ public sealed class SignalRHubEndpointsTests
 
         var response = await context.PostAsJsonWithCsrfAsync("/api/orders", new
         {
-            source = "Counter",
             notes = "Mesa 1",
             items = new[]
             {

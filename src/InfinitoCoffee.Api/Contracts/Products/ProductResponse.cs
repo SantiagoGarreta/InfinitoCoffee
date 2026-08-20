@@ -5,5 +5,6 @@ public sealed record ProductResponse(
     string Name,
     string? Description,
     decimal Price,
+    decimal Cost,
     Guid CategoryId,
     bool IsActive);

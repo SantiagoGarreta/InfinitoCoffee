@@ -99,9 +99,10 @@ internal static class TestDataSeeder
         Guid categoryId,
         string name = "Latte",
         decimal price = 150m,
+        decimal cost = 60m,
         bool isActive = true)
     {
-        var product = new Product(categoryId, name, price, "Test product");
+        var product = new Product(categoryId, name, price, cost, "Test product");
         if (!isActive)
         {
             product.Deactivate();
@@ -117,13 +118,16 @@ internal static class TestDataSeeder
         string orderNumber,
         OrderStatus status,
         DateTime createdAtUtc,
-        DateTime? readyAtUtc = null)
+        DateTime? readyAtUtc = null,
+        decimal unitPrice = 150m,
+        decimal unitCost = 60m,
+        int quantity = 1,
+        string productName = "Latte")
     {
         var order = new Order(
             orderNumber,
-            OrderSource.Counter,
             createdAtUtc,
-            [new OrderItem(Guid.NewGuid(), "Latte", 150m, 1, "No cinnamon")],
+            [new OrderItem(Guid.NewGuid(), productName, unitPrice, unitCost, quantity, "No cinnamon")],
             "Test order");
 
         if (status is OrderStatus.Preparing or OrderStatus.Ready or OrderStatus.Delivered)

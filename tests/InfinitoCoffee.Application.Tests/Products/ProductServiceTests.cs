@@ -19,10 +19,11 @@ public class ProductServiceTests
         var productRepository = new FakeProductRepository();
         var service = CreateProductService(productRepository, categoryRepository);
 
-        var result = await service.CreateProductAsync(new CreateProductCommand(category.Id, "Flat White", 6.50m, "Double shot"));
+        var result = await service.CreateProductAsync(new CreateProductCommand(category.Id, "Flat White", 6.50m, 2.40m, "Double shot"));
 
         Assert.Equal("Flat White", result.Name);
         Assert.Equal(category.Id, result.CategoryId);
+        Assert.Equal(2.40m, result.Cost);
         Assert.Equal(1, productRepository.SaveChangesCalls);
     }
 
@@ -31,7 +32,7 @@ public class ProductServiceTests
     {
         var service = CreateProductService(new FakeProductRepository(), new FakeProductCategoryRepository());
 
-        var action = () => service.CreateProductAsync(new CreateProductCommand(Guid.NewGuid(), "Latte", 7m, null));
+        var action = () => service.CreateProductAsync(new CreateProductCommand(Guid.NewGuid(), "Latte", 7m, 3m, null));
 
         await Assert.ThrowsAsync<NotFoundException>(action);
     }
@@ -45,7 +46,7 @@ public class ProductServiceTests
         categoryRepository.Seed(category);
         var service = CreateProductService(new FakeProductRepository(), categoryRepository);
 
-        var action = () => service.CreateProductAsync(new CreateProductCommand(category.Id, "Latte", 7m, null));
+        var action = () => service.CreateProductAsync(new CreateProductCommand(category.Id, "Latte", 7m, 3m, null));
 
         await Assert.ThrowsAsync<ConflictException>(action);
     }
@@ -67,11 +68,13 @@ public class ProductServiceTests
             newCategory.Id,
             "Iced Latte",
             7.75m,
+            3.25m,
             "Oat milk"));
 
         Assert.Equal("Iced Latte", result.Name);
         Assert.Equal(newCategory.Id, result.CategoryId);
         Assert.Equal(7.75m, result.Price);
+        Assert.Equal(3.25m, result.Cost);
         Assert.Equal("Oat milk", result.Description);
     }
 
@@ -92,11 +95,13 @@ public class ProductServiceTests
             category.Id,
             "Iced Latte",
             7.75m,
+            3.25m,
             "Oat milk"));
 
         Assert.Equal("Iced Latte", result.Name);
         Assert.Equal(category.Id, result.CategoryId);
         Assert.Equal(7.75m, result.Price);
+        Assert.Equal(3.25m, result.Cost);
     }
 
     [Fact]
@@ -115,6 +120,7 @@ public class ProductServiceTests
             category.Id,
             "Latte grande",
             8m,
+            3m,
             null));
 
         Assert.Equal("Latte grande", result.Name);
@@ -139,6 +145,7 @@ public class ProductServiceTests
             inactiveCategory.Id,
             "Latte",
             7m,
+            3m,
             null));
 
         await Assert.ThrowsAsync<ConflictException>(action);
@@ -158,6 +165,7 @@ public class ProductServiceTests
             Guid.NewGuid(),
             "Latte",
             7m,
+            3m,
             null));
 
         await Assert.ThrowsAsync<NotFoundException>(action);

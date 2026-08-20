@@ -5,7 +5,6 @@ namespace InfinitoCoffee.Application.Orders.Dtos;
 public sealed record OrderDto(
     Guid Id,
     string OrderNumber,
-    OrderSource Source,
     OrderStatus Status,
     DateTime CreatedAtUtc,
     DateTime? StartedAtUtc,

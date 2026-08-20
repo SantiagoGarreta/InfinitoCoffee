@@ -20,6 +20,16 @@ public sealed class OrderRepository : IOrderRepository
             .SingleOrDefaultAsync(order => order.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyCollection<Order>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Orders
+            .AsNoTracking()
+            .Include(order => order.Items)
+            .OrderBy(order => order.CreatedAtUtc)
+            .ThenBy(order => order.OrderNumber)
+            .ToArrayAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyCollection<Order>> GetActiveAsync(CancellationToken cancellationToken = default)
     {
         return await _dbContext.Orders

@@ -147,7 +147,6 @@ public sealed class AuthorizationEndpointTests
             "orders-create" => JsonRequest(HttpMethod.Post, "/api/orders", new
             {
                 orderNumber = "AUTH-CREATE",
-                source = "Counter",
                 notes = (string?)null,
                 items = new[] { new { productId = resources.ProductId, quantity = 1, notes = (string?)null } }
             }),

@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 import { APP_RUNTIME_CONFIG } from '../../config/app-runtime-config';
+import { OrderResults, OrderResultsGroupBy } from '../models/order-results.model';
 import { CreateOrderRequest, OrderApiDto } from '../models/order.model';
 
 @Injectable({ providedIn: 'root' })
@@ -15,11 +16,17 @@ export class OrdersApiService {
     return firstValueFrom(this.httpClient.get<OrderApiDto[]>(`${this.ordersBaseUrl}/active`));
   }
 
-createOrder(request: CreateOrderRequest): Promise<OrderApiDto> {
-  return firstValueFrom(
-    this.httpClient.post<OrderApiDto>(this.ordersBaseUrl, request)
-  );
-}
+  getOrderSummary(groupBy: OrderResultsGroupBy = 'Daily'): Promise<OrderResults> {
+    return firstValueFrom(
+      this.httpClient.get<OrderResults>(`${this.ordersBaseUrl}/summary`, {
+        params: { groupBy },
+      }),
+    );
+  }
+
+  createOrder(request: CreateOrderRequest): Promise<OrderApiDto> {
+    return firstValueFrom(this.httpClient.post<OrderApiDto>(this.ordersBaseUrl, request));
+  }
 
   startPreparation(orderId: string): Promise<OrderApiDto> {
     return firstValueFrom(this.httpClient.post<OrderApiDto>(`${this.ordersBaseUrl}/${orderId}/start-preparation`, {}));

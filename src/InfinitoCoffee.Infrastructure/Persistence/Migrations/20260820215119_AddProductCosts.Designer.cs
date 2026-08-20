@@ -4,6 +4,7 @@ using InfinitoCoffee.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(InfinitoCoffeeDbContext))]
-    partial class InfinitoCoffeeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260820215119_AddProductCosts")]
+    partial class AddProductCosts
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -53,6 +56,11 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
 
                     b.Property<DateTime?>("StartedAtUtc")
                         .HasColumnType("datetime2");

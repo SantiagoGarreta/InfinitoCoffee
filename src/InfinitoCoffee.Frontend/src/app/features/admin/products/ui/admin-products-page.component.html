@@ -41,7 +41,10 @@
                       <p>{{ product.description }}</p>
                     }
                   </div>
-                  <strong>{{ product.price | currency:'UYU':'symbol-narrow':'1.2-2' }}</strong>
+                  <div>
+                    <strong>Precio: {{ product.price | currency:'UYU':'symbol-narrow':'1.2-2' }}</strong>
+                    <small>Costo: {{ product.cost | currency:'UYU':'symbol-narrow':'1.2-2' }}</small>
+                  </div>
                 </div>
 
                 @if (!product.isActive) {
@@ -107,6 +110,12 @@
           <span>Precio</span>
           <input name="price" type="number" required min="0.01" step="0.01" [disabled]="store.saving()" [ngModel]="price()" (ngModelChange)="price.set($event)" />
           @if (price() !== null && (price() ?? 0) < 0.01) { <small>El precio mínimo es 0.01.</small> }
+        </label>
+
+        <label>
+          <span>Costo</span>
+          <input name="cost" type="number" required min="0" step="0.01" [disabled]="store.saving()" [ngModel]="cost()" (ngModelChange)="cost.set($event)" />
+          @if (cost() !== null && (cost() ?? 0) < 0) { <small>El costo mínimo es 0.</small> }
         </label>
 
         <label>

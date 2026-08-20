@@ -23,7 +23,6 @@ public sealed class OrderEndpointsTests
             "/api/orders",
             new CreateOrderRequest
             {
-                Source = "Counter",
                 Notes = "Sin azucar",
                 Items =
                 [
@@ -57,7 +56,6 @@ public sealed class OrderEndpointsTests
                 "/api/orders",
                 new CreateOrderRequest
                 {
-                    Source = "Counter",
                     Items = [new CreateOrderItemRequest { ProductId = Guid.NewGuid(), Quantity = 1 }]
                 }),
             HttpStatusCode.NotFound);
@@ -79,7 +77,6 @@ public sealed class OrderEndpointsTests
                 "/api/orders",
                 new CreateOrderRequest
                 {
-                    Source = "Counter",
                     Items = [new CreateOrderItemRequest { ProductId = productId, Quantity = 1 }]
                 }),
             HttpStatusCode.BadRequest);
@@ -101,7 +98,6 @@ public sealed class OrderEndpointsTests
                 "/api/orders",
                 new CreateOrderRequest
                 {
-                    Source = "Counter",
                     Items = [new CreateOrderItemRequest { ProductId = productId, Quantity = 1 }]
                 }),
             HttpStatusCode.BadRequest);
@@ -131,7 +127,6 @@ public sealed class OrderEndpointsTests
             "/api/orders",
             new CreateOrderRequest
             {
-                Source = "Counter",
                 Items = [new CreateOrderItemRequest { ProductId = data.ProductId, Quantity = 1 }]
             });
         Assert.Equal(HttpStatusCode.BadRequest, rejectedResponse.StatusCode);
@@ -144,7 +139,6 @@ public sealed class OrderEndpointsTests
             "/api/orders",
             new CreateOrderRequest
             {
-                Source = "Counter",
                 Items = [new CreateOrderItemRequest { ProductId = data.ProductId, Quantity = 1 }]
             });
 
@@ -178,7 +172,6 @@ public sealed class OrderEndpointsTests
             "/api/orders",
             new CreateOrderRequest
             {
-                Source = "Counter",
                 Items = [new CreateOrderItemRequest { ProductId = productId, Quantity = 1 }]
             });
 
@@ -186,7 +179,6 @@ public sealed class OrderEndpointsTests
             "/api/orders",
             new CreateOrderRequest
             {
-                Source = "Counter",
                 Items = [new CreateOrderItemRequest { ProductId = productId, Quantity = 1 }]
             });
 
@@ -218,7 +210,6 @@ public sealed class OrderEndpointsTests
             "/api/orders",
             new CreateOrderRequest
             {
-                Source = "Counter",
                 Items =
                 [
                     new CreateOrderItemRequest
@@ -280,6 +271,81 @@ public sealed class OrderEndpointsTests
         var orders = await api.ReadRequiredAsync<IReadOnlyCollection<OrderResponse>>(response);
         Assert.Single(orders);
         Assert.Equal("A-100", orders.Single().OrderNumber);
+    }
+
+    [Fact]
+    public async Task GetSummary_ReturnsCurrentDailyPeriodAndHistoricalBreakdown()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Administrator);
+        await api.ExecuteDbContextAsync(async dbContext =>
+        {
+            var now = DateTime.UtcNow;
+            await TestDataSeeder.AddOrderAsync(
+                dbContext,
+                "A-100",
+                OrderStatus.Delivered,
+                now.AddMinutes(-20),
+                readyAtUtc: now.AddMinutes(-18),
+                unitPrice: 200m,
+                unitCost: 80m,
+                quantity: 2,
+                productName: "Flat White");
+            await TestDataSeeder.AddOrderAsync(
+                dbContext,
+                "A-101",
+                OrderStatus.Delivered,
+                now.AddDays(-1).AddMinutes(-15),
+                readyAtUtc: now.AddDays(-1).AddMinutes(-12),
+                unitPrice: 90m,
+                unitCost: 35m,
+                quantity: 1,
+                productName: "Cookie");
+            await TestDataSeeder.AddOrderAsync(dbContext, "A-102", OrderStatus.Pending, now.AddMinutes(-10));
+            await TestDataSeeder.AddOrderAsync(dbContext, "A-103", OrderStatus.Cancelled, now.AddMinutes(-5));
+        });
+
+        var response = await api.Client.GetAsync("/api/orders/summary");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var summary = await api.ReadRequiredAsync<OrderResultsResponse>(response);
+        Assert.Equal("Daily", summary.GroupBy);
+        Assert.Equal(400m, summary.CurrentPeriod.TotalRevenue);
+        Assert.Equal(160m, summary.CurrentPeriod.TotalCost);
+        Assert.Equal(240m, summary.CurrentPeriod.TotalProfit);
+        Assert.Equal(3, summary.CurrentPeriod.TotalOrdersCount);
+        Assert.Equal(1, summary.CurrentPeriod.DeliveredOrdersCount);
+        Assert.Equal(1, summary.CurrentPeriod.CancelledOrdersCount);
+        Assert.Equal(2, summary.CurrentPeriod.DeliveredItemsCount);
+        Assert.Equal(400m, summary.CurrentPeriod.AverageDeliveredOrderTotal);
+        Assert.Equal(90m, summary.PreviousPeriod.TotalRevenue);
+        Assert.Equal(1, summary.PreviousPeriod.DeliveredOrdersCount);
+        Assert.Equal(4, summary.OperationalSnapshot.TotalOrdersCount);
+        Assert.Equal(1, summary.OperationalSnapshot.ActiveOrdersCount);
+        Assert.Equal(2, summary.OperationalSnapshot.DeliveredOrdersCount);
+        Assert.Equal(1, summary.OperationalSnapshot.CancelledOrdersCount);
+        Assert.Collection(
+            summary.TopSellingProducts,
+            first =>
+            {
+                Assert.Equal("Flat White", first.ProductName);
+                Assert.Equal(2, first.QuantitySold);
+                Assert.Equal(400m, first.Revenue);
+            });
+        Assert.Equal(7, summary.History.Count);
+        Assert.Equal(summary.PeriodStartDate, summary.CurrentPeriod.StartDate);
+        Assert.Equal(400m, summary.History.Last().TotalRevenue);
+    }
+
+    [Fact]
+    public async Task GetSummary_WhenRoleIsNotAdministrator_ReturnsForbidden()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Cashier);
+
+        var response = await api.Client.GetAsync("/api/orders/summary");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]

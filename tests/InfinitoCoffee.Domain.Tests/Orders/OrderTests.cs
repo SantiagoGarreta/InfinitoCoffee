@@ -11,7 +11,7 @@ public class OrderTests
         var createdAtUtc = new DateTime(2026, 7, 21, 12, 0, 0, DateTimeKind.Utc);
         var item = CreateItem(quantity: 2, price: 5.50m);
 
-        var order = new Order("260721-0001", OrderSource.Counter, createdAtUtc, [item], " Sin azucar ");
+        var order = new Order("260721-0001", createdAtUtc, [item], " Sin azucar ");
 
         Assert.Equal(OrderStatus.Pending, order.Status);
         Assert.Equal(createdAtUtc, order.CreatedAtUtc);
@@ -31,7 +31,7 @@ public class OrderTests
     {
         var createdAtUtc = new DateTime(2026, 7, 21, 12, 0, 0, DateTimeKind.Utc);
 
-        var action = () => new Order("260721-0001", OrderSource.Counter, createdAtUtc, []);
+        var action = () => new Order("260721-0001", createdAtUtc, []);
 
         var exception = Assert.Throws<ArgumentException>(action);
         Assert.Equal("items", exception.ParamName);
@@ -175,7 +175,6 @@ public class OrderTests
     {
         var order = new Order(
             "260721-0002",
-            OrderSource.Counter,
             new DateTime(2026, 7, 21, 12, 0, 0, DateTimeKind.Utc),
             [
                 CreateItem(quantity: 2, price: 4.50m),
@@ -284,7 +283,6 @@ public class OrderTests
     {
         return new Order(
             "260721-0001",
-            OrderSource.Counter,
             new DateTime(2026, 7, 21, 12, 0, 0, DateTimeKind.Utc),
             [CreateItem()]);
     }

@@ -8,9 +8,9 @@ import { AdminProductsPageComponent } from './admin-products-page.component';
 
 class FakeAdminProductsStore {
   readonly products = signal<Product[]>([
-    { id: 'p-1', name: 'Espresso', description: 'Corto', price: 8, categoryId: 'c-1', isActive: true },
-    { id: 'p-2', name: 'Latte', description: null, price: 10, categoryId: 'c-2', isActive: true },
-    { id: 'p-3', name: 'Mocha', description: null, price: 12, categoryId: 'c-1', isActive: false },
+    { id: 'p-1', name: 'Espresso', description: 'Corto', price: 8, cost: 3, categoryId: 'c-1', isActive: true },
+    { id: 'p-2', name: 'Latte', description: null, price: 10, cost: 4, categoryId: 'c-2', isActive: true },
+    { id: 'p-3', name: 'Mocha', description: null, price: 12, cost: 5, categoryId: 'c-1', isActive: false },
   ]);
   readonly categories = signal([
     { id: 'c-1', name: 'Cafés', isActive: true },

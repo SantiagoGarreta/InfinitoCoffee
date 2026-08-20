@@ -5,11 +5,6 @@ export type OrderStatus =
   | 'Delivered'
   | 'Cancelled';
 
-export type OrderSource =
-  | 'Counter'
-  | 'WhatsApp'
-  | 'Web';
-
 export interface OrderItem {
   id: string;
   productId: string;
@@ -33,7 +28,6 @@ export interface OrderApiItemDto {
 export interface Order {
   id: string;
   orderNumber: string;
-  source: OrderSource;
   status: OrderStatus;
   createdAtUtc: string;
   startedAtUtc: string | null;
@@ -48,7 +42,6 @@ export interface Order {
 export interface OrderApiDto {
   id: string;
   orderNumber: string;
-  source: OrderSource;
   status: OrderStatus;
   createdAtUtc: string;
   startedAtUtc: string | null;
@@ -73,7 +66,6 @@ export interface OrderRealtimeItemDto {
 export interface OrderRealtimeDto {
   id: string;
   orderNumber: string;
-  source: OrderSource;
   status: OrderStatus;
   createdAtUtc: string;
   startedAtUtc: string | null;
@@ -96,7 +88,6 @@ export interface CreateOrderItemRequest {
 }
 
 export interface CreateOrderRequest {
-  source: OrderSource;
   notes: string | null;
   items: CreateOrderItemRequest[];
 }

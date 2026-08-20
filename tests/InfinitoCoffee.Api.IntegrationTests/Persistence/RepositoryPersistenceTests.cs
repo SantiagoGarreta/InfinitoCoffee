@@ -32,7 +32,7 @@ public class RepositoryPersistenceTests : IDisposable
         dbContext.ProductCategories.Add(category);
         await dbContext.SaveChangesAsync();
         var repository = new ProductRepository(dbContext);
-        var product = new Product(category.Id, "Latte", 7.25m, "Oat milk");
+        var product = new Product(category.Id, "Latte", 7.25m, 3.10m, "Oat milk");
 
         await repository.AddAsync(product);
         await repository.SaveChangesAsync();
@@ -40,6 +40,7 @@ public class RepositoryPersistenceTests : IDisposable
         var persisted = await dbContext.Products.SingleAsync();
         Assert.Equal(category.Id, persisted.CategoryId);
         Assert.Equal("Latte", persisted.Name);
+        Assert.Equal(3.10m, persisted.Cost);
     }
 
     [Fact]
@@ -49,11 +50,10 @@ public class RepositoryPersistenceTests : IDisposable
         var repository = new OrderRepository(dbContext);
         var order = new Order(
             "260721-0001",
-            OrderSource.Counter,
             new DateTime(2026, 7, 21, 12, 0, 0, DateTimeKind.Utc),
             [
-                new OrderItem(Guid.NewGuid(), "Latte", 7.25m, 2, "Extra hot"),
-                new OrderItem(Guid.NewGuid(), "Cookie", 3m, 1)
+                new OrderItem(Guid.NewGuid(), "Latte", 7.25m, 3.10m, 2, "Extra hot"),
+                new OrderItem(Guid.NewGuid(), "Cookie", 3m, 1.25m, 1)
             ]);
 
         await repository.AddAsync(order);
@@ -63,8 +63,8 @@ public class RepositoryPersistenceTests : IDisposable
 
         Assert.NotNull(persisted);
         Assert.Equal(2, persisted.Items.Count);
-        Assert.Contains(persisted.Items, item => item.ProductNameSnapshot == "Latte" && item.UnitPriceSnapshot == 7.25m);
-        Assert.Contains(persisted.Items, item => item.ProductNameSnapshot == "Cookie" && item.UnitPriceSnapshot == 3m);
+        Assert.Contains(persisted.Items, item => item.ProductNameSnapshot == "Latte" && item.UnitPriceSnapshot == 7.25m && item.UnitCostSnapshot == 3.10m);
+        Assert.Contains(persisted.Items, item => item.ProductNameSnapshot == "Cookie" && item.UnitPriceSnapshot == 3m && item.UnitCostSnapshot == 1.25m);
     }
 
     [Fact]
@@ -174,7 +174,6 @@ public class RepositoryPersistenceTests : IDisposable
         await using var dbContext = _dbContextFactory.CreateDbContext();
         var order = new Order(
             "260721-0001",
-            OrderSource.Counter,
             new DateTime(2026, 7, 21, 12, 0, 0, DateTimeKind.Utc),
             [new OrderItem(Guid.NewGuid(), "Latte", 7.25m, 1)]);
         dbContext.Orders.Add(order);
@@ -223,7 +222,6 @@ public class RepositoryPersistenceTests : IDisposable
     {
         return new Order(
             orderNumber,
-            OrderSource.Counter,
             new DateTime(2026, 7, 21, 12, 0, 0, DateTimeKind.Utc),
             [new OrderItem(Guid.NewGuid(), "Latte", 7.25m, 1)]);
     }

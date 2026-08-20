@@ -22,12 +22,14 @@ public sealed class ProductEndpointsTests
                 Name = "Cafe latte",
                 Description = "Cafe con leche",
                 Price = 150m,
+                Cost = 62m,
                 CategoryId = categoryId
             });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var product = await api.ReadRequiredAsync<ProductResponse>(response);
         Assert.Equal(categoryId, product.CategoryId);
+        Assert.Equal(62m, product.Cost);
     }
 
     [Fact]
@@ -44,6 +46,7 @@ public sealed class ProductEndpointsTests
                     Name = "Cafe latte",
                     Description = "Cafe con leche",
                     Price = 150m,
+                    Cost = 62m,
                     CategoryId = Guid.NewGuid()
                 }),
             HttpStatusCode.NotFound);
@@ -65,6 +68,7 @@ public sealed class ProductEndpointsTests
                     Name = "Cafe latte",
                     Description = "Cafe con leche",
                     Price = 150m,
+                    Cost = 62m,
                     CategoryId = categoryId
                 }),
             HttpStatusCode.BadRequest);
@@ -109,6 +113,7 @@ public sealed class ProductEndpointsTests
                 Name = "Latte grande",
                 Description = "Cafe con leche grande",
                 Price = 180m,
+                Cost = 74m,
                 CategoryId = data.CategoryId
             });
 
@@ -116,6 +121,7 @@ public sealed class ProductEndpointsTests
         var product = await api.ReadRequiredAsync<ProductResponse>(response);
         Assert.Equal("Latte grande", product.Name);
         Assert.Equal(180m, product.Price);
+        Assert.Equal(74m, product.Cost);
         Assert.Equal(data.CategoryId, product.CategoryId);
     }
 
@@ -138,6 +144,7 @@ public sealed class ProductEndpointsTests
                 Name = "Latte grande",
                 Description = "Updated while category is inactive",
                 Price = 180m,
+                Cost = 74m,
                 CategoryId = data.CategoryId
             });
 
@@ -167,6 +174,7 @@ public sealed class ProductEndpointsTests
                 {
                     Name = "Latte",
                     Price = 180m,
+                    Cost = 74m,
                     CategoryId = data.CategoryId
                 }),
             HttpStatusCode.BadRequest);

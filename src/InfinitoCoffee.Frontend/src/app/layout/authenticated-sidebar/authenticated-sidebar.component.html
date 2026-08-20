@@ -1,13 +1,13 @@
 <aside class="sidebar">
   <div class="sidebar__brand">
-    <span class="sidebar__mark" aria-hidden="true">∞</span>
+    <span class="sidebar__mark" aria-hidden="true">&infin;</span>
     <div>
       <strong>InfinitoCoffee</strong>
-      <span>Operación diaria</span>
+      <span>Operacion diaria</span>
     </div>
   </div>
 
-  <nav class="sidebar__navigation" aria-label="Navegación principal">
+  <nav class="sidebar__navigation" aria-label="Navegaci&oacute;n principal">
     <div class="sidebar__group">
       <span class="sidebar__label">Principal</span>
       @if (isAdministrator()) {
@@ -21,16 +21,17 @@
         <a routerLink="/kitchen" routerLinkActive="sidebar__link--active" class="sidebar__link">Cocina</a>
       }
       <a href="/pickup" target="_blank" rel="noopener" class="sidebar__link">
-        Pickup <span aria-hidden="true">↗</span>
-        <span class="visually-hidden">(se abre en una nueva pestaña)</span>
+        Pickup <span aria-hidden="true">&nearr;</span>
+        <span class="visually-hidden">(se abre en una nueva pestana)</span>
       </a>
     </div>
 
     @if (isAdministrator()) {
       <div class="sidebar__group">
-        <span class="sidebar__label">Administración</span>
+        <span class="sidebar__label">Administracion</span>
+        <a routerLink="/admin/results" routerLinkActive="sidebar__link--active" class="sidebar__link">Resultado</a>
         <a routerLink="/admin/products" routerLinkActive="sidebar__link--active" class="sidebar__link">Productos</a>
-        <a routerLink="/admin/categories" routerLinkActive="sidebar__link--active" class="sidebar__link">Categorías</a>
+        <a routerLink="/admin/categories" routerLinkActive="sidebar__link--active" class="sidebar__link">Categorias</a>
         <a routerLink="/admin/users" routerLinkActive="sidebar__link--active" class="sidebar__link">Usuarios</a>
       </div>
     }
@@ -43,7 +44,7 @@
         <span>{{ user.role }}</span>
       </div>
       <button type="button" [disabled]="loggingOut()" (click)="logout()">
-        {{ loggingOut() ? 'Cerrando...' : 'Cerrar sesión' }}
+        {{ loggingOut() ? 'Cerrando...' : 'Cerrar sesi&oacute;n' }}
       </button>
       @if (logoutError()) {
         <p role="alert">{{ logoutError() }}</p>
