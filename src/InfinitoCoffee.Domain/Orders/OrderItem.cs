@@ -10,6 +10,17 @@ public class OrderItem
     }
 
     public OrderItem(Guid productId, string productNameSnapshot, decimal unitPriceSnapshot, int quantity, string? notes = null)
+        : this(productId, productNameSnapshot, unitPriceSnapshot, 0m, quantity, notes)
+    {
+    }
+
+    public OrderItem(
+        Guid productId,
+        string productNameSnapshot,
+        decimal unitPriceSnapshot,
+        decimal unitCostSnapshot,
+        int quantity,
+        string? notes = null)
     {
         if (productId == Guid.Empty)
         {
@@ -26,6 +37,11 @@ public class OrderItem
             throw new ArgumentOutOfRangeException(nameof(unitPriceSnapshot), "Unit price snapshot cannot be negative.");
         }
 
+        if (unitCostSnapshot < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(unitCostSnapshot), "Unit cost snapshot cannot be negative.");
+        }
+
         if (quantity <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(quantity), "Quantity must be greater than zero.");
@@ -35,6 +51,7 @@ public class OrderItem
         ProductId = productId;
         ProductNameSnapshot = productNameSnapshot.Trim();
         UnitPriceSnapshot = unitPriceSnapshot;
+        UnitCostSnapshot = unitCostSnapshot;
         Quantity = quantity;
         Notes = NormalizeOptional(notes);
     }
@@ -49,11 +66,17 @@ public class OrderItem
 
     public decimal UnitPriceSnapshot { get; private set; }
 
+    public decimal UnitCostSnapshot { get; private set; }
+
     public int Quantity { get; private set; }
 
     public string? Notes { get; private set; }
 
     public decimal LineTotal => UnitPriceSnapshot * Quantity;
+
+    public decimal CostTotal => UnitCostSnapshot * Quantity;
+
+    public decimal Profit => LineTotal - CostTotal;
 
     internal void AttachToOrder(Guid orderId)
     {

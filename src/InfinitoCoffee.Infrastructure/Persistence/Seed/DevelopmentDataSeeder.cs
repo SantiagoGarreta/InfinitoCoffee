@@ -22,15 +22,15 @@ public sealed class DevelopmentDataSeeder
 
     private static readonly SeedProduct[] Products =
     [
-        new("Cafes", "Espresso", 110m, "Shot corto e intenso de espresso.", true),
-        new("Cafes", "Americano", 125m, "Espresso alargado con agua caliente.", true),
-        new("Cafes", "Cafe latte", 150m, "Espresso con leche vaporizada.", true),
-        new("Cafes", "Cappuccino", 145m, "Espresso equilibrado con leche y espuma.", true),
-        new("Tes", "Te", 95m, "Te del dia servido caliente.", true),
-        new("Bebidas frias", "Jugo de naranja", 130m, "Jugo natural servido frio.", true),
-        new("Panaderia", "Croissant", 95m, "Croissant de manteca horneado en el dia.", true),
-        new("Panaderia", "Medialuna", 80m, "Medialuna glaseada tradicional.", true),
-        new("Comidas", "Sandwich", 220m, "Sandwich tostado para almuerzo rapido.", true)
+        new("Cafes", "Espresso", 110m, 38m, "Shot corto e intenso de espresso.", true),
+        new("Cafes", "Americano", 125m, 42m, "Espresso alargado con agua caliente.", true),
+        new("Cafes", "Cafe latte", 150m, 58m, "Espresso con leche vaporizada.", true),
+        new("Cafes", "Cappuccino", 145m, 56m, "Espresso equilibrado con leche y espuma.", true),
+        new("Tes", "Te", 95m, 28m, "Te del dia servido caliente.", true),
+        new("Bebidas frias", "Jugo de naranja", 130m, 52m, "Jugo natural servido frio.", true),
+        new("Panaderia", "Croissant", 95m, 34m, "Croissant de manteca horneado en el dia.", true),
+        new("Panaderia", "Medialuna", 80m, 29m, "Medialuna glaseada tradicional.", true),
+        new("Comidas", "Sandwich", 220m, 96m, "Sandwich tostado para almuerzo rapido.", true)
     ];
 
     public DevelopmentDataSeeder(
@@ -175,7 +175,7 @@ public sealed class DevelopmentDataSeeder
 
             if (product is null)
             {
-                product = new Product(category.Id, seedProduct.Name, seedProduct.Price, seedProduct.Description);
+                product = new Product(category.Id, seedProduct.Name, seedProduct.Price, seedProduct.Cost, seedProduct.Description);
                 if (!seedProduct.IsActive)
                 {
                     product.Deactivate();
@@ -189,6 +189,7 @@ public sealed class DevelopmentDataSeeder
             product.ChangeCategory(category.Id);
             product.Rename(seedProduct.Name);
             product.ChangePrice(seedProduct.Price);
+            product.ChangeCost(seedProduct.Cost);
             product.ChangeDescription(seedProduct.Description);
 
             if (seedProduct.IsActive)
@@ -210,6 +211,7 @@ public sealed class DevelopmentDataSeeder
         string CategoryName,
         string Name,
         decimal Price,
+        decimal Cost,
         string Description,
         bool IsActive);
 }

@@ -11,6 +11,8 @@ internal sealed class FakeOrderRepository : IOrderRepository
 
     public CancellationToken? LastGetByIdToken { get; private set; }
 
+    public CancellationToken? LastGetAllToken { get; private set; }
+
     public CancellationToken? LastGetActiveToken { get; private set; }
 
     public CancellationToken? LastGetPickupCandidatesToken { get; private set; }
@@ -27,6 +29,12 @@ internal sealed class FakeOrderRepository : IOrderRepository
     {
         LastGetByIdToken = cancellationToken;
         return Task.FromResult(_orders.SingleOrDefault(order => order.Id == id));
+    }
+
+    public Task<IReadOnlyCollection<Order>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        LastGetAllToken = cancellationToken;
+        return Task.FromResult<IReadOnlyCollection<Order>>(_orders.ToArray());
     }
 
     public Task<IReadOnlyCollection<Order>> GetActiveAsync(CancellationToken cancellationToken = default)

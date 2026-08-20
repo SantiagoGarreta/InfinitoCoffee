@@ -22,9 +22,9 @@ describe('AuthenticatedSidebarComponent', () => {
   });
 
   it.each([
-    ['Administrator', ['Inicio', 'Caja', 'Cocina', 'Pickup', 'Productos', 'Categorías', 'Usuarios'], []],
-    ['Cashier', ['Caja', 'Cocina', 'Pickup'], ['Inicio', 'Productos', 'Categorías', 'Usuarios']],
-    ['Kitchen', ['Cocina', 'Pickup'], ['Inicio', 'Caja', 'Productos', 'Categorías', 'Usuarios']],
+    ['Administrator', ['Inicio', 'Caja', 'Cocina', 'Pickup', 'Resultado', 'Productos', 'Categorias', 'Usuarios'], []],
+    ['Cashier', ['Caja', 'Cocina', 'Pickup'], ['Inicio', 'Resultado', 'Productos', 'Categorias', 'Usuarios']],
+    ['Kitchen', ['Cocina', 'Pickup'], ['Inicio', 'Resultado', 'Caja', 'Productos', 'Categorias', 'Usuarios']],
   ] as const)('shows exact navigation and identity for %s', (role, visible, hidden) => {
     const fixture = create(role);
     const text = fixture.nativeElement.textContent as string;

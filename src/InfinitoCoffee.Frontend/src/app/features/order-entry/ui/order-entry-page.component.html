@@ -21,18 +21,6 @@
             <strong>Se asigna automaticamente del 1 al 99</strong>
           </div>
 
-          <label>
-            <span>Canal</span>
-            <select
-              [disabled]="store.submitting()"
-              [ngModel]="store.source()"
-              (ngModelChange)="store.setSource($event)">
-              @for (source of orderSources; track source) {
-                <option [ngValue]="source">{{ source }}</option>
-              }
-            </select>
-          </label>
-
           <label class="order-entry__notes">
             <span>Notas generales</span>
             <textarea

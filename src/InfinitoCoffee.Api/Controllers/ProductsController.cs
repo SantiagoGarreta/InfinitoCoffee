@@ -32,7 +32,7 @@ public sealed class ProductsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var product = await _productService.CreateProductAsync(
-            new CreateProductCommand(request.CategoryId, request.Name, request.Price, request.Description),
+            new CreateProductCommand(request.CategoryId, request.Name, request.Price, request.Cost, request.Description),
             cancellationToken);
 
         return CreatedAtAction(nameof(GetById), new { id = product.Id }, ApiContractMapper.MapProduct(product));
@@ -69,7 +69,7 @@ public sealed class ProductsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var product = await _productService.UpdateProductAsync(
-            new UpdateProductCommand(id, request.CategoryId, request.Name, request.Price, request.Description),
+            new UpdateProductCommand(id, request.CategoryId, request.Name, request.Price, request.Cost, request.Description),
             cancellationToken);
 
         return Ok(ApiContractMapper.MapProduct(product));

@@ -3,7 +3,6 @@ namespace InfinitoCoffee.Api.Contracts.Orders;
 public sealed record OrderResponse(
     Guid Id,
     string OrderNumber,
-    string Source,
     string Status,
     DateTime CreatedAtUtc,
     DateTime? StartedAtUtc,

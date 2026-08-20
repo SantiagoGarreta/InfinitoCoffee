@@ -13,13 +13,12 @@ class FakeOrderEntryStore {
   readonly successMessage = signal<string | null>(null);
   readonly activeCategories = signal([{ id: 'c-1', name: 'Cafe', isActive: true }]);
   readonly products = signal([
-    { id: 'p-1', name: 'Espresso', description: null, price: 8, categoryId: 'c-1', isActive: true },
+    { id: 'p-1', name: 'Espresso', description: null, price: 8, cost: 3, categoryId: 'c-1', isActive: true },
   ]);
   readonly visibleProducts = signal([
-    { id: 'p-1', name: 'Espresso', description: null, price: 8, categoryId: 'c-1', isActive: true },
+    { id: 'p-1', name: 'Espresso', description: null, price: 8, cost: 3, categoryId: 'c-1', isActive: true },
   ]);
   readonly selectedCategoryId = signal<string | null>('c-1');
-  readonly source = signal<'Counter' | 'WhatsApp' | 'Web'>('Counter');
   readonly notes = signal('');
   readonly items = signal([]);
   readonly visualTotal = signal(0);
@@ -32,7 +31,6 @@ class FakeOrderEntryStore {
   }
 
   selectCategory(): void {}
-  setSource(): void {}
   setNotes(): void {}
   addProduct(): void {}
   increaseQuantity(): void {}
@@ -94,10 +92,9 @@ describe('OrderEntryPageComponent interactions', () => {
     readonly successMessage = signal<string | null>(null);
     readonly categories = signal([{ id: 'c-1', name: 'Cafe', isActive: true }]);
     readonly products = signal([
-      { id: 'p-1', name: 'Espresso', description: null, price: 8, categoryId: 'c-1', isActive: true },
+      { id: 'p-1', name: 'Espresso', description: null, price: 8, cost: 3, categoryId: 'c-1', isActive: true },
     ]);
     readonly selectedCategoryId = signal<string | null>('c-1');
-    readonly source = signal<'Counter' | 'WhatsApp' | 'Web'>('Counter');
     readonly notes = signal('');
     readonly items = signal<Array<{ productId: string; productName: string; unitPrice: number; quantity: number; notes: string }>>([]);
     readonly activeCategories = signal(this.categories());
@@ -111,10 +108,6 @@ describe('OrderEntryPageComponent interactions', () => {
 
     selectCategory(categoryId: string): void {
       this.selectedCategoryId.set(categoryId);
-    }
-
-    setSource(source: 'Counter' | 'WhatsApp' | 'Web'): void {
-      this.source.set(source);
     }
 
     setNotes(notes: string): void {

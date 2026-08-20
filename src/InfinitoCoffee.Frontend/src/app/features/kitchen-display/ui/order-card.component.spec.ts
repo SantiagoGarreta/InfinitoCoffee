@@ -146,7 +146,6 @@ describe('OrderCardComponent', () => {
     return {
       id: 'order-1',
       orderNumber: '23',
-      source: 'Counter',
       status,
       createdAtUtc: '2026-08-15T12:00:00Z',
       startedAtUtc: status === 'Pending' ? null : '2026-08-15T12:02:00Z',

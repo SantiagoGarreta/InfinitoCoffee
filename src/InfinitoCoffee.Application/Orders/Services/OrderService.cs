@@ -84,6 +84,7 @@ public sealed class OrderService
                 validated.Product.Id,
                 validated.Product.Name,
                 validated.Product.Price,
+                validated.Product.Cost,
                 validated.Item.Quantity,
                 validated.Item.Notes))
             .ToArray();
@@ -91,7 +92,6 @@ public sealed class OrderService
         var orderNumber = await GenerateNextOrderNumberAsync(cancellationToken);
         var order = new Order(
             orderNumber,
-            command.Source,
             _dateTimeProvider.UtcNow,
             orderItems,
             command.Notes);
@@ -126,6 +126,55 @@ public sealed class OrderService
             .ThenBy(order => order.OrderNumber, Comparer<string>.Create(CompareOrderNumbers))
             .Select(MapOrder)
             .ToArray();
+    }
+
+    public async Task<OrderResultsDto> GetOrderResultsAsync(
+        OrderResultsGroupBy groupBy = OrderResultsGroupBy.Daily,
+        CancellationToken cancellationToken = default)
+    {
+        var orders = await _orderRepository.GetAllAsync(cancellationToken);
+        var deliveredOrders = orders.Where(order => order.Status == OrderStatus.Delivered).ToArray();
+        var today = DateOnly.FromDateTime(_dateTimeProvider.UtcNow);
+        var currentPeriod = GetPeriodBounds(today, groupBy);
+        var previousPeriod = ShiftPeriod(currentPeriod.StartDate, groupBy, -1);
+        var currentPeriodSummary = BuildPeriodSummary(orders, deliveredOrders, currentPeriod.StartDate, currentPeriod.EndDate);
+        var previousPeriodSummary = BuildPeriodSummary(orders, deliveredOrders, previousPeriod.StartDate, previousPeriod.EndDate);
+        var currentPeriodDeliveredOrders = deliveredOrders
+            .Where(order => order.DeliveredAtUtc is not null
+                && IsWithinPeriod(DateOnly.FromDateTime(order.DeliveredAtUtc.Value), currentPeriod.StartDate, currentPeriod.EndDate))
+            .ToArray();
+
+        var topSellingProducts = currentPeriodDeliveredOrders
+            .SelectMany(order => order.Items)
+            .GroupBy(item => new { item.ProductId, item.ProductNameSnapshot })
+            .Select(group => new TopSellingProductDto(
+                group.Key.ProductId,
+                group.Key.ProductNameSnapshot,
+                group.Sum(item => item.Quantity),
+                group.Sum(item => item.LineTotal)))
+            .OrderByDescending(product => product.QuantitySold)
+            .ThenByDescending(product => product.Revenue)
+            .ThenBy(product => product.ProductName, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var operationalSnapshot = new OrderOperationalSnapshotDto(
+            orders.Count,
+            orders.Count(order => order.IsActive),
+            orders.Count(order => order.Status == OrderStatus.Pending),
+            orders.Count(order => order.Status == OrderStatus.Preparing),
+            orders.Count(order => order.Status == OrderStatus.Ready),
+            orders.Count(order => order.Status == OrderStatus.Delivered),
+            orders.Count(order => order.Status == OrderStatus.Cancelled));
+
+        return new OrderResultsDto(
+            groupBy,
+            currentPeriod.StartDate,
+            currentPeriod.EndDate,
+            currentPeriodSummary,
+            previousPeriodSummary,
+            operationalSnapshot,
+            topSellingProducts,
+            BuildHistory(orders, deliveredOrders, currentPeriod.StartDate, groupBy));
     }
 
     public async Task<IReadOnlyCollection<OrderDto>> GetPickupOrdersAsync(
@@ -228,7 +277,6 @@ public sealed class OrderService
         return new OrderDto(
             order.Id,
             order.OrderNumber,
-            order.Source,
             order.Status,
             order.CreatedAtUtc,
             order.StartedAtUtc,
@@ -257,7 +305,6 @@ public sealed class OrderService
         return new OrderRealtimeDto(
             order.Id,
             order.OrderNumber,
-            order.Source.ToString(),
             order.Status.ToString(),
             order.CreatedAtUtc,
             order.StartedAtUtc,
@@ -319,5 +366,135 @@ public sealed class OrderService
         }
 
         return displayOrderNumber is >= FirstDisplayOrderNumber and <= LastDisplayOrderNumber;
+    }
+
+    private static IReadOnlyCollection<OrderHistoryPointDto> BuildHistory(
+        IReadOnlyCollection<Order> orders,
+        IReadOnlyCollection<Order> deliveredOrders,
+        DateOnly currentPeriodStartDate,
+        OrderResultsGroupBy groupBy)
+    {
+        var periodsToInclude = groupBy switch
+        {
+            OrderResultsGroupBy.Daily => 7,
+            OrderResultsGroupBy.Weekly => 8,
+            OrderResultsGroupBy.Monthly => 6,
+            _ => throw new ArgumentOutOfRangeException(nameof(groupBy), groupBy, "Unsupported results grouping.")
+        };
+
+        return Enumerable.Range(0, periodsToInclude)
+            .Select(offset => ShiftPeriod(currentPeriodStartDate, groupBy, -offset))
+            .Reverse()
+            .Select(period => BuildHistoryPoint(orders, deliveredOrders, period.StartDate, period.EndDate))
+            .ToArray();
+    }
+
+    private static OrderPeriodSummaryDto BuildPeriodSummary(
+        IReadOnlyCollection<Order> orders,
+        IReadOnlyCollection<Order> deliveredOrders,
+        DateOnly startDate,
+        DateOnly endDate)
+    {
+        var ordersCreatedInPeriod = orders
+            .Where(order => IsWithinPeriod(DateOnly.FromDateTime(order.CreatedAtUtc), startDate, endDate))
+            .ToArray();
+
+        var deliveredOrdersInPeriod = deliveredOrders
+            .Where(order => order.DeliveredAtUtc is not null
+                && IsWithinPeriod(DateOnly.FromDateTime(order.DeliveredAtUtc.Value), startDate, endDate))
+            .ToArray();
+
+        var totalRevenue = deliveredOrdersInPeriod.Sum(order => order.Total);
+        var totalCost = deliveredOrdersInPeriod.Sum(order => order.TotalCost);
+
+        return new OrderPeriodSummaryDto(
+            startDate,
+            endDate,
+            totalRevenue,
+            totalCost,
+            totalRevenue - totalCost,
+            ordersCreatedInPeriod.Length,
+            deliveredOrdersInPeriod.Length,
+            ordersCreatedInPeriod.Count(order => order.Status == OrderStatus.Cancelled),
+            deliveredOrdersInPeriod.Sum(order => order.Items.Sum(item => item.Quantity)),
+            deliveredOrdersInPeriod.Length == 0 ? 0m : deliveredOrdersInPeriod.Average(order => order.Total));
+    }
+
+    private static OrderHistoryPointDto BuildHistoryPoint(
+        IReadOnlyCollection<Order> orders,
+        IReadOnlyCollection<Order> deliveredOrders,
+        DateOnly startDate,
+        DateOnly endDate)
+    {
+        var summary = BuildPeriodSummary(orders, deliveredOrders, startDate, endDate);
+
+        return new OrderHistoryPointDto(
+            summary.StartDate,
+            summary.EndDate,
+            summary.TotalRevenue,
+            summary.TotalCost,
+            summary.TotalProfit,
+            summary.TotalOrdersCount,
+            summary.DeliveredOrdersCount,
+            summary.CancelledOrdersCount,
+            summary.DeliveredItemsCount,
+            summary.AverageDeliveredOrderTotal);
+    }
+
+    private static bool IsWithinPeriod(DateOnly value, DateOnly startDate, DateOnly endDate)
+    {
+        return value >= startDate && value <= endDate;
+    }
+
+    private static (DateOnly StartDate, DateOnly EndDate) GetPeriodBounds(DateOnly referenceDate, OrderResultsGroupBy groupBy)
+    {
+        return groupBy switch
+        {
+            OrderResultsGroupBy.Daily => (referenceDate, referenceDate),
+            OrderResultsGroupBy.Weekly => GetWeekBounds(referenceDate),
+            OrderResultsGroupBy.Monthly => GetMonthBounds(referenceDate),
+            _ => throw new ArgumentOutOfRangeException(nameof(groupBy), groupBy, "Unsupported results grouping.")
+        };
+    }
+
+    private static (DateOnly StartDate, DateOnly EndDate) ShiftPeriod(
+        DateOnly periodStartDate,
+        OrderResultsGroupBy groupBy,
+        int periodOffset)
+    {
+        return groupBy switch
+        {
+            OrderResultsGroupBy.Daily => GetPeriodBounds(periodStartDate.AddDays(periodOffset), groupBy),
+            OrderResultsGroupBy.Weekly => GetPeriodBounds(periodStartDate.AddDays(periodOffset * 7), groupBy),
+            OrderResultsGroupBy.Monthly => GetPeriodBounds(periodStartDate.AddMonths(periodOffset), groupBy),
+            _ => throw new ArgumentOutOfRangeException(nameof(groupBy), groupBy, "Unsupported results grouping.")
+        };
+    }
+
+    private static (DateOnly StartDate, DateOnly EndDate) GetWeekBounds(DateOnly referenceDate)
+    {
+        var startDate = referenceDate.AddDays(-GetIsoDayOffset(referenceDate.DayOfWeek));
+        return (startDate, startDate.AddDays(6));
+    }
+
+    private static (DateOnly StartDate, DateOnly EndDate) GetMonthBounds(DateOnly referenceDate)
+    {
+        var startDate = new DateOnly(referenceDate.Year, referenceDate.Month, 1);
+        return (startDate, startDate.AddMonths(1).AddDays(-1));
+    }
+
+    private static int GetIsoDayOffset(DayOfWeek dayOfWeek)
+    {
+        return dayOfWeek switch
+        {
+            DayOfWeek.Monday => 0,
+            DayOfWeek.Tuesday => 1,
+            DayOfWeek.Wednesday => 2,
+            DayOfWeek.Thursday => 3,
+            DayOfWeek.Friday => 4,
+            DayOfWeek.Saturday => 5,
+            DayOfWeek.Sunday => 6,
+            _ => throw new ArgumentOutOfRangeException(nameof(dayOfWeek), dayOfWeek, "Unsupported day of week.")
+        };
     }
 }

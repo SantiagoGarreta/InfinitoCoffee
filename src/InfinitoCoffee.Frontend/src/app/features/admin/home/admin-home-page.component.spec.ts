@@ -5,7 +5,7 @@ import { AuthenticationState } from '../../../core/auth/authentication-state.ser
 import { AdminHomePageComponent } from './admin-home-page.component';
 
 describe('AdminHomePageComponent', () => {
-  it('renders the welcome and six real navigation accesses without invented metrics', async () => {
+  it('renders the welcome and seven real navigation accesses including Resultado', async () => {
     await TestBed.configureTestingModule({
       imports: [AdminHomePageComponent],
       providers: [AuthenticationState, provideRouter([])],
@@ -16,11 +16,11 @@ describe('AdminHomePageComponent', () => {
     const text = fixture.nativeElement.textContent as string;
     const links = fixture.nativeElement.querySelectorAll('.admin-card') as NodeListOf<HTMLAnchorElement>;
 
-    expect(text).toContain('Administración');
+    expect(text).toContain('Administracion');
     expect(text).toContain('Ana Admin');
-    expect(links).toHaveLength(6);
-    ['Caja', 'Cocina', 'Pickup', 'Productos', 'Categorías', 'Usuarios'].forEach((label) => expect(text).toContain(label));
-    expect(text).not.toMatch(/ventas|métrica|estadística|gráfico/i);
+    expect(links).toHaveLength(7);
+    ['Caja', 'Cocina', 'Pickup', 'Resultado', 'Productos', 'Categorias', 'Usuarios'].forEach((label) => expect(text).toContain(label));
+    expect(text).toContain('estadisticas historicas de ventas');
     const pickup = [...links].find((link) => link.textContent?.includes('Pickup'))!;
     expect(pickup.getAttribute('target')).toBe('_blank');
     expect(pickup.getAttribute('rel')).toContain('noopener');

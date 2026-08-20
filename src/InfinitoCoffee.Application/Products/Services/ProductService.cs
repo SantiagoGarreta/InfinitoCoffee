@@ -28,7 +28,7 @@ public sealed class ProductService
         ArgumentNullException.ThrowIfNull(command);
 
         var category = await GetActiveCategoryAsync(command.CategoryId, cancellationToken);
-        var product = new Product(category.Id, command.Name, command.Price, command.Description);
+        var product = new Product(category.Id, command.Name, command.Price, command.Cost, command.Description);
 
         await _productRepository.AddAsync(product, cancellationToken);
         await _productRepository.SaveChangesAsync(cancellationToken);
@@ -76,6 +76,7 @@ public sealed class ProductService
 
         product.Rename(command.Name);
         product.ChangePrice(command.Price);
+        product.ChangeCost(command.Cost);
         product.ChangeDescription(command.Description);
 
         await _productRepository.SaveChangesAsync(cancellationToken);
@@ -133,6 +134,7 @@ public sealed class ProductService
             product.Name,
             product.Description,
             product.Price,
+            product.Cost,
             product.CategoryId,
             product.IsActive);
     }

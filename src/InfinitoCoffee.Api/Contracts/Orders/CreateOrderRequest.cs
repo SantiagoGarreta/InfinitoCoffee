@@ -4,10 +4,6 @@ namespace InfinitoCoffee.Api.Contracts.Orders;
 
 public sealed class CreateOrderRequest
 {
-    [Required]
-    [MaxLength(32)]
-    public string Source { get; init; } = string.Empty;
-
     [MaxLength(1000)]
     public string? Notes { get; init; }
 

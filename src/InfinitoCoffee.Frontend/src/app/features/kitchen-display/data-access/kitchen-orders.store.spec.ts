@@ -90,7 +90,6 @@ describe('KitchenOrdersStore', () => {
     return {
       id: `${orderNumber}-id`,
       orderNumber,
-      source: 'Counter',
       status,
       createdAtUtc,
       startedAtUtc: null,

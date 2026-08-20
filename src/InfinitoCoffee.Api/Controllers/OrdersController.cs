@@ -37,7 +37,6 @@ public sealed class OrdersController : ControllerBase
     {
         var order = await _orderService.CreateOrderAsync(
             new CreateOrderCommand(
-                ApiContractMapper.ParseOrderSource(request.Source),
                 request.Notes,
                 request.Items.Select(item => new CreateOrderItemCommand(item.ProductId, item.Quantity, item.Notes)).ToArray()),
             cancellationToken);
@@ -62,6 +61,20 @@ public sealed class OrdersController : ControllerBase
     {
         var orders = await _orderService.GetActiveOrdersAsync(cancellationToken);
         return Ok(orders.Select(ApiContractMapper.MapOrder).ToArray());
+    }
+
+    [HttpGet("summary")]
+    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOnly)]
+    [ProducesResponseType(typeof(OrderResultsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<OrderResultsResponse>> GetSummary(
+        [FromQuery] string? groupBy,
+        CancellationToken cancellationToken)
+    {
+        var results = await _orderService.GetOrderResultsAsync(
+            ApiContractMapper.ParseOrderResultsGroupBy(groupBy),
+            cancellationToken);
+        return Ok(ApiContractMapper.MapOrderResults(results));
     }
 
     [HttpGet("pickup")]

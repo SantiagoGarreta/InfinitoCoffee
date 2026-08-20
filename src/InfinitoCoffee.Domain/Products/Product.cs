@@ -8,6 +8,11 @@ public class Product
     }
 
     public Product(Guid categoryId, string name, decimal price, string? description = null)
+        : this(categoryId, name, price, 0m, description)
+    {
+    }
+
+    public Product(Guid categoryId, string name, decimal price, decimal cost, string? description = null)
     {
         if (categoryId == Guid.Empty)
         {
@@ -20,6 +25,7 @@ public class Product
 
         Rename(name);
         ChangePrice(price);
+        ChangeCost(cost);
         ChangeDescription(description);
     }
 
@@ -32,6 +38,8 @@ public class Product
     public string? Description { get; private set; }
 
     public decimal Price { get; private set; }
+
+    public decimal Cost { get; private set; }
 
     public bool IsActive { get; private set; }
 
@@ -58,6 +66,16 @@ public class Product
         }
 
         Price = price;
+    }
+
+    public void ChangeCost(decimal cost)
+    {
+        if (cost < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(cost), "Cost cannot be negative.");
+        }
+
+        Cost = cost;
     }
 
     public void ChangeCategory(Guid categoryId)

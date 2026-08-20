@@ -2,7 +2,6 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Component, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { OrderSource } from '../../../core/orders/models/order.model';
 import { ErrorMessageComponent } from '../../../shared/ui/error-message/error-message.component';
 import { LoadingStateComponent } from '../../../shared/ui/loading-state/loading-state.component';
 import { OrderEntryStore } from '../data-access/order-entry.store';
@@ -28,7 +27,6 @@ import { ProductGridComponent } from './product-grid.component';
 export class OrderEntryPageComponent implements OnInit {
   readonly store = inject(OrderEntryStore);
   readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
-  readonly orderSources: OrderSource[] = ['Counter', 'WhatsApp', 'Web'];
 
   ngOnInit(): void {
     if (!this.isBrowser) {

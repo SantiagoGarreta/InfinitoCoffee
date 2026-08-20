@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { toUserMessage } from '../../../core/http/api-error.utils';
-import { OrderSource, type CreateOrderRequest } from '../../../core/orders/models/order.model';
+import { type CreateOrderRequest } from '../../../core/orders/models/order.model';
 import { OrdersApiService } from '../../../core/orders/data-access/orders-api.service';
 import { ProductCategoriesApiService } from '../../../core/product-categories/data-access/product-categories-api.service';
 import { ProductCategory } from '../../../core/product-categories/models/product-category.model';
@@ -26,7 +26,6 @@ export class OrderEntryStore {
   readonly categories = signal<ProductCategory[]>([]);
   readonly products = signal<Product[]>([]);
   readonly selectedCategoryId = signal<string | null>(null);
-  readonly source = signal<OrderSource>('Counter');
   readonly notes = signal('');
   readonly items = signal<EntryOrderItem[]>([]);
 
@@ -74,10 +73,6 @@ export class OrderEntryStore {
 
   selectCategory(categoryId: string): void {
     this.selectedCategoryId.set(categoryId);
-  }
-
-  setSource(source: OrderSource): void {
-    this.source.set(source);
   }
 
   setNotes(notes: string): void {
@@ -158,7 +153,6 @@ export class OrderEntryStore {
     }
 
     return {
-      source: this.source(),
       notes: normalizeOptionalString(this.notes()),
       items: this.items().map((item) => ({
         productId: item.productId,
@@ -169,7 +163,6 @@ export class OrderEntryStore {
   }
 
   private resetForm(): void {
-    this.source.set('Counter');
     this.notes.set('');
     this.items.set([]);
   }

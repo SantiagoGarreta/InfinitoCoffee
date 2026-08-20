@@ -52,7 +52,6 @@ function createOrder(orderNumber: string, status: Order['status']): Order {
   return {
     id: `${orderNumber}-id`,
     orderNumber,
-    source: 'Counter',
     status,
     createdAtUtc: '2026-07-22T12:00:00Z',
     startedAtUtc: null,

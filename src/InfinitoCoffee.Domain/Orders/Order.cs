@@ -14,7 +14,6 @@ public class Order
 
     public Order(
         string orderNumber,
-        OrderSource source,
         DateTime createdAtUtc,
         IEnumerable<OrderItem> items,
         string? notes = null)
@@ -34,7 +33,6 @@ public class Order
 
         Id = Guid.NewGuid();
         OrderNumber = orderNumber.Trim();
-        Source = source;
         Status = OrderStatus.Pending;
         CreatedAtUtc = UtcDateTime.Ensure(createdAtUtc, nameof(createdAtUtc));
         Notes = NormalizeOptional(notes);
@@ -50,8 +48,6 @@ public class Order
     public Guid Id { get; private set; }
 
     public string OrderNumber { get; private set; }
-
-    public OrderSource Source { get; private set; }
 
     public OrderStatus Status { get; private set; }
 
@@ -72,6 +68,10 @@ public class Order
     public bool IsActive => Status is not OrderStatus.Delivered and not OrderStatus.Cancelled;
 
     public decimal Total => _items.Sum(item => item.LineTotal);
+
+    public decimal TotalCost => _items.Sum(item => item.CostTotal);
+
+    public decimal Profit => Total - TotalCost;
 
     public void StartPreparing(DateTime startedAtUtc)
     {
