@@ -39,6 +39,13 @@ describe('PickupOrdersStore', () => {
       orderNumber,
       status,
       createdAtUtc: '2026-07-22T12:00:00Z',
+      items: [
+        {
+          id: `${orderNumber}-item-1`,
+          productName: 'Medialuna',
+          quantity: 1,
+        },
+      ],
     };
   }
 

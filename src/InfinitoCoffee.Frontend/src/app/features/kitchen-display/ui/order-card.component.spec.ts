@@ -110,6 +110,42 @@ describe('OrderCardComponent', () => {
     expect(actionSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('renders item and general notes without prefixes', () => {
+    const fixture = TestBed.createComponent(OrderCardComponent);
+    fixture.componentRef.setInput('order', {
+      ...createOrder('Pending'),
+      notes: 'Sin azucar',
+      items: [{
+        ...createOrder('Pending').items[0],
+        notes: 'Con hielo',
+      }],
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Con hielo');
+    expect(fixture.nativeElement.textContent).toContain('Sin azucar');
+    expect(fixture.nativeElement.textContent).not.toContain('Nota item:');
+    expect(fixture.nativeElement.textContent).not.toContain('Nota general:');
+  });
+
+  it('hides the elapsed label for newly created orders', () => {
+    vi.useFakeTimers();
+    const now = new Date('2026-08-22T10:00:30Z');
+    vi.setSystemTime(now);
+
+    const fixture = TestBed.createComponent(OrderCardComponent);
+    fixture.componentRef.setInput('order', {
+      ...createOrder('Pending'),
+      createdAtUtc: '2026-08-22T10:00:00Z',
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.order-card__meta strong')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.order-card__meta span')?.textContent?.trim()).toBeTruthy();
+
+    vi.useRealTimers();
+  });
+
   function createFixture(status: Order['status'] = 'Pending'): ComponentFixture<OrderCardComponent> {
     const fixture = TestBed.createComponent(OrderCardComponent);
     fixture.componentRef.setInput('order', createOrder(status));

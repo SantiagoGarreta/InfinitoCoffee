@@ -13,4 +13,10 @@ import { PickupOrder } from '../../../core/pickup/models/pickup-order.model';
 export class PickupOrderNumberComponent {
   readonly order = input.required<PickupOrder>();
   readonly ready = input(false);
+
+  formatItems(): string {
+    return this.order().items
+      .map((item) => `${item.quantity} ${item.productName}`)
+      .join(' · ');
+  }
 }

@@ -9,10 +9,16 @@
   border-radius: 999px;
   background: #f4ece2;
   color: #6d563f;
-  padding: 0.8rem 1rem;
+  padding: 0.95rem 1.2rem;
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.category-selector__button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(74, 57, 42, 0.08);
 }
 
 .category-selector__button--active {

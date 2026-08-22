@@ -54,10 +54,18 @@ describe('PickupRealtimeService', () => {
 
     await service.start();
     connection.emit('OrderStatusChanged', {
-      id: 'order-1', orderNumber: 'A-100', status: 'Preparing', createdAtUtc: '2026-08-09T12:00:00Z',
+      id: 'order-1',
+      orderNumber: 'A-100',
+      status: 'Preparing',
+      createdAtUtc: '2026-08-09T12:00:00Z',
+      items: [{ id: 'item-1', productName: 'Jugo de naranja', quantity: 1 }],
     });
     connection.emit('OrderCancelled', {
-      id: 'order-1', orderNumber: 'A-100', status: 'Cancelled', createdAtUtc: '2026-08-09T12:00:00Z',
+      id: 'order-1',
+      orderNumber: 'A-100',
+      status: 'Cancelled',
+      createdAtUtc: '2026-08-09T12:00:00Z',
+      items: [{ id: 'item-1', productName: 'Jugo de naranja', quantity: 1 }],
     });
 
     expect(receivedUrl).toBe('http://localhost:5165/hubs/pickup');

@@ -265,7 +265,7 @@ public sealed class AuthEndpointsTests
         using var request = new HttpRequestMessage(HttpMethod.Options, "/api/auth/login");
         request.Headers.Add("Origin", "http://localhost:4200");
         request.Headers.Add("Access-Control-Request-Method", "POST");
-        request.Headers.Add("Access-Control-Request-Headers", "content-type,x-xsrf-token");
+        request.Headers.Add("Access-Control-Request-Headers", "content-type,x-requested-with,x-xsrf-token");
 
         var response = await api.Client.SendAsync(request);
 
@@ -278,6 +278,10 @@ public sealed class AuthEndpointsTests
             Assert.Single(response.Headers.GetValues("Access-Control-Allow-Credentials")));
         Assert.Contains(
             AntiforgeryConstants.HeaderName,
+            Assert.Single(response.Headers.GetValues("Access-Control-Allow-Headers")),
+            StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(
+            "X-Requested-With",
             Assert.Single(response.Headers.GetValues("Access-Control-Allow-Headers")),
             StringComparison.OrdinalIgnoreCase);
     }

@@ -3,7 +3,6 @@
     <div>
       <p class="order-entry__eyebrow">Caja</p>
       <h1>Nueva comanda</h1>
-      <p class="order-entry__subtitle">Crea pedidos manuales para que aparezcan de inmediato en cocina y pickup.</p>
     </div>
 
   </header>
@@ -15,31 +14,31 @@
   } @else {
     <div class="order-entry__layout">
       <section class="order-entry__catalog">
-        <div class="order-entry__form-card">
-          <div class="order-entry__auto-number">
-            <span>Numero de pedido</span>
-            <strong>Se asigna automaticamente del 1 al 99</strong>
+        <div class="order-entry__catalog-panel">
+          <div class="order-entry__catalog-intro">
+            <p class="order-entry__section-kicker">Armado rapido</p>
+            <h2>Categorias y productos</h2>
           </div>
 
-          <label class="order-entry__notes">
-            <span>Notas generales</span>
-            <textarea
-              rows="3"
-              [disabled]="store.submitting()"
-              [ngModel]="store.notes()"
-              (ngModelChange)="store.setNotes($event)"></textarea>
-          </label>
+          <app-category-selector
+            [categories]="store.activeCategories()"
+            [selectedCategoryId]="store.selectedCategoryId()"
+            (selectCategory)="store.selectCategory($event)" />
+
+          <app-product-grid
+            [products]="store.visibleProducts()"
+            [disabled]="store.submitting()"
+            (addProduct)="store.addProduct($event)" />
         </div>
 
-        <app-category-selector
-          [categories]="store.activeCategories()"
-          [selectedCategoryId]="store.selectedCategoryId()"
-          (selectCategory)="store.selectCategory($event)" />
-
-        <app-product-grid
-          [products]="store.visibleProducts()"
-          [disabled]="store.submitting()"
-          (addProduct)="store.addProduct($event)" />
+        <label class="order-entry__notes-card">
+          <span>Notas generales</span>
+          <textarea
+            rows="2"
+            [disabled]="store.submitting()"
+            [ngModel]="store.notes()"
+            (ngModelChange)="store.setNotes($event)"></textarea>
+        </label>
       </section>
 
       <aside class="order-entry__summary">

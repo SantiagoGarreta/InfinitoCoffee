@@ -14,7 +14,7 @@ export function formatElapsedTime(createdAtUtc: string, now: Date): string {
   const totalMinutes = Math.floor(diffMilliseconds / 60000);
 
   if (totalMinutes < 1) {
-    return 'Recien creado';
+    return '';
   }
 
   if (totalMinutes < 60) {

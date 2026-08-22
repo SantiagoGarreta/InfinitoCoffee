@@ -3,10 +3,6 @@
     <div>
       <p class="admin-results__eyebrow">Administracion</p>
       <h1 id="admin-results-title">Resultado</h1>
-      <p>
-        El panel se reinicia por periodo: diario, semanal o mensual. Cada vista conserva el historial
-        para comparar desempeno entre periodos.
-      </p>
     </div>
 
     <div class="admin-results__filters" role="group" aria-label="Agrupar resultados">
@@ -112,7 +108,6 @@
       <section class="results-panel" aria-labelledby="results-state-title">
         <div class="results-panel__header">
           <h2 id="results-state-title">Operacion actual</h2>
-          <p>Foto en vivo del estado de pedidos para no perder visibilidad operativa.</p>
         </div>
 
         <dl class="results-stats">
@@ -193,7 +188,6 @@
       <section class="results-panel" aria-labelledby="results-products-title">
         <div class="results-panel__header">
           <h2 id="results-products-title">Productos mas vendidos</h2>
-          <p>Ranking del periodo actual segun unidades entregadas y facturacion.</p>
         </div>
 
         @if (productChart().length === 0) {

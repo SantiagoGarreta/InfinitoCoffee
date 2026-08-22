@@ -369,6 +369,7 @@ public sealed class OrderEndpointsTests
         Assert.Equal(2, orderNumbers.Length);
         Assert.Contains("A-100", orderNumbers);
         Assert.Contains("A-101", orderNumbers);
+        Assert.All(orders, order => Assert.NotEmpty(order.Items));
     }
 
     [Fact]

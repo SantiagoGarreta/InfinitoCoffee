@@ -33,6 +33,13 @@ function createOrder(orderNumber: string, status: PickupOrder['status']): Pickup
     orderNumber,
     status,
     createdAtUtc: '2026-07-22T12:00:00Z',
+    items: [
+      {
+        id: `${orderNumber}-item-1`,
+        productName: 'Jugo de naranja',
+        quantity: 1,
+      },
+    ],
   };
 }
 
@@ -62,6 +69,7 @@ describe('PickupDisplayPageComponent', () => {
     expect(text).toContain('Listos para retirar');
     expect(text).toContain('A-100');
     expect(text).toContain('A-200');
+    expect(text).toContain('1 Jugo de naranja');
   });
 
   it('initializes on mount and tears down store subscriptions on destroy', () => {

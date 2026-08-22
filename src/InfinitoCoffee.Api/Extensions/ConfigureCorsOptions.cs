@@ -29,6 +29,7 @@ public sealed class ConfigureCorsOptions : IConfigureOptions<CorsOptions>
                 .WithHeaders(
                     "Content-Type",
                     "Authorization",
+                    "X-Requested-With",
                     "X-SignalR-User-Agent",
                     Antiforgery.AntiforgeryConstants.HeaderName)
                 .AllowCredentials();

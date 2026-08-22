@@ -400,7 +400,11 @@ public class OrderServiceTests
 
         Assert.Collection(
             result,
-            first => Assert.Equal("260721-0001", first.OrderNumber),
+            first =>
+            {
+                Assert.Equal("260721-0001", first.OrderNumber);
+                Assert.NotEmpty(first.Items);
+            },
             second => Assert.Equal("260721-0002", second.OrderNumber));
     }
 

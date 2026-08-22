@@ -20,7 +20,9 @@
     </div>
 
     <div class="order-card__meta">
-      <strong>{{ elapsedTime() }}</strong>
+      @if (elapsedTime()) {
+        <strong>{{ elapsedTime() }}</strong>
+      }
       <span>{{ localCreatedAt() }}</span>
     </div>
   </header>
@@ -34,14 +36,14 @@
         </div>
 
         @if (item.notes) {
-          <p class="order-card__note">Nota item: {{ item.notes }}</p>
+          <p class="order-card__note">{{ item.notes }}</p>
         }
       </li>
     }
   </ul>
 
   @if (order().notes) {
-    <p class="order-card__note order-card__note--general">Nota general: {{ order().notes }}</p>
+    <p class="order-card__note order-card__note--general">{{ order().notes }}</p>
   }
 
   <footer class="order-card__footer">
