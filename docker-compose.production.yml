@@ -33,6 +33,24 @@ services:
     profiles:
       - tools
 
+  provision-admin:
+    build:
+      context: .
+      dockerfile: src/InfinitoCoffee.DbSetup/Dockerfile
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__InfinitoCoffee: Server=sqlserver,1433;Database=${SQLSERVER_DATABASE:?SQLSERVER_DATABASE is required};User Id=sa;Password=${SQLSERVER_SA_PASSWORD:?SQLSERVER_SA_PASSWORD is required};TrustServerCertificate=True
+      INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:?INITIAL_ADMIN_USERNAME is required}
+      INITIAL_ADMIN_DISPLAY_NAME: ${INITIAL_ADMIN_DISPLAY_NAME:?INITIAL_ADMIN_DISPLAY_NAME is required}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?INITIAL_ADMIN_PASSWORD is required}
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    command: ["provision-system-user"]
+    restart: "no"
+    profiles:
+      - tools
+
   api:
     build:
       context: .
