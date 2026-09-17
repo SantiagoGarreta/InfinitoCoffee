@@ -59,6 +59,7 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__InfinitoCoffee: Server=sqlserver,1433;Database=${SQLSERVER_DATABASE:?SQLSERVER_DATABASE is required};User Id=sa;Password=${SQLSERVER_SA_PASSWORD:?SQLSERVER_SA_PASSWORD is required};TrustServerCertificate=True
       Cors__AllowedOrigins__0: ${FRONTEND_PUBLIC_ORIGIN:?FRONTEND_PUBLIC_ORIGIN is required}
