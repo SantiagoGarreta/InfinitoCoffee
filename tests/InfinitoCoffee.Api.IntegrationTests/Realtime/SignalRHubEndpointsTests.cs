@@ -104,7 +104,7 @@ public sealed class SignalRHubEndpointsTests
     }
 
     [Fact]
-    public async Task StatusChange_EmitsFullPrivateAndReducedPublicPayloads()
+    public async Task StatusChange_EmitsFullPrivateAndPublicPayloadsIncludingItems()
     {
         await using var context = new ApiTestContext();
         await context.AuthenticateAsync(UserRole.Kitchen);
@@ -128,14 +128,14 @@ public sealed class SignalRHubEndpointsTests
         var pickupOrder = await WaitForSingleEventAsync(pickupEvents);
         Assert.Equal("Preparing", privateOrder.Status);
         Assert.Equal(
-            ["createdAtUtc", "id", "orderNumber", "status"],
+            ["createdAtUtc", "id", "items", "orderNumber", "status"],
             pickupOrder.EnumerateObject().Select(property => property.Name).Order().ToArray());
         Assert.Equal(orderId, pickupOrder.GetProperty("id").GetGuid());
         Assert.Equal("Preparing", pickupOrder.GetProperty("status").GetString());
     }
 
     [Fact]
-    public async Task Cancel_EmitsFullPrivateAndReducedPublicPayloads()
+    public async Task Cancel_EmitsFullPrivateAndPublicPayloadsIncludingItems()
     {
         await using var context = new ApiTestContext();
         await context.AuthenticateAsync(UserRole.Cashier);
@@ -162,7 +162,7 @@ public sealed class SignalRHubEndpointsTests
         Assert.Equal("Test order", privateOrder.Notes);
         Assert.NotEmpty(privateOrder.Items);
         Assert.Equal(
-            ["createdAtUtc", "id", "orderNumber", "status"],
+            ["createdAtUtc", "id", "items", "orderNumber", "status"],
             pickupOrder.EnumerateObject().Select(property => property.Name).Order().ToArray());
         Assert.Equal("Cancelled", pickupOrder.GetProperty("status").GetString());
     }
