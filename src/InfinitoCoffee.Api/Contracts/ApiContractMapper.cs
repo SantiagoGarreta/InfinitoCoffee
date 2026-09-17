@@ -33,7 +33,8 @@ internal static class ApiContractMapper
             order.Id,
             order.OrderNumber,
             order.Status.ToString(),
-            order.CreatedAtUtc);
+            order.CreatedAtUtc,
+            order.Items.Select(MapPickupOrderItem).ToArray());
     }
 
     public static PickupOrderResponse MapPickupOrder(OrderRealtimeDto order)
@@ -42,7 +43,8 @@ internal static class ApiContractMapper
             order.Id,
             order.OrderNumber,
             order.Status,
-            order.CreatedAtUtc);
+            order.CreatedAtUtc,
+            order.Items.Select(MapPickupOrderItem).ToArray());
     }
 
     public static OrderResultsResponse MapOrderResults(OrderResultsDto results)
@@ -117,6 +119,22 @@ internal static class ApiContractMapper
             item.Quantity,
             item.Notes,
             item.LineTotal);
+    }
+
+    private static PickupOrderItemResponse MapPickupOrderItem(OrderItemDto item)
+    {
+        return new PickupOrderItemResponse(
+            item.Id,
+            item.ProductName,
+            item.Quantity);
+    }
+
+    private static PickupOrderItemResponse MapPickupOrderItem(OrderRealtimeItemDto item)
+    {
+        return new PickupOrderItemResponse(
+            item.Id,
+            item.ProductName,
+            item.Quantity);
     }
 
     private static OrderPeriodSummaryResponse MapOrderPeriodSummary(OrderPeriodSummaryDto summary)

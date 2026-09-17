@@ -283,6 +283,21 @@ docker compose ps
 Invoke-RestMethod http://localhost:5165/health
 ```
 
+## Deploy de producción desde `main`
+
+La producción utiliza `docker-compose.production.yml` y el Traefik administrado en el VPS. El workflow `.github/workflows/production-deploy.yml` se ejecuta automáticamente al hacer push a `main`, después de completar los tests y builds de backend y frontend.
+
+En GitHub hay que crear un Environment llamado `production` y agregar estos secrets:
+
+- `PRODUCTION_HOST`
+- `PRODUCTION_USER`
+- `PRODUCTION_SSH_PORT` (opcional; usar `22` si se omite)
+- `PRODUCTION_SSH_PRIVATE_KEY`
+- `PRODUCTION_SSH_KNOWN_HOSTS`
+- `PRODUCTION_ENV_FILE`
+
+`PRODUCTION_ENV_FILE` debe contener los valores de `.env.production.example`, con secretos reales. No debe subirse al repositorio.
+
 Notas practicas:
 
 - Si cambiaste solo frontend o API, normalmente alcanza con `docker compose up -d --build api frontend`.

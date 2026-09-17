@@ -7,7 +7,7 @@ namespace InfinitoCoffee.Api.IntegrationTests.Http;
 public sealed class PublicEndpointTests
 {
     [Fact]
-    public async Task Pickup_WhenAnonymous_ReturnsOnlyReducedPublicFields()
+    public async Task Pickup_WhenAnonymous_ReturnsPublicFieldsIncludingItems()
     {
         await using var api = new ApiTestContext();
         await api.ExecuteDbContextAsync(dbContext => TestDataSeeder.AddOrderAsync(
@@ -22,11 +22,10 @@ public sealed class PublicEndpointTests
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var order = Assert.Single(document.RootElement.EnumerateArray().ToArray());
         Assert.Equal(
-            ["createdAtUtc", "id", "orderNumber", "status"],
+            ["createdAtUtc", "id", "items", "orderNumber", "status"],
             order.EnumerateObject().Select(property => property.Name).OrderBy(name => name).ToArray());
         Assert.False(order.TryGetProperty("notes", out _));
         Assert.False(order.TryGetProperty("total", out _));
-        Assert.False(order.TryGetProperty("items", out _));
         Assert.False(order.TryGetProperty("source", out _));
         Assert.False(order.TryGetProperty("readyAtUtc", out _));
     }
