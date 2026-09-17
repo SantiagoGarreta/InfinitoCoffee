@@ -97,6 +97,7 @@ jobs:
             cd /opt/infinito-coffee
             docker compose --env-file .env -f docker-compose.production.yml up -d sqlserver
             docker compose --env-file .env -f docker-compose.production.yml --profile tools run --rm migrations
+            docker compose --env-file .env -f docker-compose.production.yml --profile tools run --rm provision-admin
             docker compose --env-file .env -f docker-compose.production.yml up -d api frontend
             rm -f /tmp/infinito-coffee.tar.gz /tmp/infinito-coffee.env
             docker image prune -f'

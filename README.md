@@ -300,6 +300,8 @@ En GitHub hay que crear un Environment llamado `production` y agregar estos secr
 
 `PRODUCTION_SSH_PRIVATE_KEY_B64` debe contener la clave privada de deploy codificada en Base64 para preservar su formato multilinea.
 
+`PRODUCTION_ENV_FILE` también debe incluir `INITIAL_ADMIN_USERNAME`, `INITIAL_ADMIN_DISPLAY_NAME` e `INITIAL_ADMIN_PASSWORD`. El deploy ejecuta `provision-system-user`, que crea el administrador inicial solo si todavía no existe; no modifica la contraseña de un administrador existente.
+
 Notas practicas:
 
 - Si cambiaste solo frontend o API, normalmente alcanza con `docker compose up -d --build api frontend`.
