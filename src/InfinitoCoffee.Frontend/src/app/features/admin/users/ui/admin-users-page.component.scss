@@ -1,0 +1,32 @@
+.admin-users { display: grid; gap: 1.25rem; }
+.admin-users__header, .admin-users__section-header, .user-card__main, .user-card__title, .user-card__actions, .inline-confirmation > div, .password-reset > div { display: flex; justify-content: space-between; align-items: start; gap: 0.75rem; flex-wrap: wrap; }
+.admin-users__eyebrow { margin: 0 0 0.25rem; text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.75rem; color: #996c44; }
+.admin-users h1, .admin-users h2, .admin-users h3, .admin-users p { margin-top: 0; }
+.admin-users__header small { color: #665847; }
+.admin-users__layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(19rem, 0.8fr); gap: 1.25rem; align-items: start; }
+.admin-users__list, .admin-users__form { padding: 1rem; border: 1px solid rgba(111, 78, 55, 0.14); border-radius: 1.2rem; background: rgba(255, 255, 255, 0.95); }
+.admin-users__items, .admin-users__form { display: grid; gap: 1rem; }
+.user-card { padding: 1rem; border-radius: 1rem; background: #fbf7f1; border: 1px solid rgba(111, 78, 55, 0.1); }
+.user-card--inactive { opacity: 0.78; }
+.user-card--system { margin-top: 0.4rem; border-style: dashed; background: #f2eee8; }
+.user-card h3 { margin-bottom: 0; }
+.user-card p { color: #665847; margin-bottom: 0.4rem; }
+.user-card__username { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.badge { border-radius: 999px; padding: 0.25rem 0.55rem; background: #e3ddd5; color: #5d4635; font-size: 0.75rem; font-weight: 700; }
+.badge--self { background: #e5f1ea; color: #246446; }
+.user-card__actions { margin-top: 0.8rem; justify-content: flex-start; }
+.user-card__system-note { margin-top: 0.8rem; font-style: italic; }
+.admin-users__form label, .password-reset label { display: grid; gap: 0.35rem; }
+.admin-users__form input, .admin-users__form select, .password-reset input { width: 100%; border: 1px solid rgba(111, 78, 55, 0.2); border-radius: 0.8rem; padding: 0.75rem; font: inherit; background: #fff; }
+.role-readonly { width: 100%; border: 1px solid rgba(111, 78, 55, 0.12); border-radius: 0.8rem; padding: 0.75rem; background: #f2eee8; color: #5d4635; }
+.admin-users__form small, .password-reset small { color: #8b493f; }
+.button { border: 0; border-radius: 999px; padding: 0.7rem 1rem; background: #355345; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.button--secondary { background: #efe4d6; color: #5d4635; }
+.button--danger { background: #9b4942; }
+.button:disabled { opacity: 0.55; cursor: not-allowed; }
+.inline-confirmation, .password-reset, .admin-users__success, .admin-users__empty, .session-renewal { margin: 0.8rem 0 0; padding: 0.85rem; border-radius: 0.85rem; background: #f6eee4; }
+.inline-confirmation p, .session-renewal p { margin-bottom: 0.6rem; }
+.password-reset { display: grid; gap: 0.75rem; }
+.admin-users__success { background: #eef9f2; color: #246446; }
+.session-renewal { background: #fff0e6; border: 1px solid #d79b72; }
+@media (max-width: 900px) { .admin-users__layout { grid-template-columns: 1fr; } }

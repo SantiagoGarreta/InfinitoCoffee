@@ -1,0 +1,46 @@
+.pickup-page {
+  min-height: 100dvh;
+  display: grid;
+  align-content: start;
+  gap: 1.5rem;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  background:
+    radial-gradient(circle at top right, rgba(47, 130, 98, 0.2), transparent 28rem),
+    linear-gradient(145deg, #f3eee5, #edf5ef);
+  color: #24180f;
+}
+
+.pickup-page__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.pickup-page__eyebrow {
+  margin: 0 0 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.78rem;
+  color: #3b8262;
+}
+
+.pickup-page__header h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4.5vw, 3.6rem);
+  max-width: 48rem;
+  line-height: 0.95;
+}
+
+.pickup-page__grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+}
+
+@media (max-width: 900px) {
+  .pickup-page__grid {
+    grid-template-columns: 1fr;
+  }
+}

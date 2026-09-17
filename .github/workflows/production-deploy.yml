@@ -1,0 +1,101 @@
+name: Production deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy to production
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+
+      - name: Restore backend
+        run: dotnet restore ./InfinitoCoffee.sln
+
+      - name: Build backend
+        run: dotnet build ./InfinitoCoffee.sln --configuration Release --no-restore
+
+      - name: Run backend tests
+        run: dotnet test ./InfinitoCoffee.sln --configuration Release --no-build --no-restore
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+          cache: npm
+          cache-dependency-path: src/InfinitoCoffee.Frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: src/InfinitoCoffee.Frontend
+        run: npm ci
+
+      - name: Run frontend tests
+        working-directory: src/InfinitoCoffee.Frontend
+        run: npm test -- --run
+
+      - name: Build frontend
+        working-directory: src/InfinitoCoffee.Frontend
+        run: npm run build
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/production_deploy
+          chmod 600 ~/.ssh/production_deploy
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Package application
+        run: |
+          tar --exclude='./.git' --exclude='./node_modules' --exclude='./src/InfinitoCoffee.Frontend/node_modules' --exclude='./src/InfinitoCoffee.Frontend/dist' --exclude='./**/bin' --exclude='./**/obj' -czf /tmp/infinito-coffee.tar.gz .
+
+      - name: Upload application
+        env:
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+          PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
+          PRODUCTION_SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT }}
+        run: scp -P "${PRODUCTION_SSH_PORT:-22}" -i ~/.ssh/production_deploy /tmp/infinito-coffee.tar.gz "${PRODUCTION_USER}@${PRODUCTION_HOST}:/tmp/infinito-coffee.tar.gz"
+
+      - name: Deploy application
+        env:
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+          PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
+          PRODUCTION_SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT }}
+          PRODUCTION_ENV_FILE: ${{ secrets.PRODUCTION_ENV_FILE }}
+        run: |
+          printf '%s\n' "$PRODUCTION_ENV_FILE" > /tmp/infinito-coffee.env
+          scp -P "${PRODUCTION_SSH_PORT:-22}" -i ~/.ssh/production_deploy /tmp/infinito-coffee.env "${PRODUCTION_USER}@${PRODUCTION_HOST}:/tmp/infinito-coffee.env"
+          ssh -p "${PRODUCTION_SSH_PORT:-22}" -i ~/.ssh/production_deploy "${PRODUCTION_USER}@${PRODUCTION_HOST}" 'set -eu
+            mkdir -p /opt/infinito-coffee
+            tar -xzf /tmp/infinito-coffee.tar.gz -C /opt/infinito-coffee
+            install -m 600 /tmp/infinito-coffee.env /opt/infinito-coffee/.env
+            cd /opt/infinito-coffee
+            docker compose --env-file .env -f docker-compose.production.yml up -d sqlserver
+            docker compose --env-file .env -f docker-compose.production.yml --profile tools run --rm migrations
+            docker compose --env-file .env -f docker-compose.production.yml up -d api frontend
+            rm -f /tmp/infinito-coffee.tar.gz /tmp/infinito-coffee.env
+            docker image prune -f'

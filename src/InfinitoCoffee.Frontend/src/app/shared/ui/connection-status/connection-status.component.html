@@ -1,0 +1,10 @@
+<div class="connection-status" [class]="'connection-status--' + state()">
+  <span class="connection-status__dot" aria-hidden="true"></span>
+  <span class="connection-status__label">{{ label() }}</span>
+
+  @if (state() === 'disconnected') {
+    <button type="button" class="connection-status__retry" (click)="retry.emit()">
+      Reintentar conexion
+    </button>
+  }
+</div>

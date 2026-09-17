@@ -1,0 +1,2 @@
+export const PENDING_DELAY_MINUTES = 10;
+export const PREPARING_DELAY_MINUTES = 15;

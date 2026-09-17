@@ -1,0 +1,4 @@
+<article class="pickup-order" [class.pickup-order--ready]="ready()">
+  <span class="pickup-order__status">{{ ready() ? 'Listo para retirar' : 'En preparacion' }}</span>
+  <strong class="pickup-order__number">{{ order().orderNumber }}</strong>
+</article>

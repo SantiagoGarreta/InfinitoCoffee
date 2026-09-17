@@ -1,0 +1,35 @@
+<section class="login" aria-labelledby="login-title">
+  <div class="login__intro">
+    <p class="login__eyebrow">Acceso operativo</p>
+    <h2 id="login-title">Iniciar sesión</h2>
+    <p>Ingresá con la cuenta asignada para acceder a Caja o Cocina.</p>
+  </div>
+
+  <form class="login__form" [formGroup]="form" (ngSubmit)="submit()">
+    <label>
+      <span>Usuario</span>
+      <input
+        type="text"
+        formControlName="username"
+        autocomplete="username"
+        [attr.aria-invalid]="form.controls.username.invalid && form.controls.username.touched" />
+    </label>
+
+    <label>
+      <span>Contraseña</span>
+      <input
+        type="password"
+        formControlName="password"
+        autocomplete="current-password"
+        [attr.aria-invalid]="form.controls.password.invalid && form.controls.password.touched" />
+    </label>
+
+    @if (errorMessage()) {
+      <p class="login__error" role="alert">{{ errorMessage() }}</p>
+    }
+
+    <button type="submit" [disabled]="form.invalid || submitting()">
+      {{ submitting() ? 'Ingresando...' : 'Ingresar' }}
+    </button>
+  </form>
+</section>

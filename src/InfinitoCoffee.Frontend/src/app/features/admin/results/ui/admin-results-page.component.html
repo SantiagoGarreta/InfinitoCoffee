@@ -1,0 +1,218 @@
+<section class="admin-results" aria-labelledby="admin-results-title">
+  <header class="admin-results__header">
+    <div>
+      <p class="admin-results__eyebrow">Administracion</p>
+      <h1 id="admin-results-title">Resultado</h1>
+      <p>
+        El panel se reinicia por periodo: diario, semanal o mensual. Cada vista conserva el historial
+        para comparar desempeno entre periodos.
+      </p>
+    </div>
+
+    <div class="admin-results__filters" role="group" aria-label="Agrupar resultados">
+      @for (option of groupOptions; track option.value) {
+        <button
+          type="button"
+          class="results-filter"
+          [class.results-filter--active]="selectedGroupBy() === option.value"
+          (click)="changeGroupBy(option.value)">
+          {{ option.label }}
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (loading()) {
+    <app-loading-state label="Cargando resultado de ventas..." />
+  } @else if (loadError()) {
+    <app-error-message [message]="loadError()!" retryLabel="Reintentar" (retry)="reload()" />
+  } @else if (results(); as results) {
+    <section class="results-panel results-panel--hero" aria-labelledby="results-period-title">
+      <div class="results-panel__header">
+        <div>
+          <h2 id="results-period-title">Periodo actual</h2>
+          <p>{{ selectedPeriodLabel() }}</p>
+        </div>
+        <div class="results-period-badge">
+          <span>{{ selectedGroupBy() === 'Daily' ? 'Diario' : selectedGroupBy() === 'Weekly' ? 'Semanal' : 'Mensual' }}</span>
+        </div>
+      </div>
+
+      <div class="admin-results__cards" aria-label="Resumen del periodo actual">
+        @for (card of summaryCards(); track card.label) {
+          <article class="results-card">
+            <span>{{ card.label }}</span>
+            <strong>
+              @if (card.kind === 'currency') {
+                {{ card.value | currency:'UYU':'symbol-narrow':'1.2-2' }}
+              } @else {
+                {{ card.value }}
+              }
+            </strong>
+          </article>
+        }
+      </div>
+    </section>
+
+    <div class="admin-results__layout">
+      <section class="results-panel" aria-labelledby="results-compare-title">
+        <div class="results-panel__header">
+          <h2 id="results-compare-title">Comparacion con el periodo anterior</h2>
+          <p>{{ previousPeriodLabel() }}</p>
+        </div>
+
+        <div class="results-comparison" aria-label="Grafico comparativo del periodo actual y el anterior">
+          @for (card of comparisonCards(); track card.label) {
+            <article class="comparison-card">
+              <div class="comparison-card__header">
+                <span>{{ card.label }}</span>
+                <p [class.comparison-card__delta--positive]="card.delta > 0" [class.comparison-card__delta--negative]="card.delta < 0">
+                  @if (card.delta === 0) {
+                    Sin cambios
+                  } @else {
+                    {{ card.delta > 0 ? '+' : '-' }}{{ formatDelta(card.delta, card.kind) }} vs. periodo anterior
+                  }
+                </p>
+              </div>
+
+              <div class="comparison-bars">
+                <div class="comparison-bars__column">
+                  <strong>
+                    @if (card.kind === 'currency') {
+                      {{ card.currentValue | currency:'UYU':'symbol-narrow':'1.2-2' }}
+                    } @else {
+                      {{ card.currentValue }}
+                    }
+                  </strong>
+                  <div class="comparison-bars__track">
+                    <div class="comparison-bars__fill comparison-bars__fill--current" [style.height.%]="card.currentHeight"></div>
+                  </div>
+                  <span>Actual</span>
+                </div>
+
+                <div class="comparison-bars__column">
+                  <strong>
+                    @if (card.kind === 'currency') {
+                      {{ card.previousValue | currency:'UYU':'symbol-narrow':'1.2-2' }}
+                    } @else {
+                      {{ card.previousValue }}
+                    }
+                  </strong>
+                  <div class="comparison-bars__track">
+                    <div class="comparison-bars__fill comparison-bars__fill--previous" [style.height.%]="card.previousHeight"></div>
+                  </div>
+                  <span>Anterior</span>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      </section>
+
+      <section class="results-panel" aria-labelledby="results-state-title">
+        <div class="results-panel__header">
+          <h2 id="results-state-title">Operacion actual</h2>
+          <p>Foto en vivo del estado de pedidos para no perder visibilidad operativa.</p>
+        </div>
+
+        <dl class="results-stats">
+          @for (stat of operationalStats(); track stat.label) {
+            <div>
+              <dt>{{ stat.label }}</dt>
+              <dd>{{ stat.value }}</dd>
+            </div>
+          }
+        </dl>
+      </section>
+
+      <section class="results-panel results-panel--wide" aria-labelledby="results-history-title">
+        <div class="results-panel__header">
+          <h2 id="results-history-title">Tendencia historica</h2>
+          <p>Comparativa de ingresos y ganancia entre periodos consecutivos.</p>
+        </div>
+
+        @if (!trendChart()) {
+          <p class="results-empty">Todavia no hay periodos entregados para comparar.</p>
+        } @else {
+          <div class="results-history" aria-label="Grafico de tendencia historica">
+            <div class="chart-legend">
+              <span><i class="chart-legend__dot chart-legend__dot--revenue"></i>Ingresos</span>
+              <span><i class="chart-legend__dot chart-legend__dot--profit"></i>Ganancia</span>
+            </div>
+
+            <div class="trend-chart">
+              <svg [attr.viewBox]="'0 0 ' + trendChart()!.width + ' ' + trendChart()!.height" role="img" aria-label="Tendencia de ingresos y ganancia">
+                @for (gridLine of trendChart()!.gridLines; track gridLine.label) {
+                  <g>
+                    <line class="trend-chart__grid" x1="56" [attr.x2]="trendChart()!.width - 20" [attr.y1]="gridLine.y" [attr.y2]="gridLine.y"></line>
+                    <text class="trend-chart__axis-label" x="0" [attr.y]="gridLine.y + 4">{{ gridLine.label }}</text>
+                  </g>
+                }
+
+                <polyline class="trend-chart__line trend-chart__line--revenue" [attr.points]="trendChart()!.revenuePolyline"></polyline>
+                <polyline class="trend-chart__line trend-chart__line--profit" [attr.points]="trendChart()!.profitPolyline"></polyline>
+
+                @for (point of trendChart()!.points; track trackTrendPoint($index, point)) {
+                  <g>
+                    <circle class="trend-chart__point trend-chart__point--revenue" [attr.cx]="point.x" [attr.cy]="point.revenueY" r="4"></circle>
+                    <circle class="trend-chart__point trend-chart__point--profit" [attr.cx]="point.x" [attr.cy]="point.profitY" r="4"></circle>
+                    <text class="trend-chart__period-label" [attr.x]="point.x" [attr.y]="trendChart()!.height - 12">{{ point.label }}</text>
+                  </g>
+                }
+              </svg>
+            </div>
+
+            <div class="results-table-wrapper">
+              <table class="results-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Periodo</th>
+                    <th scope="col">Pedidos</th>
+                    <th scope="col">Entregados</th>
+                    <th scope="col">Ingresos</th>
+                    <th scope="col">Ganancia</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (point of results.history; track point.startDate) {
+                    <tr>
+                      <td>{{ formatPeriodRange(point.startDate, point.endDate, results.groupBy) }}</td>
+                      <td>{{ point.totalOrdersCount }}</td>
+                      <td>{{ point.deliveredOrdersCount }}</td>
+                      <td>{{ point.totalRevenue | currency:'UYU':'symbol-narrow':'1.2-2' }}</td>
+                      <td>{{ point.totalProfit | currency:'UYU':'symbol-narrow':'1.2-2' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+      </section>
+
+      <section class="results-panel" aria-labelledby="results-products-title">
+        <div class="results-panel__header">
+          <h2 id="results-products-title">Productos mas vendidos</h2>
+          <p>Ranking del periodo actual segun unidades entregadas y facturacion.</p>
+        </div>
+
+        @if (productChart().length === 0) {
+          <p class="results-empty">Todavia no hay productos entregados para rankear.</p>
+        } @else {
+          <div class="column-chart column-chart--products" aria-label="Grafico de productos mas vendidos">
+            @for (product of productChart(); track trackChartItem($index, product)) {
+              <article class="column-chart__item">
+                <div class="column-chart__plot">
+                  <div class="column-chart__bar" [class.column-chart__bar--sage]="product.tone === 'sage'" [style.height.%]="product.height"></div>
+                </div>
+                <strong>{{ product.label }}</strong>
+                <span>{{ product.value }} unidades</span>
+                <small>{{ product.detail }}</small>
+              </article>
+            }
+          </div>
+        }
+      </section>
+    </div>
+  }
+</section>

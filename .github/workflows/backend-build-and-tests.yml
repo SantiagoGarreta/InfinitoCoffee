@@ -1,0 +1,64 @@
+name: Backend build and tests
+
+on:
+  pull_request:
+    paths:
+      - 'src/InfinitoCoffee.Api/**'
+      - 'src/InfinitoCoffee.Application/**'
+      - 'src/InfinitoCoffee.Domain/**'
+      - 'src/InfinitoCoffee.Infrastructure/**'
+      - 'src/InfinitoCoffee.DbSetup/**'
+      - 'tests/**'
+      - 'InfinitoCoffee.sln'
+      - '.github/workflows/backend-build-and-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-tests:
+    name: Build and tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+
+      - name: Restore
+        run: dotnet restore ./InfinitoCoffee.sln
+
+      - name: Check formatting
+        run: dotnet format ./InfinitoCoffee.sln --no-restore --verify-no-changes
+
+      - name: Build
+        run: dotnet build ./InfinitoCoffee.sln --configuration Release --no-restore
+
+      - name: Run tests
+        run: >
+          dotnet test ./InfinitoCoffee.sln
+          --configuration Release
+          --no-build
+          --no-restore
+          --logger "trx;LogFileName=test-results.trx"
+          --results-directory ./TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: TestResults
+          if-no-files-found: ignore

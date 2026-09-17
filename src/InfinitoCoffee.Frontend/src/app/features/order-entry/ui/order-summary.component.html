@@ -1,0 +1,41 @@
+<section class="order-summary">
+  <header class="order-summary__header">
+    <h2>Resumen de la comanda</h2>
+    <span>{{ items().length }} items</span>
+  </header>
+
+  <div class="order-summary__items">
+    @for (item of items(); track item.productId) {
+      <article class="order-summary__item">
+        <div class="order-summary__item-main">
+          <div>
+            <strong>{{ item.productName }}</strong>
+            <span>{{ item.unitPrice | currency:'UYU':'symbol':'1.0-0' }} c/u</span>
+          </div>
+
+          <div class="order-summary__quantity">
+            <button type="button" [disabled]="disabled()" (click)="decrease.emit(item.productId)">-</button>
+            <span>{{ item.quantity }}</span>
+            <button type="button" [disabled]="disabled()" (click)="increase.emit(item.productId)">+</button>
+          </div>
+        </div>
+
+        <label>
+          <span>Nota del item</span>
+          <textarea
+            rows="2"
+            [disabled]="disabled()"
+            [ngModel]="item.notes"
+            (ngModelChange)="notesChanged.emit({ productId: item.productId, notes: $event })"></textarea>
+        </label>
+      </article>
+    } @empty {
+      <p class="order-summary__empty">Selecciona productos para armar la comanda.</p>
+    }
+  </div>
+
+  <footer class="order-summary__footer">
+    <span>Total visual</span>
+    <strong>{{ total() | currency:'UYU':'symbol':'1.0-0' }}</strong>
+  </footer>
+</section>

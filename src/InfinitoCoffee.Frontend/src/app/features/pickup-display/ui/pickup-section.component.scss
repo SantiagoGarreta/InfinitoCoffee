@@ -1,0 +1,42 @@
+.pickup-section {
+  display: grid;
+  gap: 1rem;
+  padding: 1.2rem;
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(88, 99, 118, 0.12);
+}
+
+.pickup-section--ready {
+  background: linear-gradient(180deg, rgba(237, 252, 244, 0.96) 0%, rgba(226, 247, 235, 0.96) 100%);
+}
+
+.pickup-section__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pickup-section__header h2,
+.pickup-section__empty {
+  margin: 0;
+}
+
+.pickup-section__header span {
+  min-width: 2.6rem;
+  text-align: center;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  font-weight: 700;
+}
+
+.pickup-section__content {
+  display: grid;
+  gap: 1rem;
+}
+
+.pickup-section__empty {
+  color: #5b6573;
+}

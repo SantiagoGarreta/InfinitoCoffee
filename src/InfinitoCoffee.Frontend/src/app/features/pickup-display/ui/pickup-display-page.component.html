@@ -1,0 +1,21 @@
+<section class="pickup-page">
+  <header class="pickup-page__header">
+    <div>
+      <p class="pickup-page__eyebrow">Pickup Display</p>
+      <h1>Pedidos en preparacion y listos para retirar</h1>
+    </div>
+
+    <app-connection-status [state]="store.connectionState()" (retry)="store.retryConnection()" />
+  </header>
+
+  @if (store.loading()) {
+    <app-loading-state label="Cargando pantalla de pickup..." />
+  } @else if (store.loadError()) {
+    <app-error-message [message]="store.loadError()!" retryLabel="Reintentar carga" (retry)="store.initialize()" />
+  } @else {
+    <div class="pickup-page__grid">
+      <app-pickup-section title="En preparacion" [orders]="preparingOrders()" />
+      <app-pickup-section title="Listos para retirar" [orders]="readyOrders()" [ready]="true" />
+    </div>
+  }
+</section>

@@ -1,0 +1,82 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: infinito-coffee-sqlserver
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Express
+      MSSQL_SA_PASSWORD: ${SQLSERVER_SA_PASSWORD:?SQLSERVER_SA_PASSWORD is required}
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - bash -c 'echo > /dev/tcp/127.0.0.1/1433'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  migrations:
+    build:
+      context: .
+      dockerfile: src/InfinitoCoffee.DbSetup/Dockerfile
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__InfinitoCoffee: Server=sqlserver,1433;Database=${SQLSERVER_DATABASE:?SQLSERVER_DATABASE is required};User Id=sa;Password=${SQLSERVER_SA_PASSWORD:?SQLSERVER_SA_PASSWORD is required};TrustServerCertificate=True
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    command: ["migrate"]
+    restart: "no"
+    profiles:
+      - tools
+
+  api:
+    build:
+      context: .
+      dockerfile: src/InfinitoCoffee.Api/Dockerfile
+    container_name: infinito-coffee-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__InfinitoCoffee: Server=sqlserver,1433;Database=${SQLSERVER_DATABASE:?SQLSERVER_DATABASE is required};User Id=sa;Password=${SQLSERVER_SA_PASSWORD:?SQLSERVER_SA_PASSWORD is required};TrustServerCertificate=True
+      Cors__AllowedOrigins__0: ${FRONTEND_PUBLIC_ORIGIN:?FRONTEND_PUBLIC_ORIGIN is required}
+    expose:
+      - "8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.infinito-coffee-api.rule=Host(`api.sistemainfinitocoffee.tech`)
+      - traefik.http.routers.infinito-coffee-api.entrypoints=websecure
+      - traefik.http.routers.infinito-coffee-api.tls=true
+      - traefik.http.routers.infinito-coffee-api.tls.certresolver=letsencrypt
+      - traefik.http.services.infinito-coffee-api.loadbalancer.server.port=8080
+
+  frontend:
+    build:
+      context: .
+      dockerfile: src/InfinitoCoffee.Frontend/Dockerfile
+    container_name: infinito-coffee-frontend
+    restart: unless-stopped
+    environment:
+      API_BASE_URL: ${API_PUBLIC_BASE_URL:?API_PUBLIC_BASE_URL is required}
+      SIGNALR_HUB_URL: ${SIGNALR_HUB_PUBLIC_URL:?SIGNALR_HUB_PUBLIC_URL is required}
+    expose:
+      - "80"
+    depends_on:
+      - api
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.infinito-coffee-frontend.rule=Host(`sistemainfinitocoffee.tech`) || Host(`www.sistemainfinitocoffee.tech`)
+      - traefik.http.routers.infinito-coffee-frontend.entrypoints=websecure
+      - traefik.http.routers.infinito-coffee-frontend.tls=true
+      - traefik.http.routers.infinito-coffee-frontend.tls.certresolver=letsencrypt
+      - traefik.http.services.infinito-coffee-frontend.loadbalancer.server.port=80
+
+volumes:
+  sqlserver-data:

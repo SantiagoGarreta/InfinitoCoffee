@@ -1,0 +1,21 @@
+.category-selector {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.category-selector__button {
+  border: 0;
+  border-radius: 999px;
+  background: #f4ece2;
+  color: #6d563f;
+  padding: 0.8rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.category-selector__button--active {
+  background: #6f4d33;
+  color: #fffaf4;
+}
