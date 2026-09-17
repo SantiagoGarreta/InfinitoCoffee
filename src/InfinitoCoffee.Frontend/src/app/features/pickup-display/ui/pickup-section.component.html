@@ -1,0 +1,14 @@
+<section class="pickup-section" [class.pickup-section--ready]="ready()">
+  <header class="pickup-section__header">
+    <h2>{{ title() }}</h2>
+    <span>{{ orders().length }}</span>
+  </header>
+
+  <div class="pickup-section__content">
+    @for (order of orders(); track order.id) {
+      <app-pickup-order-number [order]="order" [ready]="ready()" />
+    } @empty {
+      <p class="pickup-section__empty">Sin pedidos en esta seccion.</p>
+    }
+  </div>
+</section>

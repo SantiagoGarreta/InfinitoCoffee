@@ -1,0 +1,80 @@
+<section class="order-entry">
+  <header class="order-entry__header">
+    <div>
+      <p class="order-entry__eyebrow">Caja</p>
+      <h1>Nueva comanda</h1>
+      <p class="order-entry__subtitle">Crea pedidos manuales para que aparezcan de inmediato en cocina y pickup.</p>
+    </div>
+
+  </header>
+
+  @if (store.loading()) {
+    <app-loading-state label="Cargando categorias y productos..." />
+  } @else if (store.loadError()) {
+    <app-error-message [message]="store.loadError()!" retryLabel="Reintentar carga" (retry)="store.initialize()" />
+  } @else {
+    <div class="order-entry__layout">
+      <section class="order-entry__catalog">
+        <div class="order-entry__form-card">
+          <div class="order-entry__auto-number">
+            <span>Numero de pedido</span>
+            <strong>Se asigna automaticamente del 1 al 99</strong>
+          </div>
+
+          <label class="order-entry__notes">
+            <span>Notas generales</span>
+            <textarea
+              rows="3"
+              [disabled]="store.submitting()"
+              [ngModel]="store.notes()"
+              (ngModelChange)="store.setNotes($event)"></textarea>
+          </label>
+        </div>
+
+        <app-category-selector
+          [categories]="store.activeCategories()"
+          [selectedCategoryId]="store.selectedCategoryId()"
+          (selectCategory)="store.selectCategory($event)" />
+
+        <app-product-grid
+          [products]="store.visibleProducts()"
+          [disabled]="store.submitting()"
+          (addProduct)="store.addProduct($event)" />
+      </section>
+
+      <aside class="order-entry__summary">
+        <app-order-summary
+          [items]="store.items()"
+          [total]="store.visualTotal()"
+          [disabled]="store.submitting()"
+          (increase)="store.increaseQuantity($event)"
+          (decrease)="store.decreaseQuantity($event)"
+          (notesChanged)="store.updateItemNotes($event.productId, $event.notes)" />
+
+        <button
+          type="button"
+          class="order-entry__submit"
+          [disabled]="store.submitting()"
+          (click)="store.submit()">
+          @if (store.submitting()) {
+            <span>Creando comanda...</span>
+          } @else {
+            <span>Crear comanda</span>
+          }
+        </button>
+
+        @if (!store.canSubmit() && !store.submitting()) {
+          <p class="order-entry__hint">Agrega al menos un producto para habilitar la comanda.</p>
+        }
+
+        @if (store.submitError()) {
+          <app-error-message [message]="store.submitError()!" />
+        }
+
+        @if (store.successMessage()) {
+          <p class="order-entry__success" role="status" aria-live="polite">{{ store.successMessage() }}</p>
+        }
+      </aside>
+    </div>
+  }
+</section>

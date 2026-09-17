@@ -1,0 +1,13 @@
+<div class="category-selector" role="tablist" aria-label="Categorias de productos">
+  @for (category of categories(); track category.id) {
+    <button
+      type="button"
+      role="tab"
+      class="category-selector__button"
+      [class.category-selector__button--active]="selectedCategoryId() === category.id"
+      [attr.aria-selected]="selectedCategoryId() === category.id"
+      (click)="selectCategory.emit(category.id)">
+      {{ category.name }}
+    </button>
+  }
+</div>

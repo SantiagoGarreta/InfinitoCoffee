@@ -1,0 +1,24 @@
+.error-message {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border-radius: 1rem;
+  background: #fff3ef;
+  border: 1px solid rgba(185, 87, 57, 0.24);
+  color: #8a3f28;
+}
+
+.error-message p {
+  margin: 0;
+}
+
+.error-message__action {
+  justify-self: start;
+  border: 0;
+  border-radius: 999px;
+  background: #8a3f28;
+  color: #fff;
+  padding: 0.7rem 1rem;
+  font: inherit;
+  cursor: pointer;
+}
