@@ -88,16 +88,31 @@ export class PickupOrdersStore {
   }
 
   private async connectRealtime(forceRestart = false): Promise<void> {
-    try {
-      if (forceRestart) {
-        await this.realtimeService.restart();
-        return;
-      }
+    const maxAttempts = 5;
 
-      await this.realtimeService.start();
-    } catch (error: unknown) {
-      console.warn('[PickupOrdersStore] Realtime connection unavailable.', error);
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        if (forceRestart) {
+          await this.realtimeService.restart();
+        } else {
+          await this.realtimeService.start();
+        }
+        return;
+      } catch (error: unknown) {
+        if (attempt === maxAttempts) {
+          console.warn('[PickupOrdersStore] Realtime connection unavailable.', error);
+          return;
+        }
+
+        // La API/proxy puede tardar unos segundos en estar disponible durante
+        // un deploy. Reintentar evita que el usuario tenga que hacer F5.
+        await this.delay(attempt * 1000);
+      }
     }
+  }
+
+  private delay(milliseconds: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, milliseconds));
   }
 
   private upsertOrder(order: PickupOrder): void {
