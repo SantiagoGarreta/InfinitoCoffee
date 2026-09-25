@@ -1,6 +1,9 @@
 using InfinitoCoffee.Application.Orders.Contracts;
 using InfinitoCoffee.Domain.Orders;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
+using InfinitoCoffee.Domain.Stock;
+using InfinitoCoffee.Infrastructure.Persistence.Stock;
 
 namespace InfinitoCoffee.Infrastructure.Persistence.Repositories;
 
@@ -66,8 +69,43 @@ public sealed class OrderRepository : IOrderRepository
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    public Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        return EfRepositorySaveChanges.SaveAsync(_dbContext, cancellationToken);
+        var delivered = _dbContext.ChangeTracker.Entries<Order>()
+            .Where(entry => entry.State == EntityState.Modified
+                && entry.Entity.Status == OrderStatus.Delivered
+                && entry.Property(x => x.Status).OriginalValue != OrderStatus.Delivered)
+            .Select(entry => entry.Entity).ToArray();
+        if (delivered.Length == 0)
+        {
+            await EfRepositorySaveChanges.SaveAsync(_dbContext, cancellationToken);
+            return;
+        }
+
+        // Delivery and stock consumption commit together. A retry cannot subtract twice.
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        foreach (var order in delivered)
+        {
+            var productIds = order.Items.Select(x => x.ProductId).Distinct().ToArray();
+            var trackedItems = await _dbContext.StockItems
+                .Where(x => x.ProductId.HasValue && productIds.Contains(x.ProductId.Value)).ToListAsync(cancellationToken);
+            if (trackedItems.Count == 0) continue;
+            var operation = new StockOperation
+            {
+                Id = Guid.NewGuid(),
+                Type = "Sale",
+                OrderId = order.Id,
+                CreatedAtUtc = order.DeliveredAtUtc!.Value,
+                Notes = $"Entrega del pedido {order.OrderNumber}"
+            };
+            _dbContext.StockOperations.Add(operation);
+            foreach (var item in trackedItems.OrderBy(x => x.Id))
+            {
+                var quantity = order.Items.Where(x => x.ProductId == item.ProductId).Sum(x => x.Quantity);
+                await StockLedger.PostAsync(_dbContext, operation, item, StockLocation.Cafe, -quantity, cancellationToken);
+            }
+        }
+        await EfRepositorySaveChanges.SaveAsync(_dbContext, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 }

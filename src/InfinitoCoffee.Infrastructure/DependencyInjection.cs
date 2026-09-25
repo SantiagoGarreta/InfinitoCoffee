@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<Application.Stock.IStockService, Persistence.Stock.StockService>();
         services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
         services.AddScoped<IUserPasswordService, AspNetCoreUserPasswordService>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();

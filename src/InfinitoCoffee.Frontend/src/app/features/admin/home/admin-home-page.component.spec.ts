@@ -5,7 +5,7 @@ import { AuthenticationState } from '../../../core/auth/authentication-state.ser
 import { AdminHomePageComponent } from './admin-home-page.component';
 
 describe('AdminHomePageComponent', () => {
-  it('renders the welcome and seven real navigation accesses including Resultado', async () => {
+  it('renders the welcome and eight navigation accesses including Stock', async () => {
     await TestBed.configureTestingModule({
       imports: [AdminHomePageComponent],
       providers: [AuthenticationState, provideRouter([])],
@@ -18,7 +18,8 @@ describe('AdminHomePageComponent', () => {
 
     expect(text).toContain('Administracion');
     expect(text).toContain('Ana Admin');
-    expect(links).toHaveLength(7);
+    expect(links).toHaveLength(8);
+    expect(text).toContain('Stock');
     ['Caja', 'Cocina', 'Pickup', 'Resultado', 'Productos', 'Categorias', 'Usuarios'].forEach((label) => expect(text).toContain(label));
     expect(text).toContain('estadisticas historicas de ventas');
     const pickup = [...links].find((link) => link.textContent?.includes('Pickup'))!;

@@ -43,6 +43,11 @@ export const routes: Routes = [
         canActivate: [roleGuard('Administrator')],
         children: [
           {
+            path: 'stock',
+            loadComponent: () => import('./features/admin/stock/admin-stock-page.component')
+              .then((module) => module.AdminStockPageComponent),
+          },
+          {
             path: '',
             pathMatch: 'full',
             loadComponent: () => import('./features/admin/home/admin-home-page.component')

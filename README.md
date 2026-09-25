@@ -2,6 +2,8 @@
 
 Sistema web para la gestion de comandas de una cafeteria, desarrollado con ASP.NET Core, SQL Server, SignalR y Angular.
 
+El apartado **Administración → Stock** permite controlar ingredientes, recetas, producción, envíos y diferencias entre fábrica y cafetería. Consultar la [guía de stock](docs/stock.md) para activar el módulo y cargar las existencias iniciales.
+
 ## Versiones usadas
 
 - .NET SDK `10.0.302`
