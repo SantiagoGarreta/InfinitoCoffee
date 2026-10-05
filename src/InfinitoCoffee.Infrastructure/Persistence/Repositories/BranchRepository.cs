@@ -10,5 +10,4 @@ public sealed class BranchRepository(InfinitoCoffeeDbContext db) : IBranchReposi
         await db.Branches.OrderBy(x => x.Id).ToArrayAsync(ct);
     public Task<Branch?> GetByIdAsync(int id, CancellationToken ct) =>
         db.Branches.SingleOrDefaultAsync(x => x.Id == id, ct);
-    public Task SaveChangesAsync(CancellationToken ct) => db.SaveChangesAsync(ct);
 }

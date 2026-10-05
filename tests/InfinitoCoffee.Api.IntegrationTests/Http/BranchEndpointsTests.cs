@@ -139,13 +139,20 @@ public sealed class BranchEndpointsTests
     }
 
     [Fact]
-    public async Task AdministratorCanRenameBranchesAndAssignNewUserToSecondBranch()
+    public async Task BranchNamesAreFixedAndAdministratorCanAssignNewUserToSecondBranch()
     {
         await using var api = new ApiTestContext();
         await api.AuthenticateAsync();
-        (await api.PutAsJsonWithCsrfAsync("/api/branches/2", new { name = "Local de la esquina" })).EnsureSuccessStatusCode();
+        await api.ExecuteDbContextAsync(async db =>
+        {
+            (await db.Branches.SingleAsync(x => x.Id == 2)).Name = "Nombre anterior";
+            await db.SaveChangesAsync();
+        });
         var branches = await Read<JsonElement>(await api.Client.GetAsync("/api/branches"));
-        Assert.Equal("Local de la esquina", branches[1].GetProperty("name").GetString());
+        Assert.Equal("Sucursal 1", branches[0].GetProperty("name").GetString());
+        Assert.Equal("Sucursal 2", branches[1].GetProperty("name").GetString());
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await api.PutAsJsonWithCsrfAsync("/api/branches/2", new { name = "Local de la esquina" })).StatusCode);
         var response = await api.PostAsJsonWithCsrfAsync("/api/users", new
         { username = "caja.dos", displayName = "Caja dos", password = "Correct_password!", role = "Cashier", branchId = 2 });
         Assert.Equal(2, (await Read<JsonElement>(response)).GetProperty("branchId").GetInt32());

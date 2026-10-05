@@ -8,7 +8,7 @@ export interface Branch { id: number; name: string }
 export class BranchState {
   private readonly auth = inject(AuthenticationState);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
-  readonly branches = signal<Branch[]>([{ id: 1, name: 'Sucursal 1' }, { id: 2, name: 'Sucursal 2' }]);
+  readonly branches = signal<Branch[]>([{ id: 1, name: 'Sucursal 1' }, { id: 2, name: 'Sucursal 2' }]).asReadonly();
   private readonly selected = signal(this.readSelected());
   readonly privateId = computed(() => this.auth.currentUser()?.role === 'Administrator'
     ? this.selected() : this.auth.currentUser()?.branchId ?? 1);

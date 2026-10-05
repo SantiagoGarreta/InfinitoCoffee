@@ -13,5 +13,4 @@ public interface IBranchRepository
 {
     Task<IReadOnlyList<Branch>> GetAllAsync(CancellationToken ct);
     Task<Branch?> GetByIdAsync(int id, CancellationToken ct);
-    Task SaveChangesAsync(CancellationToken ct);
 }

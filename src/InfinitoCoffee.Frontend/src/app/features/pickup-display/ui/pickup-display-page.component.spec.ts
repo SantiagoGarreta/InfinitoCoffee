@@ -53,6 +53,16 @@ describe('PickupDisplayPageComponent', () => {
     expect(fixture.nativeElement.querySelector('nav[aria-label="Navegación principal"]')).toBeNull();
   });
 
+  it('shows only the compact branch dropdown in pickup', () => {
+    const fixture = TestBed.createComponent(PickupDisplayPageComponent);
+    fixture.detectChanges();
+
+    const selector = fixture.nativeElement.querySelector('app-branch-selector select[aria-label="Sucursal"]') as HTMLSelectElement;
+    expect(selector).toBeTruthy();
+    expect([...selector.options].map(option => option.textContent)).toEqual(['Sucursal 1', 'Sucursal 2']);
+    expect(fixture.nativeElement.querySelector('app-branch-selector button')).toBeNull();
+  });
+
   it('shows preparing and ready sections with the right orders', () => {
     const fixture = TestBed.createComponent(PickupDisplayPageComponent);
     fixture.detectChanges();

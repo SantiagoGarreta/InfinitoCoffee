@@ -14,8 +14,7 @@ La migración `20261004232238_AddBranches` asigna usuarios, pedidos, ventas y pr
 
 ## Usuarios y operación
 
-- Administración tiene el selector **Sucursal activa** en la barra lateral de todas las pantallas privadas (Caja, Cocina, Stock, Resultado y demás secciones). El cambio recarga la pantalla para cargar los pedidos, existencias y conexiones del local elegido. Guardar cualquier formulario pendiente antes de cambiar. Las cuentas de caja y cocina muestran su sucursal asignada y no pueden cambiarla desde la sesión.
-- **Cambiar nombre** permite renombrar la sucursal seleccionada. Los nombres se usan en las pantallas y el historial; su identificador permanece igual.
+- Administración tiene el selector de sucursal en la barra lateral de todas las pantallas privadas (Caja, Cocina, Stock, Resultado y demás secciones). El cambio recarga la pantalla para cargar los pedidos, existencias y conexiones del local elegido. Guardar cualquier formulario pendiente antes de cambiar. Las cuentas de caja y cocina muestran su sucursal asignada y no pueden cambiarla desde la sesión. Los nombres son fijos: **Sucursal 1** y **Sucursal 2**.
 - En **Administración → Usuarios**, asignar la sucursal de cada cuenta de caja o cocina. Estas cuentas solo pueden operar en el local asignado; la API también controla el acceso.
 - Si se cambia la sucursal de una cuenta de caja o cocina con sesión abierta, debe volver a iniciar sesión. Sus siguientes solicitudes operativas requieren renovar la sesión.
 - **Resultado** calcula ingresos, costos, ganancias, productos vendidos y estadísticas de la sucursal seleccionada.
@@ -38,6 +37,6 @@ Producir en cualquier sucursal descuenta del mismo saldo de ingredientes y suma 
 
 Las operaciones privadas de `/api/orders` y `/api/stock` usan la cabecera `X-Branch-Id`. Si se omite, se usa la sucursal asignada al usuario. Un usuario de caja o cocina no puede indicar otra sucursal. Administración puede seleccionar cualquiera de las dos.
 
-Pickup y las conexiones SignalR aceptan `branchId` en la URL. `/api/branches` lista identificadores y nombres públicos; `PUT /api/branches/{id}` permite renombrar una sucursal como administrador. Los formularios de usuarios admiten `branchId`.
+Pickup y las conexiones SignalR aceptan `branchId` en la URL. `/api/branches` lista identificadores y nombres públicos fijos. Los formularios de usuarios admiten `branchId`.
 
 El saldo y los movimientos de ingredientes utilizan `branchId: 0` para indicar que son compartidos. Las operaciones identifican el local de origen con 1 o 2. Los aumentos de productos mediante `/api/stock/adjustments` consumen ingredientes por defecto; enviar `consumeIngredients: false` para ingresos sin producción. El identificador de operación es idempotente y no puede reutilizarse desde otra sucursal.
