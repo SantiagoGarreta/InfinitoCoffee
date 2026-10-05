@@ -18,6 +18,8 @@ public sealed class StockItem
 public sealed class StockBalance
 {
     public Guid ItemId { get; set; }
+    // 0 is the shared ingredient balance; finished products use their branch ID.
+    public int BranchId { get; set; }
     public StockLocation Location { get; set; }
     public decimal Quantity { get; set; }
     // Application-managed token works on both SQL Server and the SQLite test provider.
@@ -46,6 +48,7 @@ public sealed class StockRecipeLine
 public sealed class StockOperation
 {
     public Guid Id { get; set; }
+    public int BranchId { get; set; } = 1;
     public string Type { get; set; } = string.Empty;
     public string RequestHash { get; set; } = string.Empty;
     public DateTime CreatedAtUtc { get; set; }
@@ -61,6 +64,7 @@ public sealed class StockMovement
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid OperationId { get; set; }
     public Guid ItemId { get; set; }
+    public int BranchId { get; set; }
     public StockLocation Location { get; set; }
     public decimal Before { get; set; }
     public decimal Delta { get; set; }
@@ -110,10 +114,10 @@ public static class StockQuantity
         return value;
     }
 
-    public static void ValidateBase(decimal value, StockUnit unit)
+    public static void ValidateBase(decimal value, StockUnit unit, bool allowFractionalUnits = false)
     {
         if (value < 0 || value > Maximum || decimal.Round(value, 3) != value
-            || (unit == StockUnit.Unit && decimal.Truncate(value) != value))
+            || (!allowFractionalUnits && unit == StockUnit.Unit && decimal.Truncate(value) != value))
             throw new ArgumentException("La cantidad debe respetar la unidad (unidades enteras; gramos y ml con hasta 3 decimales). Usá un lote completo si la receta necesita fracciones de una unidad.");
     }
 }

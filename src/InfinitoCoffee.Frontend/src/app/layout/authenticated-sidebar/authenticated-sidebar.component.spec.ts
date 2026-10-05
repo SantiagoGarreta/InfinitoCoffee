@@ -4,6 +4,7 @@ import { provideRouter, Router } from '@angular/router';
 import { AuthenticationState } from '../../core/auth/authentication-state.service';
 import { AuthenticationService } from '../../core/auth/authentication.service';
 import { UserRole } from '../../core/auth/models/authenticated-user.model';
+import { BranchesApiService } from '../../core/branches/branches-api.service';
 import { AuthenticatedSidebarComponent } from './authenticated-sidebar.component';
 
 describe('AuthenticatedSidebarComponent', () => {
@@ -17,6 +18,7 @@ describe('AuthenticatedSidebarComponent', () => {
         AuthenticationState,
         provideRouter([]),
         { provide: AuthenticationService, useValue: authService },
+        { provide: BranchesApiService, useValue: { getAll: () => Promise.resolve([{ id: 1, name: 'Sucursal 1' }, { id: 2, name: 'Sucursal 2' }]) } },
       ],
     }).compileComponents();
   });
@@ -32,11 +34,13 @@ describe('AuthenticatedSidebarComponent', () => {
     hidden.forEach((label) => expect(text).not.toContain(label));
     expect(text).toContain('Displayed User');
     expect(text).toContain(role);
+    expect(text).toContain(role === 'Administrator' ? 'Sucursal activa' : 'Sucursal asignada');
+    expect(fixture.nativeElement.querySelectorAll('select[aria-label="Sucursal activa"]').length).toBe(role === 'Administrator' ? 1 : 0);
     expect(text).toContain('Cerrar sesión');
 
     const pickup = [...fixture.nativeElement.querySelectorAll('a')]
       .find((anchor: HTMLAnchorElement) => anchor.textContent?.includes('Pickup')) as HTMLAnchorElement;
-    expect(pickup.getAttribute('href')).toBe('/pickup');
+    expect(pickup.getAttribute('href')).toBe('/pickup?branchId=1');
     expect(pickup.getAttribute('target')).toBe('_blank');
     expect(pickup.getAttribute('rel')).toContain('noopener');
   });

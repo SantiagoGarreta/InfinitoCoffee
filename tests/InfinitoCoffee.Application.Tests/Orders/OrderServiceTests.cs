@@ -13,6 +13,76 @@ namespace InfinitoCoffee.Application.Tests.Orders;
 public class OrderServiceTests
 {
     [Fact]
+    public async Task CreateOrderAsync_OnlyCantina_CompletesSaleWithoutKitchenOrPickup()
+    {
+        var now = new DateTime(2026, 10, 2, 12, 0, 0, DateTimeKind.Utc);
+        var clock = new FakeDateTimeProvider { UtcNow = now };
+        var orders = new FakeOrderRepository();
+        var products = new FakeProductRepository();
+        var categories = new FakeProductCategoryRepository();
+        var cantina = new ProductCategory("Cantina");
+        categories.Seed(cantina);
+        var gum = new Product(cantina.Id, "Chicles", 50m, 20m, null);
+        products.Seed(gum);
+        var events = new FakeOrderEventPublisher(() => orders.SaveChangesCalls);
+        var service = CreateOrderService(orders, products, clock, events, categories);
+
+        var created = await service.CreateOrderAsync(new CreateOrderCommand(null,
+            [new CreateOrderItemCommand(gum.Id, 2, null)]));
+
+        Assert.Equal(OrderStatus.Delivered, created.Status);
+        Assert.Equal(now, created.DeliveredAtUtc);
+        Assert.Empty(events.Events);
+        Assert.Empty(await service.GetActiveOrdersAsync());
+        Assert.Empty(await service.GetPickupOrdersAsync(new GetPickupOrdersQuery(TimeSpan.FromMinutes(15))));
+        var results = await service.GetOrderResultsAsync();
+        Assert.Equal(100m, results.CurrentPeriod.TotalRevenue);
+        Assert.Equal(40m, results.CurrentPeriod.TotalCost);
+        Assert.Equal(2, results.CurrentPeriod.DeliveredItemsCount);
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_MixedCantina_RecordsCashSaleOnceAndOnlySendsKitchenItems()
+    {
+        var now = new DateTime(2026, 10, 2, 12, 0, 0, DateTimeKind.Utc);
+        var clock = new FakeDateTimeProvider { UtcNow = now };
+        var orders = new FakeOrderRepository();
+        var products = new FakeProductRepository();
+        var categories = new FakeProductCategoryRepository();
+        var cantina = new ProductCategory("Cantina");
+        var cafes = new ProductCategory("Cafes");
+        categories.Seed(cantina, cafes);
+        var gum = new Product(cantina.Id, "Chicles", 50m, 20m, null);
+        var coffee = new Product(cafes.Id, "Espresso", 100m, 30m, null);
+        products.Seed(gum, coffee);
+        var events = new FakeOrderEventPublisher(() => orders.SaveChangesCalls);
+        var service = CreateOrderService(orders, products, clock, events, categories);
+
+        var created = await service.CreateOrderAsync(new CreateOrderCommand(null,
+            [new CreateOrderItemCommand(gum.Id, 1, null), new CreateOrderItemCommand(coffee.Id, 1, null)]));
+
+        Assert.Equal(OrderStatus.Pending, created.Status);
+        Assert.Equal(150m, created.Total);
+        Assert.Equal(2, created.Items.Count);
+        Assert.Equal("Espresso", Assert.Single(Assert.Single(events.Events).Order.Items).ProductName);
+        Assert.Equal("Espresso", Assert.Single(Assert.Single(await service.GetActiveOrdersAsync()).Items).ProductName);
+        var beforeDelivery = await service.GetOrderResultsAsync();
+        Assert.Equal(50m, beforeDelivery.CurrentPeriod.TotalRevenue);
+        Assert.Equal("Chicles", Assert.Single(beforeDelivery.TopSellingProducts).ProductName);
+
+        await service.StartOrderPreparationAsync(new StartOrderPreparationCommand(created.Id));
+        await service.MarkOrderAsReadyAsync(new MarkOrderAsReadyCommand(created.Id));
+        Assert.Equal("Espresso", Assert.Single(Assert.Single(await service.GetPickupOrdersAsync(
+            new GetPickupOrdersQuery(TimeSpan.FromMinutes(15)))).Items).ProductName);
+        await service.DeliverOrderAsync(new DeliverOrderCommand(created.Id));
+
+        var afterDelivery = await service.GetOrderResultsAsync();
+        Assert.Equal(150m, afterDelivery.CurrentPeriod.TotalRevenue);
+        Assert.Equal(50m, afterDelivery.CurrentPeriod.TotalCost);
+        Assert.Equal(2, afterDelivery.CurrentPeriod.DeliveredItemsCount);
+    }
+
+    [Fact]
     public async Task CreateOrderAsync_ValidCommand_CreatesOrder()
     {
         var dateTimeProvider = new FakeDateTimeProvider

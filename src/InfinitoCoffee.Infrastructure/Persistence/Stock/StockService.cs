@@ -10,16 +10,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InfinitoCoffee.Infrastructure.Persistence.Stock;
 
-public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider clock) : IStockService
+public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider clock,
+    InfinitoCoffee.Application.Branches.IBranchContext? branch = null) : IStockService
 {
+    private int BranchId => branch?.BranchId ?? 1;
     public async Task<StockDashboardDto> GetDashboardAsync(CancellationToken ct)
     {
         var items = await db.StockItems.AsNoTracking().OrderBy(x => x.Name).ToListAsync(ct);
-        var balances = await db.StockBalances.AsNoTracking().ToListAsync(ct);
+        var balances = await db.StockBalances.AsNoTracking()
+            .Where(x => x.Location == StockLocation.Factory && (x.BranchId == 0 || x.BranchId == BranchId)).ToListAsync(ct);
         var recipes = await db.StockRecipes.AsNoTracking().Include(x => x.Lines)
             .Where(x => !db.StockRecipes.Any(newer => newer.ItemId == x.ItemId && newer.Version > x.Version)).ToListAsync(ct);
         return new(items.Select(MapItem).ToArray(),
-            balances.Select(x => new StockBalanceDto(x.ItemId, x.Location, x.Quantity, x.Revision)).ToArray(),
+            balances.Select(x => new StockBalanceDto(x.ItemId, x.Location, x.Quantity, x.Revision, x.BranchId)).ToArray(),
             recipes.Select(MapRecipe).ToArray());
     }
 
@@ -47,8 +50,9 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
             MinimumQuantity = request.MinimumQuantity
         };
         db.StockItems.Add(item);
-        foreach (var location in Enum.GetValues<StockLocation>())
-            db.StockBalances.Add(new StockBalance { ItemId = item.Id, Location = location });
+        var scopeIds = item.Kind == StockItemKind.Ingredient ? [0] : await db.Branches.Select(x => x.Id).ToArrayAsync(ct);
+        foreach (var scopeId in scopeIds)
+            db.StockBalances.Add(new StockBalance { ItemId = item.Id, Location = StockLocation.Factory, BranchId = scopeId });
         await db.SaveChangesAsync(ct);
         return MapItem(item);
     }
@@ -92,122 +96,52 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
         return MapRecipe(recipe);
     }
 
-    public Task RecordReceiptAsync(ReceiptRequest request, Guid actorId, CancellationToken ct) =>
-        Execute(request.OperationId, "Receipt", request, actorId, request.Notes, async op =>
+    public Task RecordAdjustmentAsync(StockAdjustmentRequest request, Guid actorId, CancellationToken ct) =>
+        Execute(request.OperationId, "Adjustment", request, actorId, request.Notes, async op =>
         {
-            PhysicalLocation(request.Location);
-            foreach (var line in await NormalizeLines(request.Lines, false, ct))
-                await StockLedger.PostAsync(db, op, line.Item, request.Location, line.Quantity, ct);
-        }, ct);
-
-    public Task RecordProductionAsync(ProductionRequest request, Guid actorId, CancellationToken ct) =>
-        Execute(request.OperationId, "Production", request, actorId, request.Notes, async op =>
-        {
-            PhysicalLocation(request.Location);
-            Positive(request.Quantity, StockUnit.Unit);
-            StockQuantity.ValidateBase(request.DiscardedQuantity, StockUnit.Unit);
-            if (request.DiscardedQuantity > request.Quantity) throw new ArgumentException("El descarte no puede superar la cantidad de la tanda.");
-            if (request.DiscardedQuantity > 0) RequiredReason(request.Notes);
-            var recipe = await db.StockRecipes.Include(x => x.Lines).SingleOrDefaultAsync(x => x.Id == request.RecipeId, ct)
-                ?? throw new NotFoundException("Recipe", request.RecipeId);
-            // The client chooses an immutable recipe version; changing a recipe never rewrites past consumption.
-            op.RecipeId = recipe.Id;
-            foreach (var line in recipe.Lines)
+            RequiredReason(request.Notes);
+            if (request.Lines is null || request.Lines.Count is < 1 or > 100 ||
+                request.Lines.Select(x => x.ItemId).Distinct().Count() != request.Lines.Count)
+                throw new ArgumentException("Ingresá entre 1 y 100 artículos sin repetirlos.");
+            var changes = new List<(StockItem Item, decimal Delta)>();
+            foreach (var line in request.Lines.OrderBy(x => x.ItemId))
             {
                 var item = await GetItem(line.ItemId, ct);
-                var consumed = line.Quantity * request.Quantity / recipe.Yield;
-                Positive(consumed, item.Unit);
-                await StockLedger.PostAsync(db, op, item, request.Location, -consumed, ct);
+                if (line.Delta == 0) throw new ArgumentException("El ajuste debe aumentar o disminuir la cantidad.");
+                var amount = StockQuantity.Convert(Math.Abs(line.Delta), line.Unit, item.Unit);
+                changes.Add((item, line.Delta < 0 ? -amount : amount));
             }
-            await StockLedger.PostAsync(db, op, await GetItem(recipe.ItemId, ct), request.Location, request.Quantity, ct);
-            if (request.DiscardedQuantity > 0)
-                await StockLedger.PostAsync(db, op, await GetItem(recipe.ItemId, ct), request.Location, -request.DiscardedQuantity, ct);
-        }, ct);
-
-    public Task SendTransferAsync(TransferRequest request, Guid actorId, CancellationToken ct) =>
-        Execute(request.OperationId, "TransferSent", request, actorId, request.Notes, async op =>
-        {
-            PhysicalLocation(request.From);
-            PhysicalLocation(request.To);
-            if (request.From == request.To) throw new ArgumentException("Elegí un destino distinto del origen.");
-            var transfer = new StockTransfer { Id = op.Id, From = request.From, To = request.To, SentAtUtc = op.CreatedAtUtc };
-            foreach (var line in await NormalizeLines(request.Lines, false, ct))
+            // Purchases in the same adjustment are available before a finished product is received.
+            foreach (var change in changes.Where(x => x.Item.Kind == StockItemKind.Ingredient && x.Delta > 0))
+                await StockLedger.PostAsync(db, op, change.Item, StockLocation.Factory, change.Delta, ct);
+            foreach (var change in changes.Where(x => x.Item.Kind == StockItemKind.FinishedProduct && x.Delta > 0))
             {
-                await StockLedger.PostAsync(db, op, line.Item, request.From, -line.Quantity, ct);
-                await StockLedger.PostAsync(db, op, line.Item, StockLocation.Transit, line.Quantity, ct);
-                transfer.Lines.Add(new StockTransferLine { ItemId = line.Item.Id, Sent = line.Quantity });
+                var recipe = await db.StockRecipes.Include(x => x.Lines).Where(x => x.ItemId == change.Item.Id)
+                    .OrderByDescending(x => x.Version).FirstOrDefaultAsync(ct);
+                if (recipe is not null && request.ConsumeIngredients)
+                {
+                    if (changes.Count == 1) op.RecipeId = recipe.Id;
+                    foreach (var line in recipe.Lines.OrderBy(x => x.ItemId))
+                    {
+                        var ingredient = await GetItem(line.ItemId, ct);
+                        var consumed = decimal.Round(line.Quantity * change.Delta / recipe.Yield, 3, MidpointRounding.AwayFromZero);
+                        if (consumed <= 0) throw new ArgumentException("La receta requiere más precisión para esta cantidad.");
+                        StockQuantity.ValidateBase(consumed, ingredient.Unit, true);
+                        await StockLedger.PostAsync(db, op, ingredient, StockLocation.Factory, -consumed, ct);
+                    }
+                }
+                await StockLedger.PostAsync(db, op, change.Item, StockLocation.Factory, change.Delta, ct, BranchId);
             }
-            db.StockTransfers.Add(transfer);
+            foreach (var change in changes.Where(x => x.Delta < 0))
+                await StockLedger.PostAsync(db, op, change.Item, StockLocation.Factory, change.Delta, ct, BranchId);
         }, ct);
 
-    public Task ReceiveTransferAsync(Guid transferId, ReceiveTransferRequest request, Guid actorId, CancellationToken ct) =>
-        Execute(request.OperationId, "TransferReceived", new { transferId, request }, actorId, request.Notes, async op =>
-        {
-            var transfer = await db.StockTransfers.Include(x => x.Lines).SingleOrDefaultAsync(x => x.Id == transferId, ct)
-                ?? throw new NotFoundException("Transfer", transferId);
-            if (transfer.ReceivedAtUtc is not null) throw new ConflictException("El envío ya fue recibido.");
-            var lines = await NormalizeLines(request.Lines, true, ct);
-            if (lines.Count != transfer.Lines.Count || lines.Any(x => transfer.Lines.All(y => y.ItemId != x.Item.Id)))
-                throw new ArgumentException("Confirmá la cantidad recibida de cada artículo del envío.");
-            foreach (var line in lines)
-            {
-                var sent = transfer.Lines.Single(x => x.ItemId == line.Item.Id);
-                if (line.Quantity > sent.Sent) throw new ArgumentException("La recepción no puede superar lo enviado. Registrá cualquier ingreso adicional por separado.");
-                if (line.Quantity != sent.Sent) RequiredReason(request.Notes);
-                await StockLedger.PostAsync(db, op, line.Item, StockLocation.Transit, -sent.Sent, ct);
-                await StockLedger.PostAsync(db, op, line.Item, transfer.To, line.Quantity, ct);
-                sent.Received = line.Quantity;
-            }
-            transfer.ReceivedAtUtc = op.CreatedAtUtc;
-            transfer.ReceiptOperationId = op.Id;
-            transfer.Revision = Guid.NewGuid();
-        }, ct);
-
-    public Task RecordWasteAsync(WasteRequest request, Guid actorId, CancellationToken ct) =>
-        Execute(request.OperationId, "Waste", request, actorId, request.Notes, async op =>
-        {
-            PhysicalLocation(request.Location);
-            RequiredReason(request.Notes);
-            foreach (var line in await NormalizeLines(request.Lines, false, ct))
-                await StockLedger.PostAsync(db, op, line.Item, request.Location, -line.Quantity, ct);
-        }, ct);
-
-    public Task RecordCountAsync(CountRequest request, Guid actorId, CancellationToken ct) =>
-        Execute(request.OperationId, "Count", request, actorId, request.Notes, async op =>
-        {
-            PhysicalLocation(request.Location);
-            RequiredReason(request.Notes);
-            if (request.Lines is null || request.Lines.Any(x => x is null)) throw new ArgumentException("Ingresá los artículos del conteo.");
-            var lines = await NormalizeLines(request.Lines.Select(x => new StockLineInput(x.ItemId, x.Quantity, x.Unit)).ToArray(), true, ct);
-            foreach (var line in lines)
-            {
-                var balance = await db.StockBalances.SingleAsync(x => x.ItemId == line.Item.Id && x.Location == request.Location, ct);
-                if (balance.Revision != request.Lines.Single(x => x.ItemId == line.Item.Id).ExpectedRevision)
-                    throw new ConflictException("Hubo movimientos desde que abriste el conteo. Actualizá el stock y volvé a contar antes de confirmar.");
-                await StockLedger.PostAsync(db, op, line.Item, request.Location, line.Quantity - balance.Quantity, ct);
-            }
-        }, ct);
-
-    public async Task<IReadOnlyList<TransferDto>> GetTransfersAsync(bool pendingOnly, CancellationToken ct)
-    {
-        var query = db.StockTransfers.AsNoTracking().Include(x => x.Lines).AsQueryable();
-        if (pendingOnly) query = query.Where(x => x.ReceivedAtUtc == null);
-        // Pending transfers must never disappear behind a limit on recent completed transfers.
-        query = query.Where(x => x.ReceivedAtUtc == null || db.StockTransfers.Where(t => t.ReceivedAtUtc != null)
-            .OrderByDescending(t => t.SentAtUtc).Take(100).Select(t => t.Id).Contains(x.Id));
-        var transfers = await query.OrderByDescending(x => x.SentAtUtc).ToListAsync(ct);
-        return transfers.Select(x => new TransferDto(x.Id, x.From, x.To, x.SentAtUtc, x.ReceivedAtUtc,
-            x.Lines.Select(l => new TransferLineDto(l.ItemId, l.Sent, l.Received)).ToArray())).ToArray();
-    }
-
-    public async Task<StockHistoryDto> GetHistoryAsync(int page, Guid? itemId, StockLocation? location, CancellationToken ct)
+    public async Task<StockHistoryDto> GetHistoryAsync(int page, Guid? itemId, CancellationToken ct)
     {
         if (page < 0 || page > 100000) throw new ArgumentException("Página inválida.");
-        if (location.HasValue && !Enum.IsDefined(location.Value)) throw new ArgumentException("Ubicación inválida.");
-        var query = db.StockOperations.AsNoTracking().Include(x => x.Movements).AsQueryable();
-        if (itemId.HasValue || location.HasValue)
-            query = query.Where(x => x.Movements.Any(m => (!itemId.HasValue || m.ItemId == itemId)
-                && (!location.HasValue || m.Location == location)));
+        var query = db.StockOperations.AsNoTracking().Include(x => x.Movements)
+            .Where(x => x.Movements.Any(m => m.BranchId == 0 || m.BranchId == BranchId));
+        if (itemId.HasValue) query = query.Where(x => x.Movements.Any(m => m.ItemId == itemId && (m.BranchId == 0 || m.BranchId == BranchId)));
         var operations = await query.OrderByDescending(x => x.CreatedAtUtc).ThenByDescending(x => x.Id).Skip(page * 30).Take(31).ToListAsync(ct);
         var items = await db.StockItems.AsNoTracking().ToDictionaryAsync(x => x.Id, ct);
         var actors = operations.Where(x => x.ActorId.HasValue).Select(x => x.ActorId!.Value).Distinct().ToArray();
@@ -216,8 +150,9 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
         var versions = await db.StockRecipes.AsNoTracking().Where(x => recipeIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.Version, ct);
         return new(operations.Take(30).Select(x => new OperationDto(x.Id, x.Type, x.CreatedAtUtc, x.ActorId,
             x.ActorId.HasValue ? users.GetValueOrDefault(x.ActorId.Value, "Administrador") : "Venta automática",
-            x.Notes, x.RecipeId, x.RecipeId.HasValue ? versions[x.RecipeId.Value] : null, x.OrderId, x.Movements.Select(m => new MovementDto(m.ItemId, items[m.ItemId].Name,
-                items[m.ItemId].Unit, m.Location, m.Before, m.Delta, m.After)).ToArray())).ToArray(), operations.Count > 30);
+            x.Notes, x.RecipeId, x.RecipeId.HasValue ? versions[x.RecipeId.Value] : null, x.OrderId,
+            x.Movements.Where(m => m.BranchId == 0 || m.BranchId == BranchId).Select(m => new MovementDto(m.ItemId, items[m.ItemId].Name,
+                items[m.ItemId].Unit, m.Location, m.Before, m.Delta, m.After, m.BranchId)).ToArray(), x.BranchId)).ToArray(), operations.Count > 30);
     }
 
     private async Task Execute(Guid operationId, string type, object request, Guid actorId, string? notes,
@@ -225,7 +160,7 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
     {
         if (operationId == Guid.Empty) throw new ArgumentException("Falta el identificador de la operación.");
         if ((notes?.Length ?? 0) > 1000) throw new ArgumentException("El motivo admite hasta 1000 caracteres.");
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request))));
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { BranchId, Request = request }))));
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         var existing = await db.StockOperations.AsNoTracking().SingleOrDefaultAsync(x => x.Id == operationId, ct);
         if (existing is not null)
@@ -238,6 +173,7 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
         {
             Id = operationId,
             Type = type,
+            BranchId = BranchId,
             RequestHash = hash,
             CreatedAtUtc = clock.UtcNow,
             ActorId = actorId,
@@ -266,10 +202,6 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
 
     private async Task<StockItem> GetItem(Guid id, CancellationToken ct) =>
         await db.StockItems.SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new NotFoundException("StockItem", id);
-    private static void PhysicalLocation(StockLocation location)
-    {
-        if (location is not StockLocation.Factory and not StockLocation.Cafe) throw new ArgumentException("Elegí fábrica o cafetería.");
-    }
     private static string Name(string? value)
     {
         if (string.IsNullOrWhiteSpace(value) || value.Trim().Length > 150) throw new ArgumentException("Ingresá un nombre de hasta 150 caracteres.");

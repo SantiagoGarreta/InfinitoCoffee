@@ -16,4 +16,6 @@ public sealed class UpdateUserRequest
     [Required]
     [EnumDataType(typeof(UserRole))]
     public UserRole? Role { get; init; }
+    [Range(1, int.MaxValue)]
+    public int BranchId { get; init; } = 1;
 }

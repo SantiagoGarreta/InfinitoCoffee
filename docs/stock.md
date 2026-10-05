@@ -1,52 +1,29 @@
 # Control de stock
 
-La sección **Administración → Stock** (`/admin/stock`) está disponible únicamente para administradores. La API aplica el mismo permiso a todas las consultas y operaciones del módulo. Caja y cocina mantienen su trabajo habitual; la entrega de un pedido descuenta automáticamente los productos que tienen control de stock.
+La sección **Administración → Stock** muestra el saldo compartido de cada ingrediente y el saldo de productos terminados de la sucursal seleccionada. Solo los administradores pueden registrar artículos, recetas y ajustes. El catálogo de artículos y las recetas son comunes a ambas sucursales.
 
-## Activación
+## Puesta en marcha
 
-Aplicar la migración `20260924231017_AddStockControl` con el comando habitual de `InfinitoCoffee.DbSetup migrate` antes de arrancar esta versión de la API. En producción, el workflow existente ejecuta las migraciones antes de actualizar los contenedores. La migración agrega tablas; no cambia pedidos ni existencias anteriores.
+Aplicar las migraciones con `dotnet run --project .\src\InfinitoCoffee.DbSetup -- migrate`. La migración `20261004232238_AddBranches` crea Sucursal 1 y Sucursal 2, conserva los ingredientes en un saldo compartido y asigna los productos terminados existentes a Sucursal 1. Sucursal 2 comienza con cero productos terminados. Los movimientos anteriores permanecen en el historial. Ver la [guía de sucursales](sucursales.md).
 
-1. En **Artículos**, crear los ingredientes con su unidad: unidades, gramos o mililitros.
-2. Agregar los productos terminados, vinculándolos a productos existentes del catálogo.
-3. Registrar las existencias iniciales reales en **Registrar movimiento → Ingreso / compra**, indicando fábrica o cafetería y la referencia “Stock inicial”. Se pueden cargar varios artículos juntos.
-4. Crear las recetas por lote, por ejemplo: 10 scones requieren 5 huevos y las cantidades correspondientes de los otros ingredientes.
+Si ya se usaba el registro de producción, los productos terminados existentes conservarán su saldo y sus ingredientes ya descontados. Si se usó la versión que descontaba ingredientes también al entregar pedidos, revisar esos movimientos del historial y corregir sus saldos con un ajuste documentado.
 
-Al vincular un producto, sus existencias comienzan en cero. Cargar primero el stock inicial de cafetería antes de entregar pedidos de ese producto. Los productos sin vinculación siguen funcionando como antes. No se descuentan retroactivamente pedidos ya entregados.
+1. Crear los ingredientes con su unidad (unidades, gramos o mililitros).
+2. Crear los productos terminados y vincularlos con los productos del catálogo.
+3. Guardar una receta para cada producto que consuma ingredientes. La receta indica cuántas unidades rinde y la cantidad de cada ingrediente para ese rendimiento.
+4. Usar **Ajustar stock → Aumentar** para cargar las cantidades iniciales de ingredientes. Luego seleccionar la sucursal e ingresar los productos terminados: **Producción** consume ingredientes; **Ingreso sin producción** permite cargar existencias ya producidas o recibidas del otro local. El motivo es obligatorio.
 
-## Operación diaria
+## Uso diario
 
-- **Ingreso / compra:** registrar lo efectivamente recibido. Para ingredientes medidos en gramos se puede ingresar kg; para mililitros se pueden ingresar litros. El sistema convierte todo a la unidad base. La referencia permite anotar proveedor, factura o remito sin crear otro formulario.
-- **Producción:** elegir una receta, ubicación y cantidad de unidades de la tanda. La pantalla calcula y muestra los ingredientes necesarios. Confirmar consume los ingredientes y genera los productos terminados en una única operación.
-- **Descarte de producción:** si una tanda de 20 scones dejó 2 piezas inutilizables, ingresar 20 unidades de tanda y 2 descartadas, con motivo. Se consumen los ingredientes para 20 y quedan 18 piezas utilizables. Si se ingresa solo 18 como tanda, el consumo teórico también sería para 18.
-- **Envío:** elegir origen, destino y cantidades. Se descuentan del origen y aparecen en tránsito. Se admiten ingredientes y productos, en ambos sentidos.
-- **Recepción:** confirmar el envío cuando llega. Las cantidades se completan con lo enviado; solo hay que corregir los faltantes. Una diferencia requiere motivo. Confirmar cierra el envío completo: lo recibido entra al destino y el faltante queda documentado en el envío y el historial. No se admiten recepciones parciales abiertas; usar envíos separados si se transportan tandas en distintos momentos. Las cantidades adicionales requieren su propio ingreso.
-- **Ventas:** cuando una comanda pasa a Entregado, se descuentan sus productos vinculados de la cafetería. La entrega y el descuento se guardan juntos; si falta stock, la entrega no se confirma y se informa el conflicto. Crear o cancelar pedidos no altera existencias. Si una cancelación deja comida desperdiciada, registrar la merma correspondiente.
-- **Merma:** descontar roturas, vencimientos o pérdidas con motivo obligatorio.
-- **Conteo físico:** ingresar lo contado en cada artículo y explicar el ajuste. Se muestran el saldo esperado y la diferencia antes de confirmar. El historial conserva el saldo anterior, la diferencia y el nuevo saldo. Si hubo movimientos posteriores a la lectura usada para el conteo, se rechaza la confirmación para evitar sobrescribirlos. Actualizar la pantalla y repetir el conteo en ese caso.
+- **Aumentar un producto terminado como producción:** se suman sus unidades a la sucursal seleccionada y se descuentan los ingredientes compartidos de la última receta, proporcionalmente a la cantidad ingresada. Ambos cambios se guardan juntos. Si faltan ingredientes, no se registra el producto. Un producto sin receta puede ingresarse, pero no consume ingredientes.
+- **Ingresar un producto sin producción:** se suman unidades únicamente al local seleccionado. No consume ingredientes. Usar esta opción para traslados o correcciones de productos ya preparados.
+- **Ajustar stock:** aumentar ingredientes por compras o disminuir artículos por pérdidas, descartes y correcciones, siempre con un motivo. Disminuir un producto terminado no modifica ingredientes.
+- **Vender un producto:** se descuentan solo los productos terminados de la sucursal del pedido, en caja para artículos de Cantina o al entregar para los demás. Si faltan productos en ese local, no se confirma la venta o entrega, aunque existan en el otro. Los ingredientes ya se descontaron en la producción.
+- **Actualizar una receta:** crea una versión nueva. Los próximos ingresos de productos terminados usan la última versión; los movimientos anteriores conservan las cantidades descontadas.
+- **Consultar historial:** muestra movimientos de productos del local seleccionado y movimientos de ingredientes compartidos de ambas sucursales. Cada operación identifica la sucursal que la originó, el motivo, usuario, saldo anterior, cambio y saldo resultante. Las ventas muestran el pedido asociado.
 
-## Ejemplo de comprobación
+Por ejemplo, con 30 huevos y una receta de 10 scones que usa 5 huevos, producir 10 en Sucursal 1 y 10 en Sucursal 2 deja 20 huevos compartidos y 10 scones en cada local. Vender 3 en Sucursal 1 deja 20 huevos, 7 scones allí y 10 en Sucursal 2. El consumo proporcional al ingreso se redondea a tres decimales.
 
-| Paso | Huevos en fábrica | Scones en fábrica | Scones en tránsito | Scones en cafetería |
-|---|---:|---:|---:|---:|
-| Recibir 20 huevos | 20 | 0 | 0 | 0 |
-| Producir 20 scones (receta: 5 huevos cada 10) | 10 | 20 | 0 | 0 |
-| Enviar 20 scones | 10 | 0 | 20 | 0 |
-| Confirmar recepción completa | 10 | 0 | 0 | 20 |
-| Entregar un pedido de 3 scones | 10 | 0 | 0 | 17 |
+Para trasladar 4 scones de Sucursal 1 a Sucursal 2: disminuir 4 en Sucursal 1, cambiar a Sucursal 2 y aumentar 4 eligiendo **Ingreso sin producción**. Registrar el mismo motivo en ambos ajustes. Son dos registros manuales; si se completa solo uno, hay que completar o corregir el otro. El traslado no crea ventas ni vuelve a consumir ingredientes.
 
-## Reglas de control
-
-- Ninguna operación puede dejar stock negativo. Las operaciones con varios artículos se guardan completas o no se guarda ninguna parte.
-- Unidades se cuentan como enteros; gramos y mililitros admiten tres decimales. Si una receta daría medio huevo, ingresar un lote compatible o registrar ese ingrediente por peso.
-- Cada modificación de receta crea una versión nueva; las producciones conservan la versión que consumieron. Las recetas usan ingredientes, sin subrecetas anidadas.
-- Todos los movimientos incluyen fecha, motivo/referencia y usuario. Las ventas automáticas identifican el pedido y aparecen como “Venta automática”. No hay edición ni eliminación de movimientos por la API; las correcciones se documentan con nuevos ingresos, mermas o conteos.
-- Los reintentos de la misma operación con el mismo identificador no duplican movimientos. La pantalla conserva ese identificador después de un error mientras se mantiene la sesión de la aplicación. Tras recargar por completo el navegador y ante una respuesta incierta, revisar el historial antes de volver a cargar una operación.
-- Los saldos tienen control de concurrencia. Un conteo conserva la revisión que se leyó al elegir el artículo; no puede reemplazar una venta o producción posterior.
-- El stock mínimo avisa sobre ingredientes en fábrica y productos terminados en cafetería. No crea compras automáticamente.
-- El historial está paginado y se puede filtrar por artículo y ubicación. Se muestran todos los envíos pendientes y los últimos 100 envíos cerrados; el historial completo permanece disponible.
-
-Las existencias son teóricas: requieren ingresos, producción y conteos físicos confiables para detectar pérdidas. Una diferencia no demuestra por sí sola una sustracción. El módulo no infiere automáticamente la producción desde una recepción, no calcula costos de recetas y no descuenta ingredientes directamente por las bebidas vendidas: las recetas se consumen al registrar producción, también disponible en la ubicación Cafetería.
-
-## Verificación
-
-Las pruebas de integración cubren el circuito de huevos y scones, unidades de medida, versiones de receta, descarte de producción, falta de ingredientes, atomicidad de entrega/stock, permisos, reintentos, mermas, faltantes de envío y conteos desactualizados. Las pruebas del frontend cubren los formularios, la vista previa, conservación de datos ante errores y reintentos seguros.
+Los productos del catálogo sin artículo de stock vinculado siguen pudiéndose entregar sin descuentos. Los pedidos ya entregados no se recalculan al crear o cambiar una receta.

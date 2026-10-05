@@ -22,7 +22,7 @@ internal static class StockConfiguration
 
         var balance = model.Entity<StockBalance>();
         balance.ToTable("StockBalances", t => t.HasCheckConstraint("CK_StockBalances_Quantity", "[Quantity] >= 0"));
-        balance.HasKey(x => new { x.ItemId, x.Location });
+        balance.HasKey(x => new { x.ItemId, x.Location, x.BranchId });
         balance.Property(x => x.Quantity).HasPrecision(18, 3);
         balance.Property(x => x.Revision).IsConcurrencyToken();
         balance.HasOne<StockItem>().WithMany().HasForeignKey(x => x.ItemId).OnDelete(DeleteBehavior.Restrict);
@@ -49,7 +49,8 @@ internal static class StockConfiguration
         operation.Property(x => x.RequestHash).HasMaxLength(64).IsRequired();
         operation.Property(x => x.Notes).HasMaxLength(1000).IsRequired();
         operation.HasIndex(x => new { x.CreatedAtUtc, x.Id });
-        operation.HasIndex(x => x.OrderId).IsUnique().HasFilter("[OrderId] IS NOT NULL");
+        operation.HasIndex(x => x.OrderId);
+        operation.HasOne<InfinitoCoffee.Domain.Branches.Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
         operation.HasOne<StockRecipe>().WithMany().HasForeignKey(x => x.RecipeId).OnDelete(DeleteBehavior.Restrict);
         operation.HasOne<Order>().WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
         operation.HasOne<User>().WithMany().HasForeignKey(x => x.ActorId).OnDelete(DeleteBehavior.Restrict);
@@ -61,7 +62,7 @@ internal static class StockConfiguration
         movement.Property(x => x.Delta).HasPrecision(18, 3);
         movement.Property(x => x.After).HasPrecision(18, 3);
         movement.HasOne<StockItem>().WithMany().HasForeignKey(x => x.ItemId).OnDelete(DeleteBehavior.Restrict);
-        movement.HasIndex(x => new { x.ItemId, x.Location });
+        movement.HasIndex(x => new { x.ItemId, x.Location, x.BranchId });
 
         var transfer = model.Entity<StockTransfer>();
         transfer.ToTable("StockTransfers");

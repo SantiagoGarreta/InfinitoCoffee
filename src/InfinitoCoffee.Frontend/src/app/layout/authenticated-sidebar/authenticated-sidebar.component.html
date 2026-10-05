@@ -7,6 +7,8 @@
     </div>
   </div>
 
+  <app-branch-selector [sidebar]="true" />
+
   <nav class="sidebar__navigation" aria-label="Navegaci&oacute;n principal">
     <div class="sidebar__group">
       <span class="sidebar__label">Principal</span>
@@ -20,7 +22,7 @@
       @if (isAdministrator() || isCashier() || isKitchen()) {
         <a routerLink="/kitchen" routerLinkActive="sidebar__link--active" class="sidebar__link">Cocina</a>
       }
-      <a href="/pickup" target="_blank" rel="noopener" class="sidebar__link">
+      <a [href]="'/pickup?branchId=' + branch.privateId()" target="_blank" rel="noopener" class="sidebar__link">
         Pickup <span aria-hidden="true">&nearr;</span>
         <span class="visually-hidden">(se abre en una nueva pestana)</span>
       </a>

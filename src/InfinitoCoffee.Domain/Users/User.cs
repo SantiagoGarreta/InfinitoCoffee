@@ -105,6 +105,14 @@ public class User
 
     public string PasswordHash { get; private set; }
 
+    public int BranchId { get; private set; } = 1;
+
+    public void AssignBranch(int branchId)
+    {
+        if (branchId <= 0) throw new ArgumentException("Sucursal inválida.", nameof(branchId));
+        BranchId = branchId;
+    }
+
     public UserRole Role { get; private set; }
 
     public bool IsActive { get; private set; }

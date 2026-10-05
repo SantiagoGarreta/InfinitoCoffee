@@ -99,7 +99,7 @@ export class AdminResultsPageComponent implements OnInit {
       { label: 'Ingresos del periodo', value: currentPeriod.totalRevenue, kind: 'currency' },
       { label: 'Costos del periodo', value: currentPeriod.totalCost, kind: 'currency' },
       { label: 'Ganancia del periodo', value: currentPeriod.totalProfit, kind: 'currency' },
-      { label: 'Pedidos entregados', value: currentPeriod.deliveredOrdersCount, kind: 'number' },
+      { label: 'Comandas con ventas', value: currentPeriod.deliveredOrdersCount, kind: 'number' },
       { label: 'Productos vendidos', value: currentPeriod.deliveredItemsCount, kind: 'number' },
       { label: 'Ticket promedio', value: currentPeriod.averageDeliveredOrderTotal, kind: 'currency' },
     ];
@@ -117,7 +117,7 @@ export class AdminResultsPageComponent implements OnInit {
       { label: 'Ingresos', currentValue: current.totalRevenue, previousValue: previous.totalRevenue, kind: 'currency' as const },
       { label: 'Ganancia', currentValue: current.totalProfit, previousValue: previous.totalProfit, kind: 'currency' as const },
       {
-        label: 'Pedidos entregados',
+        label: 'Comandas con ventas',
         currentValue: current.deliveredOrdersCount,
         previousValue: previous.deliveredOrdersCount,
         kind: 'number' as const,

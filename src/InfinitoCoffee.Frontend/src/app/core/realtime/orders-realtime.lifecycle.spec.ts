@@ -37,7 +37,7 @@ describe('Realtime lifecycle across screens', () => {
         { provide: PickupApiService, useValue: { getOrders: () => Promise.resolve([]) } },
         {
           provide: HUB_CONNECTION_FACTORY,
-          useValue: (url: string) => url.endsWith('/pickup') ? publicConnection : privateConnection,
+          useValue: (url: string) => new URL(url).pathname.endsWith('/pickup') ? publicConnection : privateConnection,
         },
       ],
     });

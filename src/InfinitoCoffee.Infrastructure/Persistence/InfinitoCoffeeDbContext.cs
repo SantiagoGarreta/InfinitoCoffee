@@ -13,6 +13,8 @@ public class InfinitoCoffeeDbContext : DbContext
     {
     }
 
+    public DbSet<Domain.Branches.Branch> Branches => Set<Domain.Branches.Branch>();
+
     public DbSet<Order> Orders => Set<Order>();
 
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
@@ -37,6 +39,12 @@ public class InfinitoCoffeeDbContext : DbContext
         modelBuilder.ApplyConfiguration(new ProductCategoryConfiguration());
         modelBuilder.ApplyConfiguration(new UserConfiguration());
         StockConfiguration.Configure(modelBuilder);
+        var branch = modelBuilder.Entity<Domain.Branches.Branch>();
+        branch.ToTable("Branches");
+        branch.HasKey(x => x.Id);
+        branch.Property(x => x.Name).HasMaxLength(100).IsRequired();
+        branch.HasData(new Domain.Branches.Branch { Id = 1, Name = "Sucursal 1" },
+            new Domain.Branches.Branch { Id = 2, Name = "Sucursal 2" });
 
         base.OnModelCreating(modelBuilder);
     }

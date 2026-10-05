@@ -72,11 +72,23 @@ public class OrderItem
 
     public string? Notes { get; private set; }
 
+    public DateTime? SoldAtUtc { get; private set; }
+
     public decimal LineTotal => UnitPriceSnapshot * Quantity;
 
     public decimal CostTotal => UnitCostSnapshot * Quantity;
 
     public decimal Profit => LineTotal - CostTotal;
+
+    public void MarkSoldAtCashRegister(DateTime soldAtUtc)
+    {
+        if (SoldAtUtc is not null)
+        {
+            throw new DomainException("The item has already been sold at the cash register.");
+        }
+
+        SoldAtUtc = Common.UtcDateTime.Ensure(soldAtUtc, nameof(soldAtUtc));
+    }
 
     internal void AttachToOrder(Guid orderId)
     {

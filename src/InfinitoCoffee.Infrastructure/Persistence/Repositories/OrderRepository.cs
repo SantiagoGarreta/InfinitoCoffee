@@ -10,22 +10,25 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Repositories;
 public sealed class OrderRepository : IOrderRepository
 {
     private readonly InfinitoCoffeeDbContext _dbContext;
+    private readonly Application.Branches.IBranchContext _branch;
+    private IQueryable<Order> BranchOrders => _dbContext.Orders.Where(x => x.BranchId == _branch.BranchId);
 
-    public OrderRepository(InfinitoCoffeeDbContext dbContext)
+    public OrderRepository(InfinitoCoffeeDbContext dbContext, Application.Branches.IBranchContext? branch = null)
     {
         _dbContext = dbContext;
+        _branch = branch ?? new Application.Branches.BranchContext();
     }
 
     public async Task<Order?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Orders
+        return await BranchOrders
             .Include(order => order.Items)
             .SingleOrDefaultAsync(order => order.Id == id, cancellationToken);
     }
 
     public async Task<IReadOnlyCollection<Order>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Orders
+        return await BranchOrders
             .AsNoTracking()
             .Include(order => order.Items)
             .OrderBy(order => order.CreatedAtUtc)
@@ -35,7 +38,7 @@ public sealed class OrderRepository : IOrderRepository
 
     public async Task<IReadOnlyCollection<Order>> GetActiveAsync(CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Orders
+        return await BranchOrders
             .AsNoTracking()
             .Include(order => order.Items)
             .Where(order => order.Status != OrderStatus.Delivered && order.Status != OrderStatus.Cancelled)
@@ -46,7 +49,7 @@ public sealed class OrderRepository : IOrderRepository
 
     public async Task<IReadOnlyCollection<Order>> GetPickupCandidatesAsync(CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Orders
+        return await BranchOrders
             .AsNoTracking()
             .Include(order => order.Items)
             .Where(order => order.Status == OrderStatus.Preparing || order.Status == OrderStatus.Ready)
@@ -62,7 +65,7 @@ public sealed class OrderRepository : IOrderRepository
 
     public Task<string?> GetLatestOrderNumberAsync(CancellationToken cancellationToken = default)
     {
-        return _dbContext.Orders
+        return BranchOrders
             .AsNoTracking()
             .OrderByDescending(order => order.CreatedAtUtc)
             .Select(order => order.OrderNumber)
@@ -71,22 +74,31 @@ public sealed class OrderRepository : IOrderRepository
 
     public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        var created = _dbContext.ChangeTracker.Entries<Order>()
+            .Where(entry => entry.State == EntityState.Added)
+            .Select(entry => entry.Entity)
+            .Where(order => order.Items.Any(item => item.SoldAtUtc is not null))
+            .ToArray();
         var delivered = _dbContext.ChangeTracker.Entries<Order>()
             .Where(entry => entry.State == EntityState.Modified
                 && entry.Entity.Status == OrderStatus.Delivered
                 && entry.Property(x => x.Status).OriginalValue != OrderStatus.Delivered)
             .Select(entry => entry.Entity).ToArray();
-        if (delivered.Length == 0)
+        if (delivered.Length == 0 && created.Length == 0)
         {
             await EfRepositorySaveChanges.SaveAsync(_dbContext, cancellationToken);
             return;
         }
 
-        // Delivery and stock consumption commit together. A retry cannot subtract twice.
+        // Each sale stage and its stock consumption commit together.
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-        foreach (var order in delivered)
+        foreach (var order in created.Concat(delivered))
         {
-            var productIds = order.Items.Select(x => x.ProductId).Distinct().ToArray();
+            var soldAtCreation = created.Contains(order);
+            var soldItems = soldAtCreation
+                ? order.Items.Where(item => item.SoldAtUtc is not null).ToArray()
+                : order.Items.Where(item => item.SoldAtUtc is null).ToArray();
+            var productIds = soldItems.Select(x => x.ProductId).Distinct().ToArray();
             var trackedItems = await _dbContext.StockItems
                 .Where(x => x.ProductId.HasValue && productIds.Contains(x.ProductId.Value)).ToListAsync(cancellationToken);
             if (trackedItems.Count == 0) continue;
@@ -94,15 +106,16 @@ public sealed class OrderRepository : IOrderRepository
             {
                 Id = Guid.NewGuid(),
                 Type = "Sale",
+                BranchId = order.BranchId,
                 OrderId = order.Id,
-                CreatedAtUtc = order.DeliveredAtUtc!.Value,
-                Notes = $"Entrega del pedido {order.OrderNumber}"
+                CreatedAtUtc = soldAtCreation ? order.CreatedAtUtc : order.DeliveredAtUtc!.Value,
+                Notes = soldAtCreation ? $"Venta en caja del pedido {order.OrderNumber}" : $"Entrega del pedido {order.OrderNumber}"
             };
             _dbContext.StockOperations.Add(operation);
             foreach (var item in trackedItems.OrderBy(x => x.Id))
             {
-                var quantity = order.Items.Where(x => x.ProductId == item.ProductId).Sum(x => x.Quantity);
-                await StockLedger.PostAsync(_dbContext, operation, item, StockLocation.Cafe, -quantity, cancellationToken);
+                var quantity = soldItems.Where(x => x.ProductId == item.ProductId).Sum(x => x.Quantity);
+                await StockLedger.PostAsync(_dbContext, operation, item, StockLocation.Factory, -quantity, cancellationToken, order.BranchId);
             }
         }
         await EfRepositorySaveChanges.SaveAsync(_dbContext, cancellationToken);

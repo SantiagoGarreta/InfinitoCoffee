@@ -22,11 +22,44 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("InfinitoCoffee.Domain.Branches.Branch", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Branches", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "Sucursal 1"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "Sucursal 2"
+                        });
+                });
+
             modelBuilder.Entity("InfinitoCoffee.Domain.Orders.Order", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("BranchId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("CancelledAtUtc")
                         .HasColumnType("datetime2");
@@ -64,6 +97,8 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BranchId", "Id");
+
                     b.ToTable("Orders", (string)null);
                 });
 
@@ -90,6 +125,9 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("SoldAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<decimal>("UnitCostSnapshot")
                         .HasPrecision(18, 2)
@@ -169,6 +207,9 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                     b.Property<int>("Location")
                         .HasColumnType("int");
 
+                    b.Property<int>("BranchId")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("Quantity")
                         .HasPrecision(18, 3)
                         .HasColumnType("decimal(18,3)");
@@ -177,7 +218,7 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("uniqueidentifier");
 
-                    b.HasKey("ItemId", "Location");
+                    b.HasKey("ItemId", "Location", "BranchId");
 
                     b.ToTable("StockBalances", null, t =>
                         {
@@ -240,6 +281,9 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 3)
                         .HasColumnType("decimal(18,3)");
 
+                    b.Property<int>("BranchId")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("Delta")
                         .HasPrecision(18, 3)
                         .HasColumnType("decimal(18,3)");
@@ -257,7 +301,7 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("OperationId");
 
-                    b.HasIndex("ItemId", "Location");
+                    b.HasIndex("ItemId", "Location", "BranchId");
 
                     b.ToTable("StockMovements", (string)null);
                 });
@@ -270,6 +314,9 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("ActorId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("BranchId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
@@ -299,9 +346,9 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ActorId");
 
-                    b.HasIndex("OrderId")
-                        .IsUnique()
-                        .HasFilter("[OrderId] IS NOT NULL");
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("OrderId");
 
                     b.HasIndex("RecipeId");
 
@@ -437,6 +484,9 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("BranchId")
+                        .HasColumnType("int");
+
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -479,7 +529,18 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_Users_NormalizedUsername");
 
+                    b.HasIndex("BranchId", "Id");
+
                     b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("InfinitoCoffee.Domain.Orders.Order", b =>
+                {
+                    b.HasOne("InfinitoCoffee.Domain.Branches.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("InfinitoCoffee.Domain.Orders.OrderItem", b =>
@@ -538,6 +599,12 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ActorId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("InfinitoCoffee.Domain.Branches.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("InfinitoCoffee.Domain.Orders.Order", null)
                         .WithMany()
@@ -606,6 +673,15 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                         .WithMany("Lines")
                         .HasForeignKey("TransferId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("InfinitoCoffee.Domain.Users.User", b =>
+                {
+                    b.HasOne("InfinitoCoffee.Domain.Branches.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

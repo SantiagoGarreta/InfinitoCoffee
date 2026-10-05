@@ -11,6 +11,8 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.ToTable("Users");
 
         builder.HasKey(user => user.Id);
+        builder.HasOne<InfinitoCoffee.Domain.Branches.Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(x => new { x.BranchId, x.Id });
 
         builder.Property(user => user.Username)
             .IsRequired()

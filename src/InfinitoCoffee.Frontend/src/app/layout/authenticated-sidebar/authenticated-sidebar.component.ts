@@ -1,13 +1,15 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
+import { BranchState } from '../../core/branches/branch-state.service';
 import { AuthenticationState } from '../../core/auth/authentication-state.service';
 import { AuthenticationService } from '../../core/auth/authentication.service';
+import { BranchSelectorComponent } from '../branch-selector/branch-selector.component';
 
 @Component({
   selector: 'app-authenticated-sidebar',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, BranchSelectorComponent],
   templateUrl: './authenticated-sidebar.component.html',
   styleUrl: './authenticated-sidebar.component.scss',
 })
@@ -16,6 +18,7 @@ export class AuthenticatedSidebarComponent {
   private readonly authenticationService = inject(AuthenticationService);
   private readonly router = inject(Router);
 
+  readonly branch = inject(BranchState);
   readonly currentUser = this.authenticationState.currentUser;
   readonly role = this.authenticationState.role;
   readonly isAdministrator = computed(() => this.role() === 'Administrator');

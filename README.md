@@ -2,7 +2,7 @@
 
 Sistema web para la gestion de comandas de una cafeteria, desarrollado con ASP.NET Core, SQL Server, SignalR y Angular.
 
-El apartado **Administración → Stock** permite controlar ingredientes, recetas, producción, envíos y diferencias entre fábrica y cafetería. Consultar la [guía de stock](docs/stock.md) para activar el módulo y cargar las existencias iniciales.
+El sistema admite dos sucursales con ingredientes compartidos y productos terminados, ventas, resultados, cocina y pickup independientes. Administración puede seleccionar la sucursal y cambiar su nombre; caja y cocina trabajan en la sucursal asignada a su usuario. Consultar la [guía de sucursales](docs/sucursales.md) para activar la separación y la [guía de stock](docs/stock.md) para cargar existencias y registrar producción o traslados manuales.
 
 ## Versiones usadas
 
