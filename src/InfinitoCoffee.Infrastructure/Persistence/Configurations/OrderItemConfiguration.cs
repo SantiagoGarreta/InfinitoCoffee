@@ -33,6 +33,8 @@ internal sealed class OrderItemConfiguration : IEntityTypeConfiguration<OrderIte
         builder.Property(item => item.Quantity)
             .IsRequired();
 
+        builder.Property(item => item.SoldAtUtc);
+
         builder.Property(item => item.Notes)
             .HasMaxLength(1000);
     }

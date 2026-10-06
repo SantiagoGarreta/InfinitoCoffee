@@ -37,7 +37,7 @@ public sealed class UsersController : ControllerBase
     public async Task<ActionResult<UserResponse>> Create(CreateUserRequest request, CancellationToken cancellationToken)
     {
         var user = await _service.CreateUserAsync(
-            new CreateUserCommand(request.Username, request.DisplayName, request.Password, request.Role!.Value),
+            new CreateUserCommand(request.Username, request.DisplayName, request.Password, request.Role!.Value, request.BranchId),
             cancellationToken);
         var response = ApiContractMapper.MapUser(user);
         return CreatedAtAction(nameof(GetById), new { id = response.Id }, response);
@@ -48,7 +48,7 @@ public sealed class UsersController : ControllerBase
     {
         if (!TryGetActingUserId(out var actingUserId)) return Unauthorized();
         var user = await _service.UpdateUserAsync(
-            new UpdateUserCommand(id, actingUserId, request.Username, request.DisplayName, request.Role!.Value),
+            new UpdateUserCommand(id, actingUserId, request.Username, request.DisplayName, request.Role!.Value, request.BranchId),
             cancellationToken);
         return Ok(ApiContractMapper.MapUser(user));
     }

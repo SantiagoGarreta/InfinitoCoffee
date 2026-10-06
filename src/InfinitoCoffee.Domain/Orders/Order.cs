@@ -16,7 +16,8 @@ public class Order
         string orderNumber,
         DateTime createdAtUtc,
         IEnumerable<OrderItem> items,
-        string? notes = null)
+        string? notes = null,
+        int branchId = 1)
     {
         if (string.IsNullOrWhiteSpace(orderNumber))
         {
@@ -31,6 +32,8 @@ public class Order
             throw new ArgumentException("An order must contain at least one item.", nameof(items));
         }
 
+        if (branchId <= 0) throw new ArgumentException("Sucursal inválida.", nameof(branchId));
+        BranchId = branchId;
         Id = Guid.NewGuid();
         OrderNumber = orderNumber.Trim();
         Status = OrderStatus.Pending;
@@ -46,6 +49,8 @@ public class Order
     }
 
     public Guid Id { get; private set; }
+
+    public int BranchId { get; private set; } = 1;
 
     public string OrderNumber { get; private set; }
 
@@ -72,6 +77,17 @@ public class Order
     public decimal TotalCost => _items.Sum(item => item.CostTotal);
 
     public decimal Profit => Total - TotalCost;
+
+    public void CompleteCashRegisterSale()
+    {
+        if (Status != OrderStatus.Pending || _items.Any(item => item.SoldAtUtc is null))
+        {
+            throw new InvalidOrderStateTransitionException(Status, OrderStatus.Delivered);
+        }
+
+        DeliveredAtUtc = CreatedAtUtc;
+        Status = OrderStatus.Delivered;
+    }
 
     public void StartPreparing(DateTime startedAtUtc)
     {

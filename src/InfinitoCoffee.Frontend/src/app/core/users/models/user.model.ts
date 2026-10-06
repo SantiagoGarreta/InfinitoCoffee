@@ -5,6 +5,7 @@ export interface User {
   username: string;
   displayName: string;
   role: UserRole;
+  branchId?: number;
   isActive: boolean;
   isSystemUser: boolean;
 }

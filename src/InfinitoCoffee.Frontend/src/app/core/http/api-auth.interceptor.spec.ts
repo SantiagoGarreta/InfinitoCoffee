@@ -71,4 +71,16 @@ describe('apiAuthInterceptor', () => {
     expect(request.request.headers.has('X-XSRF-TOKEN')).toBe(false);
     request.flush({});
   });
+
+  it('uses the staff assigned branch for kitchen requests without overriding public pickup', () => {
+    TestBed.inject(AuthenticationState).setUser({ id: 'staff', username: 'caja', displayName: 'Caja', role: 'Kitchen', branchId: 2 });
+    client.get('https://api.example.com/base/api/orders/active').subscribe();
+    const kitchen = http.expectOne('https://api.example.com/base/api/orders/active');
+    expect(kitchen.request.headers.get('X-Branch-Id')).toBe('2');
+    kitchen.flush([]);
+    client.get('https://api.example.com/base/api/orders/pickup?branchId=1').subscribe();
+    const pickup = http.expectOne('https://api.example.com/base/api/orders/pickup?branchId=1');
+    expect(pickup.request.headers.has('X-Branch-Id')).toBe(false);
+    pickup.flush([]);
+  });
 });

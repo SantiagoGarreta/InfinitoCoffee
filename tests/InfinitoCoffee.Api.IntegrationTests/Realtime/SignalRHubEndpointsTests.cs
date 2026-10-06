@@ -224,6 +224,49 @@ public sealed class SignalRHubEndpointsTests
         Assert.Empty(pickupEvents);
     }
 
+    [Fact]
+    public async Task KitchenAndPickupEventsReachOnlyTheMatchingBranch()
+    {
+        await using var context = new ApiTestContext();
+        await context.AuthenticateAsync();
+        await using var kitchenOne = CreateConnection(context.Factory, "/hubs/orders?branchId=1", context.CurrentAuthenticationCookie);
+        await using var kitchenTwo = CreateConnection(context.Factory, "/hubs/orders?branchId=2", context.CurrentAuthenticationCookie);
+        await using var pickupOne = CreateConnection(context.Factory, "/hubs/pickup?branchId=1");
+        await using var pickupTwo = CreateConnection(context.Factory, "/hubs/pickup?branchId=2");
+        var kitchenOneEvents = new List<OrderRealtimeDto>();
+        var kitchenTwoEvents = new List<OrderRealtimeDto>();
+        var pickupOneEvents = new List<JsonElement>();
+        var pickupTwoEvents = new List<JsonElement>();
+        kitchenOne.On<OrderRealtimeDto>("OrderStatusChanged", kitchenOneEvents.Add);
+        kitchenTwo.On<OrderRealtimeDto>("OrderStatusChanged", kitchenTwoEvents.Add);
+        pickupOne.On<JsonElement>("OrderStatusChanged", pickupOneEvents.Add);
+        pickupTwo.On<JsonElement>("OrderStatusChanged", pickupTwoEvents.Add);
+        await kitchenOne.StartAsync(); await kitchenTwo.StartAsync();
+        await pickupOne.StartAsync(); await pickupTwo.StartAsync();
+        var productId = await context.ExecuteDbContextAsync(TestDataSeeder.SeedActiveProductAsync);
+        context.Client.DefaultRequestHeaders.Add("X-Branch-Id", "2");
+        var response = await context.PostAsJsonWithCsrfAsync("/api/orders", new
+        { items = new[] { new { productId, quantity = 1 } } });
+        response.EnsureSuccessStatusCode();
+        var id = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        (await context.PostWithCsrfAsync($"/api/orders/{id}/start-preparation")).EnsureSuccessStatusCode();
+        Assert.Equal(id, (await WaitForSingleEventAsync(kitchenTwoEvents)).Id);
+        Assert.Equal(id, (await WaitForSingleEventAsync(pickupTwoEvents)).GetProperty("id").GetGuid());
+        await Task.Delay(250);
+        Assert.Empty(kitchenOneEvents);
+        Assert.Empty(pickupOneEvents);
+    }
+
+    [Fact]
+    public async Task KitchenUserCannotConnectToTheOtherBranchHub()
+    {
+        await using var context = new ApiTestContext();
+        await context.AuthenticateAsync(UserRole.Kitchen);
+        await using var connection = CreateConnection(context.Factory, "/hubs/orders?branchId=2", context.CurrentAuthenticationCookie);
+        var exception = await Assert.ThrowsAsync<HttpRequestException>(() => connection.StartAsync());
+        Assert.Equal(HttpStatusCode.Forbidden, exception.StatusCode);
+    }
+
     private static HubConnection CreateConnection(
         TestApiApplicationFactory factory,
         string path,

@@ -2,6 +2,8 @@
 
 Sistema web para la gestion de comandas de una cafeteria, desarrollado con ASP.NET Core, SQL Server, SignalR y Angular.
 
+El sistema admite dos sucursales con ingredientes compartidos y productos terminados, ventas, resultados, cocina y pickup independientes. Administración puede seleccionar la sucursal y cambiar su nombre; caja y cocina trabajan en la sucursal asignada a su usuario. Consultar la [guía de sucursales](docs/sucursales.md) para activar la separación y la [guía de stock](docs/stock.md) para cargar existencias y registrar producción o traslados manuales.
+
 ## Versiones usadas
 
 - .NET SDK `10.0.302`

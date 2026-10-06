@@ -95,6 +95,7 @@ jobs:
             install -m 600 /tmp/infinito-coffee.env /opt/infinito-coffee/.env
             cd /opt/infinito-coffee
             docker compose --env-file .env -f docker-compose.production.yml up -d sqlserver
+            docker compose --env-file .env -f docker-compose.production.yml build api frontend migrations
             docker compose --env-file .env -f docker-compose.production.yml --profile tools run --rm migrations
             docker compose --env-file .env -f docker-compose.production.yml up -d api frontend
             rm -f /tmp/infinito-coffee.tar.gz /tmp/infinito-coffee.env

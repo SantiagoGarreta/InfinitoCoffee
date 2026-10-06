@@ -34,10 +34,14 @@ public static class DependencyInjection
         services.AddDbContext<InfinitoCoffeeDbContext>(options =>
             options.UseSqlServer(connectionString));
 
+        services.AddScoped<Application.Branches.BranchContext>();
+        services.AddScoped<Application.Branches.IBranchContext>(sp => sp.GetRequiredService<Application.Branches.BranchContext>());
+        services.AddScoped<Application.Branches.IBranchRepository, BranchRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<Application.Stock.IStockService, Persistence.Stock.StockService>();
         services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
         services.AddScoped<IUserPasswordService, AspNetCoreUserPasswordService>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();

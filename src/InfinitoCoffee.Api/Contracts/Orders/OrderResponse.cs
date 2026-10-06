@@ -11,4 +11,5 @@ public sealed record OrderResponse(
     DateTime? CancelledAtUtc,
     string? Notes,
     decimal Total,
-    IReadOnlyCollection<OrderItemResponse> Items);
+    IReadOnlyCollection<OrderItemResponse> Items,
+    int BranchId = 1);

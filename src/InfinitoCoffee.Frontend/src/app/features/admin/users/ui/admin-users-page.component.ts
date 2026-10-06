@@ -3,6 +3,7 @@ import { Component, OnInit, PLATFORM_ID, computed, inject, signal } from '@angul
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
+import { BranchState } from '../../../../core/branches/branch-state.service';
 import { AuthenticationState } from '../../../../core/auth/authentication-state.service';
 import { AuthenticationService } from '../../../../core/auth/authentication.service';
 import { UserRole } from '../../../../core/auth/models/authenticated-user.model';
@@ -21,6 +22,8 @@ const usernamePattern = /^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/;
   styleUrl: './admin-users-page.component.scss',
 })
 export class AdminUsersPageComponent implements OnInit {
+  readonly branches = inject(BranchState);
+  readonly branchId = signal(1);
   readonly store = inject(AdminUsersStore);
   readonly currentUser = inject(AuthenticationState).currentUser;
   readonly roles: readonly UserRole[] = ['Administrator', 'Cashier', 'Kitchen'];
@@ -62,7 +65,8 @@ export class AdminUsersPageComponent implements OnInit {
     const role = this.isCurrentUser(editingUser) ? editingUser.role : this.role();
     return this.username().trim() !== editingUser.username
       || this.displayName().trim() !== editingUser.displayName
-      || role !== editingUser.role;
+      || role !== editingUser.role
+      || this.branchId() !== (editingUser.branchId ?? 1);
   });
   readonly canResetPassword = computed(() => this.newPasswordIsValid() && !this.mutationsBlocked());
 
@@ -94,6 +98,7 @@ export class AdminUsersPageComponent implements OnInit {
     this.username.set(user.username);
     this.displayName.set(user.displayName);
     this.role.set(user.role);
+    this.branchId.set(user.branchId ?? 1);
     this.password.set('');
   }
 
@@ -111,6 +116,7 @@ export class AdminUsersPageComponent implements OnInit {
         displayName: this.displayName().trim(),
         password: this.password(),
         role: this.role(),
+        branchId: this.branchId(),
       });
       if (created) this.resetForm(false);
       return;
@@ -121,6 +127,7 @@ export class AdminUsersPageComponent implements OnInit {
       username: this.username().trim(),
       displayName: this.displayName().trim(),
       role: isSelf ? editingUser.role : this.role(),
+      branchId: this.branchId(),
     });
     if (!updated) return;
 
@@ -205,6 +212,7 @@ export class AdminUsersPageComponent implements OnInit {
     this.displayName.set('');
     this.password.set('');
     this.role.set('Cashier');
+    this.branchId.set(this.branches.privateId());
   }
 }
 
