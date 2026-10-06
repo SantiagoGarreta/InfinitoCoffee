@@ -39,6 +39,33 @@ describe('AdminStockPageComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('En tránsito');
     expect(fixture.nativeElement.textContent).not.toContain('Confirmar recepción');
   });
+  it('filters and highlights items below their minimum, then shows all items again', async () => {
+    const lowDashboard = structuredClone(dashboard);
+    lowDashboard.balances[0].quantity = 2;
+    api.dashboard.mockResolvedValue(lowDashboard);
+    const fixture = await create();
+    const rows = () => fixture.nativeElement.querySelectorAll('tbody tr') as NodeListOf<HTMLTableRowElement>;
+    const filter = () => fixture.nativeElement.querySelector('.low-stock-filter') as HTMLButtonElement;
+
+    expect(rows()).toHaveLength(2);
+    expect(rows()[0].classList.contains('low-stock-row')).toBe(true);
+    expect(rows()[0].textContent).toContain('Mínimo: 5 un.');
+    expect(filter().textContent).toContain('Bajo mínimo (1)');
+
+    filter().click(); fixture.detectChanges();
+    expect(filter().getAttribute('aria-pressed')).toBe('true');
+    expect(rows()).toHaveLength(1);
+    expect(rows()[0].textContent).toContain('Huevos');
+
+    fixture.componentInstance.search.set('scones'); fixture.detectChanges();
+    expect(rows()).toHaveLength(1);
+    expect(rows()[0].textContent).toContain('No hay artículos bajo el mínimo');
+
+    fixture.componentInstance.search.set('');
+    filter().click(); fixture.detectChanges();
+    expect(filter().getAttribute('aria-pressed')).toBe('false');
+    expect(rows()).toHaveLength(2);
+  });
   it('records a decrease of a finished product with a reason', async () => {
     const fixture = await create(); const component = fixture.componentInstance;
     component.openAdjustment('scones', 'decrease');

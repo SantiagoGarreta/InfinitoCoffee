@@ -30,6 +30,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .success { background: #eaf4ed; color: #2b6141; }
 .warning { background: #fff4dd; color: #805b20; }
 .warning-text { color: #9b4726 !important; }
+.stock-filters { display: flex; align-items: end; gap: .65rem; flex-wrap: wrap; }
+.stock-filters label { min-width: min(100%, 220px); }
+.low-stock-filter.active { background: #805b20; color: #fff; }
+.low-stock-row { background: #fff8eb; }
 .table-scroll { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; text-align: left; font-size: .95rem; }
 th { color: #756353; font-size: .8rem; font-weight: 600; }

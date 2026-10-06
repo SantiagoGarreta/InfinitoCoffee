@@ -25,13 +25,15 @@
           @if (lowStock().length) { <div class="notice warning"><strong>Revisá la reposición:</strong>
             @for (item of lowStock(); track item.id; let last = $last) { {{ item.name }}{{ last ? '.' : ',' }} }</div> }
           <div class="panel"><div class="section-header"><div><h2>Existencias</h2><p>Ingredientes de ambas sucursales y productos terminados de este local.</p></div>
-            <label>Buscar artículo<input type="search" [ngModel]="search()" (ngModelChange)="search.set($event)" /></label></div>
+            <div class="stock-filters"><label>Buscar artículo<input type="search" [ngModel]="search()" (ngModelChange)="search.set($event)" /></label>
+              <button type="button" class="secondary low-stock-filter" [class.active]="showOnlyLowStock()" [attr.aria-pressed]="showOnlyLowStock()" (click)="showOnlyLowStock.set(!showOnlyLowStock())">Bajo mínimo ({{ lowStock().length }})</button></div></div>
             <div class="table-scroll"><table><thead><tr><th>Artículo</th><th>Cantidad</th><th><span class="sr-only">Acciones</span></th></tr></thead>
               <tbody>@for (item of filteredItems(); track item.id) {
-                <tr><td><strong>{{ item.name }}</strong><small>{{ item.kind === 'Ingredient' ? 'Ingrediente compartido' : 'Producto de esta sucursal' }}</small></td>
-                  <td>{{ quantity(item.id) | number:'1.0-3' }} {{ unitLabel(item.unit) }}</td>
+                <tr [class.low-stock-row]="isLowStock(item)"><td><strong>{{ item.name }}</strong><small>{{ item.kind === 'Ingredient' ? 'Ingrediente compartido' : 'Producto de esta sucursal' }}</small></td>
+                  <td><span [class.warning-text]="isLowStock(item)">{{ quantity(item.id) | number:'1.0-3' }} {{ unitLabel(item.unit) }}</span>
+                    @if (isLowStock(item)) { <small class="warning-text">Bajo mínimo · Mínimo: {{ item.minimumQuantity | number:'1.0-3' }} {{ unitLabel(item.unit) }}</small> }</td>
                   <td><button type="button" class="text-button" (click)="openAdjustment(item.id)">Ajustar</button></td></tr>
-              } @empty { <tr><td colspan="3">No hay artículos con ese nombre.</td></tr> }</tbody></table></div></div>
+              } @empty { <tr><td colspan="3">{{ showOnlyLowStock() ? 'No hay artículos bajo el mínimo que coincidan con la búsqueda.' : 'No hay artículos con ese nombre.' }}</td></tr> }</tbody></table></div></div>
         }
       }
       @if (tab() === 'adjust') {

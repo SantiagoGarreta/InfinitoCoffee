@@ -29,10 +29,13 @@ export class AdminStockPageComponent implements OnInit {
   readonly success = signal<string | null>(null);
   readonly tab = signal<Tab>('overview');
   readonly search = signal('');
+  readonly showOnlyLowStock = signal(false);
   readonly ingredients = computed(() => this.data().items.filter(x => x.kind === 'Ingredient'));
   readonly finished = computed(() => this.data().items.filter(x => x.kind === 'FinishedProduct'));
-  readonly filteredItems = computed(() => this.data().items.filter(x => x.name.toLocaleLowerCase().includes(this.search().toLocaleLowerCase())));
-  readonly lowStock = computed(() => this.data().items.filter(x => x.minimumQuantity > 0 && this.quantity(x.id) < x.minimumQuantity));
+  readonly filteredItems = computed(() => this.data().items.filter(x =>
+    x.name.toLocaleLowerCase().includes(this.search().toLocaleLowerCase())
+    && (!this.showOnlyLowStock() || this.isLowStock(x))));
+  readonly lowStock = computed(() => this.data().items.filter(x => this.isLowStock(x)));
   readonly availableProducts = computed(() => this.products().filter(p => !this.data().items.some(x => x.productId === p.id)));
   readonly tabs: { id: Tab; label: string }[] = [
     { id: 'overview', label: 'Existencias' }, { id: 'adjust', label: 'Ajustar stock' },
@@ -76,6 +79,7 @@ export class AdminStockPageComponent implements OnInit {
   item(id: string): StockItem | undefined { return this.data().items.find(x => x.id === id); }
   itemLabel(id: string): string { return this.item(id)?.name ?? 'Artículo'; }
   quantity(id: string): number { return this.data().balances.find(x => x.itemId === id)?.quantity ?? 0; }
+  isLowStock(item: StockItem): boolean { return item.minimumQuantity > 0 && this.quantity(item.id) < item.minimumQuantity; }
   unitLabel(unit: Unit): string { return unit === 'Unit' ? 'un.' : unit === 'Gram' ? 'g' : 'ml'; }
   baseUnit(unit: Unit): string { return unit === 'Unit' ? 'unit' : unit === 'Gram' ? 'g' : 'ml'; }
   unitOptions(itemId: string): { value: string; label: string }[] {
