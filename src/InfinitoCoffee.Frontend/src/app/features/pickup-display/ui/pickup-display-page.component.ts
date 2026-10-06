@@ -1,6 +1,7 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Component, OnDestroy, OnInit, PLATFORM_ID, computed, inject } from '@angular/core';
 
+import { BranchSelectorComponent } from '../../../layout/branch-selector/branch-selector.component';
 import { ConnectionStatusComponent } from '../../../shared/ui/connection-status/connection-status.component';
 import { ErrorMessageComponent } from '../../../shared/ui/error-message/error-message.component';
 import { LoadingStateComponent } from '../../../shared/ui/loading-state/loading-state.component';
@@ -12,6 +13,7 @@ import { PickupSectionComponent } from './pickup-section.component';
   standalone: true,
   imports: [
     CommonModule,
+    BranchSelectorComponent,
     ConnectionStatusComponent,
     ErrorMessageComponent,
     LoadingStateComponent,

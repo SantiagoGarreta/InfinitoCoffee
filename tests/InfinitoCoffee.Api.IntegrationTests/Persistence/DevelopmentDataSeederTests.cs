@@ -33,7 +33,7 @@ public sealed class DevelopmentDataSeederTests
                 systemUser,
                 systemUser.PasswordHash,
                 InitialPassword));
-        Assert.Equal(5, await dbContext.ProductCategories.CountAsync());
+        Assert.Equal(6, await dbContext.ProductCategories.CountAsync());
         Assert.Equal(9, await dbContext.Products.CountAsync());
     }
 
@@ -62,7 +62,7 @@ public sealed class DevelopmentDataSeederTests
         Assert.Equal(original.DisplayName, persisted.DisplayName);
         Assert.Equal(original.PasswordHash, persisted.PasswordHash);
         Assert.Equal(1, await dbContext.Users.CountAsync());
-        Assert.Equal(5, await dbContext.ProductCategories.CountAsync());
+        Assert.Equal(6, await dbContext.ProductCategories.CountAsync());
         Assert.Equal(9, await dbContext.Products.CountAsync());
     }
 
@@ -121,7 +121,7 @@ public sealed class DevelopmentDataSeederTests
         Assert.Equal(systemUser.Id, persisted.Id);
         Assert.Equal("preserved-root", persisted.Username);
         Assert.Equal("preserved-hash", persisted.PasswordHash);
-        Assert.Equal(5, await dbContext.ProductCategories.CountAsync());
+        Assert.Equal(6, await dbContext.ProductCategories.CountAsync());
         Assert.Equal(9, await dbContext.Products.CountAsync());
     }
 

@@ -1,6 +1,7 @@
 import { Injectable, PLATFORM_ID, inject, isDevMode, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
+import { BranchState } from '../branches/branch-state.service';
 import { APP_RUNTIME_CONFIG } from '../config/app-runtime-config';
 import { OrderRealtimeDto } from '../orders/models/order.model';
 import { HUB_CONNECTION_FACTORY, HubConnectionLike } from './hub-connection';
@@ -14,6 +15,7 @@ type ResyncListener = () => void;
 export class OrdersRealtimeService {
   readonly connectionState = signal<RealtimeConnectionState>('disconnected');
 
+  private readonly branch = inject(BranchState);
   private readonly hubConnectionFactory = inject(HUB_CONNECTION_FACTORY);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly appRuntimeConfig = inject(APP_RUNTIME_CONFIG);
@@ -97,7 +99,7 @@ export class OrdersRealtimeService {
     }
 
     const connection = this.hubConnectionFactory(
-      this.appRuntimeConfig.signalRHubUrl,
+      this.branch.hubUrl(this.appRuntimeConfig.signalRHubUrl),
       { withCredentials: true },
     );
     this.registerOrderHandler(connection, 'OrderCreated');

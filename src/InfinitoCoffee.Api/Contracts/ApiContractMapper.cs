@@ -24,7 +24,8 @@ internal static class ApiContractMapper
             order.CancelledAtUtc,
             order.Notes,
             order.Total,
-            order.Items.Select(MapOrderItem).ToArray());
+            order.Items.Select(MapOrderItem).ToArray(),
+            order.BranchId);
     }
 
     public static PickupOrderResponse MapPickupOrder(OrderDto order)
@@ -88,7 +89,8 @@ internal static class ApiContractMapper
             user.DisplayName,
             user.Role,
             user.IsActive,
-            user.IsSystemUser);
+            user.IsSystemUser,
+            user.BranchId);
     }
 
     public static OrderResultsGroupBy ParseOrderResultsGroupBy(string? groupBy)

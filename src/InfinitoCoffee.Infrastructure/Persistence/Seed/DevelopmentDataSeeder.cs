@@ -17,7 +17,8 @@ public sealed class DevelopmentDataSeeder
         new("Tes", true),
         new("Bebidas frias", true),
         new("Panaderia", true),
-        new("Comidas", true)
+        new("Comidas", true),
+        new("Cantina", true)
     ];
 
     private static readonly SeedProduct[] Products =

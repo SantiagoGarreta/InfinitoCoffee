@@ -16,6 +16,7 @@ namespace InfinitoCoffee.Api.IntegrationTests.Http;
 internal sealed class TestApiApplicationFactory : WebApplicationFactory<Program>, IAsyncDisposable
 {
     private readonly string _environmentName;
+    private readonly string _sqliteConnectionString = $"Data Source=infinito-test-{Guid.NewGuid():N};Mode=Memory;Cache=Shared;Pooling=False";
     private SqliteConnection? _connection;
 
     public TestApiApplicationFactory(string environmentName = "Development")
@@ -86,7 +87,7 @@ internal sealed class TestApiApplicationFactory : WebApplicationFactory<Program>
 
             services.AddSingleton<DbConnection>(_ =>
             {
-                _connection ??= new SqliteConnection("Data Source=:memory:");
+                _connection ??= new SqliteConnection(_sqliteConnectionString);
                 if (_connection.State != System.Data.ConnectionState.Open)
                 {
                     _connection.Open();
@@ -97,7 +98,10 @@ internal sealed class TestApiApplicationFactory : WebApplicationFactory<Program>
 
             services.AddDbContext<InfinitoCoffeeDbContext>((serviceProvider, options) =>
             {
-                options.UseSqlite((SqliteConnection)serviceProvider.GetRequiredService<DbConnection>());
+                // The anchor keeps the memory database alive. Each concurrent HTTP/SignalR
+                // request owns its connection, as it does with SQL Server in production.
+                _ = serviceProvider.GetRequiredService<DbConnection>();
+                options.UseSqlite(_sqliteConnectionString);
             });
         });
     }

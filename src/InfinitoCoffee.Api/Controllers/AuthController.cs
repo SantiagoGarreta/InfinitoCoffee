@@ -98,6 +98,7 @@ public sealed class AuthController : ControllerBase
             user.Id,
             user.Username,
             user.DisplayName,
-            user.Role.ToString());
+            user.Role.ToString(),
+            user.BranchId);
     }
 }

@@ -60,7 +60,7 @@ describe('PickupRealtimeService', () => {
       id: 'order-1', orderNumber: 'A-100', status: 'Cancelled', createdAtUtc: '2026-08-09T12:00:00Z',
     });
 
-    expect(receivedUrl).toBe('http://localhost:5165/hubs/pickup');
+    expect(receivedUrl).toBe('http://localhost:5165/hubs/pickup?branchId=1');
     expect(receivedOptions).toEqual({ withCredentials: false });
     expect(eventNames).toEqual(['OrderStatusChanged', 'OrderCancelled']);
   });

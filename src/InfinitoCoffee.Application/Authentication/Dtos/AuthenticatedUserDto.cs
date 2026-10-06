@@ -6,4 +6,5 @@ public sealed record AuthenticatedUserDto(
     Guid Id,
     string Username,
     string DisplayName,
-    UserRole Role);
+    UserRole Role,
+    int BranchId = 1);

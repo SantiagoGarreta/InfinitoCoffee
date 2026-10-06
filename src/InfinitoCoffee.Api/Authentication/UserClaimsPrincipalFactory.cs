@@ -15,7 +15,8 @@ public sealed class UserClaimsPrincipalFactory
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString("D")),
             new Claim(ClaimTypes.Name, user.Username),
             new Claim(AuthenticationConstants.DisplayNameClaimType, user.DisplayName),
-            new Claim(ClaimTypes.Role, user.Role.ToString())
+            new Claim(ClaimTypes.Role, user.Role.ToString()),
+            new Claim("branch_id", user.BranchId.ToString())
         };
 
         var identity = new ClaimsIdentity(
@@ -46,7 +47,8 @@ public sealed class UserClaimsPrincipalFactory
             return false;
         }
 
-        user = new AuthenticatedUserDto(id, username, displayName, role);
+        user = new AuthenticatedUserDto(id, username, displayName, role,
+            int.TryParse(principal.FindFirstValue("branch_id"), out var branchId) ? branchId : 1);
         return true;
     }
 }

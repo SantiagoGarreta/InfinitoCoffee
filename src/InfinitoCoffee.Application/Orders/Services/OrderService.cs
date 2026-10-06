@@ -16,6 +16,7 @@ public sealed class OrderService
     private const int FirstDisplayOrderNumber = 1;
     private const int LastDisplayOrderNumber = 99;
 
+    private readonly InfinitoCoffee.Application.Branches.IBranchContext _branch;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IOrderEventPublisher _orderEventPublisher;
     private readonly IOrderRepository _orderRepository;
@@ -27,8 +28,10 @@ public sealed class OrderService
         IProductRepository productRepository,
         IProductCategoryRepository productCategoryRepository,
         IDateTimeProvider dateTimeProvider,
-        IOrderEventPublisher orderEventPublisher)
+        IOrderEventPublisher orderEventPublisher,
+        InfinitoCoffee.Application.Branches.IBranchContext? branch = null)
     {
+        _branch = branch ?? new InfinitoCoffee.Application.Branches.BranchContext();
         _orderRepository = orderRepository;
         _productRepository = productRepository;
         _productCategoryRepository = productCategoryRepository;
@@ -49,7 +52,7 @@ public sealed class OrderService
             throw new ArgumentException("At least one item is required.", nameof(command.Items));
         }
 
-        var validatedItems = new List<(CreateOrderItemCommand Item, Domain.Products.Product Product)>(items.Count);
+        var validatedItems = new List<(CreateOrderItemCommand Item, Domain.Products.Product Product, bool IsCantina)>(items.Count);
 
         foreach (var item in items)
         {
@@ -76,31 +79,50 @@ public sealed class OrderService
                 throw new ConflictException($"The category '{category.Name}' is inactive.");
             }
 
-            validatedItems.Add((item, product));
+            validatedItems.Add((item, product, string.Equals(category.Name, "Cantina", StringComparison.OrdinalIgnoreCase)));
         }
 
+        var createdAtUtc = _dateTimeProvider.UtcNow;
         var orderItems = validatedItems
-            .Select(validated => new OrderItem(
-                validated.Product.Id,
-                validated.Product.Name,
-                validated.Product.Price,
-                validated.Product.Cost,
-                validated.Item.Quantity,
-                validated.Item.Notes))
+            .Select(validated =>
+            {
+                var orderItem = new OrderItem(
+                    validated.Product.Id,
+                    validated.Product.Name,
+                    validated.Product.Price,
+                    validated.Product.Cost,
+                    validated.Item.Quantity,
+                    validated.Item.Notes);
+                if (validated.IsCantina)
+                {
+                    orderItem.MarkSoldAtCashRegister(createdAtUtc);
+                }
+
+                return orderItem;
+            })
             .ToArray();
 
         var orderNumber = await GenerateNextOrderNumberAsync(cancellationToken);
         var order = new Order(
             orderNumber,
-            _dateTimeProvider.UtcNow,
+            createdAtUtc,
             orderItems,
-            command.Notes);
+            command.Notes,
+            _branch.BranchId);
+
+        if (orderItems.All(item => item.SoldAtUtc is not null))
+        {
+            order.CompleteCashRegisterSale();
+        }
 
         await _orderRepository.AddAsync(order, cancellationToken);
         await _orderRepository.SaveChangesAsync(cancellationToken);
 
         var orderDto = MapOrder(order);
-        await _orderEventPublisher.OrderCreatedAsync(MapRealtimeOrder(orderDto), cancellationToken);
+        if (order.IsActive)
+        {
+            await _orderEventPublisher.OrderCreatedAsync(MapRealtimeOrder(MapOperationalOrder(order)), cancellationToken);
+        }
 
         return orderDto;
     }
@@ -114,6 +136,7 @@ public sealed class OrderService
         var order = await _orderRepository.GetByIdAsync(query.OrderId, cancellationToken)
             ?? throw new NotFoundException("Order", query.OrderId);
 
+        EnsureBranch(order);
         return MapOrder(order);
     }
 
@@ -122,9 +145,10 @@ public sealed class OrderService
         var orders = await _orderRepository.GetActiveAsync(cancellationToken);
 
         return orders
+            .Where(order => order.BranchId == _branch.BranchId)
             .OrderBy(order => order.CreatedAtUtc)
             .ThenBy(order => order.OrderNumber, Comparer<string>.Create(CompareOrderNumbers))
-            .Select(MapOrder)
+            .Select(MapOperationalOrder)
             .ToArray();
     }
 
@@ -132,20 +156,26 @@ public sealed class OrderService
         OrderResultsGroupBy groupBy = OrderResultsGroupBy.Daily,
         CancellationToken cancellationToken = default)
     {
-        var orders = await _orderRepository.GetAllAsync(cancellationToken);
-        var deliveredOrders = orders.Where(order => order.Status == OrderStatus.Delivered).ToArray();
+        var orders = (await _orderRepository.GetAllAsync(cancellationToken)).Where(x => x.BranchId == _branch.BranchId).ToArray();
+        var soldItems = orders
+            .SelectMany(order => order.Items.Select(item => new
+            {
+                Item = item,
+                SoldAtUtc = item.SoldAtUtc ?? order.DeliveredAtUtc
+            }))
+            .Where(sale => sale.SoldAtUtc is not null)
+            .ToArray();
         var today = DateOnly.FromDateTime(_dateTimeProvider.UtcNow);
         var currentPeriod = GetPeriodBounds(today, groupBy);
         var previousPeriod = ShiftPeriod(currentPeriod.StartDate, groupBy, -1);
-        var currentPeriodSummary = BuildPeriodSummary(orders, deliveredOrders, currentPeriod.StartDate, currentPeriod.EndDate);
-        var previousPeriodSummary = BuildPeriodSummary(orders, deliveredOrders, previousPeriod.StartDate, previousPeriod.EndDate);
-        var currentPeriodDeliveredOrders = deliveredOrders
-            .Where(order => order.DeliveredAtUtc is not null
-                && IsWithinPeriod(DateOnly.FromDateTime(order.DeliveredAtUtc.Value), currentPeriod.StartDate, currentPeriod.EndDate))
+        var currentPeriodSummary = BuildPeriodSummary(orders, currentPeriod.StartDate, currentPeriod.EndDate);
+        var previousPeriodSummary = BuildPeriodSummary(orders, previousPeriod.StartDate, previousPeriod.EndDate);
+        var currentPeriodSoldItems = soldItems
+            .Where(sale => IsWithinPeriod(DateOnly.FromDateTime(sale.SoldAtUtc!.Value), currentPeriod.StartDate, currentPeriod.EndDate))
             .ToArray();
 
-        var topSellingProducts = currentPeriodDeliveredOrders
-            .SelectMany(order => order.Items)
+        var topSellingProducts = currentPeriodSoldItems
+            .Select(sale => sale.Item)
             .GroupBy(item => new { item.ProductId, item.ProductNameSnapshot })
             .Select(group => new TopSellingProductDto(
                 group.Key.ProductId,
@@ -158,7 +188,7 @@ public sealed class OrderService
             .ToArray();
 
         var operationalSnapshot = new OrderOperationalSnapshotDto(
-            orders.Count,
+            orders.Length,
             orders.Count(order => order.IsActive),
             orders.Count(order => order.Status == OrderStatus.Pending),
             orders.Count(order => order.Status == OrderStatus.Preparing),
@@ -174,7 +204,7 @@ public sealed class OrderService
             previousPeriodSummary,
             operationalSnapshot,
             topSellingProducts,
-            BuildHistory(orders, deliveredOrders, currentPeriod.StartDate, groupBy));
+            BuildHistory(orders, currentPeriod.StartDate, groupBy));
     }
 
     public async Task<IReadOnlyCollection<OrderDto>> GetPickupOrdersAsync(
@@ -194,11 +224,12 @@ public sealed class OrderService
         var orders = await _orderRepository.GetPickupCandidatesAsync(cancellationToken);
 
         return orders
+            .Where(order => order.BranchId == _branch.BranchId)
             .Where(order => order.Status == OrderStatus.Preparing
                 || order.IsVisibleForPickup(utcNow, query.ReadyVisibilityDuration))
             .OrderBy(order => order.CreatedAtUtc)
             .ThenBy(order => order.OrderNumber, Comparer<string>.Create(CompareOrderNumbers))
-            .Select(MapOrder)
+            .Select(MapOperationalOrder)
             .ToArray();
     }
 
@@ -263,13 +294,19 @@ public sealed class OrderService
         var order = await _orderRepository.GetByIdAsync(orderId, cancellationToken)
             ?? throw new NotFoundException("Order", orderId);
 
+        EnsureBranch(order);
         transition(order);
         await _orderRepository.SaveChangesAsync(cancellationToken);
 
-        var orderDto = MapOrder(order);
+        var orderDto = MapOperationalOrder(order);
         await publishEvent(MapRealtimeOrder(orderDto));
 
         return orderDto;
+    }
+
+    private void EnsureBranch(Order order)
+    {
+        if (order.BranchId != _branch.BranchId) throw new NotFoundException("Order", order.Id);
     }
 
     private static OrderDto MapOrder(Order order)
@@ -285,7 +322,19 @@ public sealed class OrderService
             order.CancelledAtUtc,
             order.Notes,
             order.Total,
-            order.Items.Select(MapOrderItem).ToArray());
+            order.Items.Select(MapOrderItem).ToArray(),
+            order.BranchId);
+    }
+
+    private static OrderDto MapOperationalOrder(Order order)
+    {
+        var orderDto = MapOrder(order);
+        var kitchenItems = order.Items.Where(item => item.SoldAtUtc is null).ToArray();
+        return orderDto with
+        {
+            Items = kitchenItems.Select(MapOrderItem).ToArray(),
+            Total = kitchenItems.Sum(item => item.LineTotal)
+        };
     }
 
     private static OrderItemDto MapOrderItem(OrderItem item)
@@ -313,7 +362,8 @@ public sealed class OrderService
             order.CancelledAtUtc,
             order.Notes,
             order.Total,
-            order.Items.Select(MapRealtimeOrderItem).ToArray());
+            order.Items.Select(MapRealtimeOrderItem).ToArray(),
+            order.BranchId);
     }
 
     private static OrderRealtimeItemDto MapRealtimeOrderItem(OrderItemDto item)
@@ -370,7 +420,6 @@ public sealed class OrderService
 
     private static IReadOnlyCollection<OrderHistoryPointDto> BuildHistory(
         IReadOnlyCollection<Order> orders,
-        IReadOnlyCollection<Order> deliveredOrders,
         DateOnly currentPeriodStartDate,
         OrderResultsGroupBy groupBy)
     {
@@ -385,13 +434,12 @@ public sealed class OrderService
         return Enumerable.Range(0, periodsToInclude)
             .Select(offset => ShiftPeriod(currentPeriodStartDate, groupBy, -offset))
             .Reverse()
-            .Select(period => BuildHistoryPoint(orders, deliveredOrders, period.StartDate, period.EndDate))
+            .Select(period => BuildHistoryPoint(orders, period.StartDate, period.EndDate))
             .ToArray();
     }
 
     private static OrderPeriodSummaryDto BuildPeriodSummary(
         IReadOnlyCollection<Order> orders,
-        IReadOnlyCollection<Order> deliveredOrders,
         DateOnly startDate,
         DateOnly endDate)
     {
@@ -399,13 +447,20 @@ public sealed class OrderService
             .Where(order => IsWithinPeriod(DateOnly.FromDateTime(order.CreatedAtUtc), startDate, endDate))
             .ToArray();
 
-        var deliveredOrdersInPeriod = deliveredOrders
-            .Where(order => order.DeliveredAtUtc is not null
-                && IsWithinPeriod(DateOnly.FromDateTime(order.DeliveredAtUtc.Value), startDate, endDate))
+        var soldItemsInPeriod = orders
+            .SelectMany(order => order.Items.Select(item => new
+            {
+                OrderId = order.Id,
+                Item = item,
+                SoldAtUtc = item.SoldAtUtc ?? order.DeliveredAtUtc
+            }))
+            .Where(sale => sale.SoldAtUtc is not null
+                && IsWithinPeriod(DateOnly.FromDateTime(sale.SoldAtUtc.Value), startDate, endDate))
             .ToArray();
 
-        var totalRevenue = deliveredOrdersInPeriod.Sum(order => order.Total);
-        var totalCost = deliveredOrdersInPeriod.Sum(order => order.TotalCost);
+        var totalRevenue = soldItemsInPeriod.Sum(sale => sale.Item.LineTotal);
+        var totalCost = soldItemsInPeriod.Sum(sale => sale.Item.CostTotal);
+        var salesCount = soldItemsInPeriod.Select(sale => sale.OrderId).Distinct().Count();
 
         return new OrderPeriodSummaryDto(
             startDate,
@@ -414,19 +469,18 @@ public sealed class OrderService
             totalCost,
             totalRevenue - totalCost,
             ordersCreatedInPeriod.Length,
-            deliveredOrdersInPeriod.Length,
+            salesCount,
             ordersCreatedInPeriod.Count(order => order.Status == OrderStatus.Cancelled),
-            deliveredOrdersInPeriod.Sum(order => order.Items.Sum(item => item.Quantity)),
-            deliveredOrdersInPeriod.Length == 0 ? 0m : deliveredOrdersInPeriod.Average(order => order.Total));
+            soldItemsInPeriod.Sum(sale => sale.Item.Quantity),
+            salesCount == 0 ? 0m : totalRevenue / salesCount);
     }
 
     private static OrderHistoryPointDto BuildHistoryPoint(
         IReadOnlyCollection<Order> orders,
-        IReadOnlyCollection<Order> deliveredOrders,
         DateOnly startDate,
         DateOnly endDate)
     {
-        var summary = BuildPeriodSummary(orders, deliveredOrders, startDate, endDate);
+        var summary = BuildPeriodSummary(orders, startDate, endDate);
 
         return new OrderHistoryPointDto(
             summary.StartDate,

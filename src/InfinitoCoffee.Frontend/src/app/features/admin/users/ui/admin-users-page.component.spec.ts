@@ -120,6 +120,7 @@ describe('AdminUsersPageComponent', () => {
       displayName: `Nuevo ${role}`,
       password: ' password preserved ',
       role,
+      branchId: 1,
     });
     expect(component.password()).toBe('');
   });
@@ -155,7 +156,7 @@ describe('AdminUsersPageComponent', () => {
     await component.submit();
     expect(store.lastUpdate).toEqual({
       id: 'active',
-      request: { username: 'cashier.two', displayName: 'Caja Dos', role: 'Kitchen' },
+      request: { username: 'cashier.two', displayName: 'Caja Dos', role: 'Kitchen', branchId: 1 },
     });
     expect(authService.logout).not.toHaveBeenCalled();
   });

@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { AuthenticationState } from '../../../core/auth/authentication-state.service';
+import { BranchState } from '../../../core/branches/branch-state.service';
 
 @Component({
   selector: 'app-admin-home-page',
@@ -11,5 +12,6 @@ import { AuthenticationState } from '../../../core/auth/authentication-state.ser
   styleUrl: './admin-home-page.component.scss',
 })
 export class AdminHomePageComponent {
+  readonly branch = inject(BranchState);
   readonly currentUser = inject(AuthenticationState).currentUser;
 }

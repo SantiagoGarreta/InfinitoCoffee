@@ -7,4 +7,5 @@ public sealed record UpdateUserCommand(
     Guid ActingUserId,
     string Username,
     string DisplayName,
-    UserRole Role);
+    UserRole Role,
+    int BranchId = 1);

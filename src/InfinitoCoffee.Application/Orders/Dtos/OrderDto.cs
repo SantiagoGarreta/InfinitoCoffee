@@ -13,4 +13,5 @@ public sealed record OrderDto(
     DateTime? CancelledAtUtc,
     string? Notes,
     decimal Total,
-    IReadOnlyCollection<OrderItemDto> Items);
+    IReadOnlyCollection<OrderItemDto> Items,
+    int BranchId = 1);
