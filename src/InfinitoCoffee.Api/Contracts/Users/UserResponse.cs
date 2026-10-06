@@ -8,4 +8,5 @@ public sealed record UserResponse(
     string DisplayName,
     UserRole Role,
     bool IsActive,
-    bool IsSystemUser);
+    bool IsSystemUser,
+    int BranchId = 1);

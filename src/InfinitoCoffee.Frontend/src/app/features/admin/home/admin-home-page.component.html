@@ -8,13 +8,16 @@
   </header>
 
   <div class="admin-home__grid" aria-label="Accesos principales">
+    <a routerLink="/admin/stock" class="admin-card">
+      <span>Administracion</span><strong>Stock</strong><p>Ingredientes compartidos, productos de esta sucursal, recetas y ajustes manuales.</p>
+    </a>
     <a routerLink="/orders/new" class="admin-card">
       <span>Operacion</span><strong>Caja</strong><p>Crear y gestionar nuevas comandas.</p>
     </a>
     <a routerLink="/kitchen" class="admin-card">
       <span>Operacion</span><strong>Cocina</strong><p>Ver el flujo actual de preparacion.</p>
     </a>
-    <a href="/pickup" target="_blank" rel="noopener" class="admin-card">
+    <a [href]="'/pickup?branchId=' + branch.privateId()" target="_blank" rel="noopener" class="admin-card">
       <span>Vista publica</span><strong>Pickup ↗</strong><p>Abrir la pantalla de retiro en otra pestana.</p>
     </a>
     <a routerLink="/admin/results" class="admin-card">

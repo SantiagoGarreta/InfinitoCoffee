@@ -20,7 +20,7 @@ describe('application route structure', () => {
 
     const admin = shell?.children?.find((route) => route.path === 'admin');
     expect(admin?.canActivate?.length).toBe(1);
-    expect(admin?.children?.map((route) => route.path)).toEqual(['', 'products', 'categories', 'users', 'results']);
+    expect(admin?.children?.map((route) => route.path)).toEqual(['stock', '', 'products', 'categories', 'users', 'results']);
   });
 
   it('keeps public routes prerendered and every private route client-rendered', () => {

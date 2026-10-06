@@ -12,13 +12,16 @@ public sealed class UserAdministrationService
 {
     public const int PasswordMaxLength = 256;
 
+    private readonly InfinitoCoffee.Application.Branches.IBranchRepository? _branches;
     private readonly IUserRepository _userRepository;
     private readonly IUserPasswordService _passwordService;
 
     public UserAdministrationService(
         IUserRepository userRepository,
-        IUserPasswordService passwordService)
+        IUserPasswordService passwordService,
+        InfinitoCoffee.Application.Branches.IBranchRepository? branches = null)
     {
+        _branches = branches;
         _userRepository = userRepository;
         _passwordService = passwordService;
     }
@@ -49,6 +52,7 @@ public sealed class UserAdministrationService
     {
         ArgumentNullException.ThrowIfNull(command);
         ValidatePassword(command.Password, nameof(command.Password));
+        await ValidateBranch(command.BranchId, cancellationToken);
 
         var normalizedUsername = User.NormalizeUsername(command.Username);
         if (await _userRepository.ExistsByNormalizedUsernameAsync(normalizedUsername, cancellationToken))
@@ -62,6 +66,7 @@ public sealed class UserAdministrationService
             command.Role,
             candidate => _passwordService.HashPassword(candidate, command.Password));
 
+        user.AssignBranch(command.BranchId);
         await _userRepository.AddAsync(user, cancellationToken);
         await _userRepository.SaveChangesAsync(cancellationToken);
 
@@ -76,6 +81,7 @@ public sealed class UserAdministrationService
 
         var user = await GetRequiredUserAsync(command.UserId, cancellationToken);
         EnsureNormalUser(user);
+        await ValidateBranch(command.BranchId, cancellationToken);
 
         if (!Enum.IsDefined(command.Role))
         {
@@ -97,6 +103,7 @@ public sealed class UserAdministrationService
         // Display name is applied first because it is the only remaining operation
         // that can fail after the non-mutating validations above.
         user.ChangeDisplayName(command.DisplayName);
+        user.AssignBranch(command.BranchId);
         user.ChangeUsername(command.Username);
         if (command.Role != user.Role)
         {
@@ -187,6 +194,12 @@ public sealed class UserAdministrationService
         return new ConflictException($"Username '{username}' is already in use.");
     }
 
+    private async Task ValidateBranch(int branchId, CancellationToken ct)
+    {
+        if (branchId <= 0 || (_branches is not null && await _branches.GetByIdAsync(branchId, ct) is null))
+            throw new ArgumentException("La sucursal no existe.");
+    }
+
     private static UserDto MapUser(User user)
     {
         return new UserDto(
@@ -195,6 +208,7 @@ public sealed class UserAdministrationService
             user.DisplayName,
             user.Role,
             user.IsActive,
-            user.IsSystemUser);
+            user.IsSystemUser,
+            user.BranchId);
     }
 }

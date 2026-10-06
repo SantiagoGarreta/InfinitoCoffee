@@ -5,4 +5,5 @@ export interface AuthenticatedUser {
   username: string;
   displayName: string;
   role: UserRole;
+  branchId?: number;
 }

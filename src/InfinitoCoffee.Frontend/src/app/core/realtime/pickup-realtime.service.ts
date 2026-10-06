@@ -1,6 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, inject, isDevMode, signal } from '@angular/core';
 
+import { BranchState } from '../branches/branch-state.service';
 import { APP_RUNTIME_CONFIG } from '../config/app-runtime-config';
 import { PickupOrder } from '../pickup/models/pickup-order.model';
 import { HUB_CONNECTION_FACTORY, HubConnectionLike } from './hub-connection';
@@ -14,6 +15,7 @@ type ResyncListener = () => void;
 export class PickupRealtimeService {
   readonly connectionState = signal<RealtimeConnectionState>('disconnected');
 
+  private readonly branch = inject(BranchState);
   private readonly hubConnectionFactory = inject(HUB_CONNECTION_FACTORY);
   private readonly runtimeConfig = inject(APP_RUNTIME_CONFIG);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -82,7 +84,7 @@ export class PickupRealtimeService {
     }
 
     const connection = this.hubConnectionFactory(
-      this.runtimeConfig.pickupSignalRHubUrl,
+      this.branch.hubUrl(this.runtimeConfig.pickupSignalRHubUrl, true),
       { withCredentials: false },
     );
     this.registerHandler(connection, 'OrderStatusChanged');

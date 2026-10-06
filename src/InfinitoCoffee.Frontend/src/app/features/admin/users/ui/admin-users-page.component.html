@@ -4,7 +4,7 @@
       <p class="admin-users__eyebrow">Administración</p>
       <h1>Usuarios</h1>
       <p>Gestioná las cuentas operativas y sus permisos de acceso.</p>
-      <small>Los cambios sobre otras cuentas no cierran sesiones que ya estén abiertas.</small>
+      <small>Al cambiar la sucursal de caja o cocina, esa cuenta deberá volver a iniciar sesión.</small>
     </div>
     <button type="button" class="button button--secondary" [disabled]="mutationsBlocked()" (click)="startCreate()">Nuevo usuario</button>
   </header>
@@ -42,7 +42,7 @@
                       @if (user.isSystemUser) { <span class="badge">Sistema</span> }
                     </div>
                     <p class="user-card__username">&#64;{{ user.username }}</p>
-                    <p>{{ user.role }} · {{ user.isActive ? 'Activo' : 'Inactivo' }}</p>
+                    <p>{{ branches.name(user.branchId ?? 1) }} · {{ user.role }} · {{ user.isActive ? 'Activo' : 'Inactivo' }}</p>
                   </div>
                 </div>
 
@@ -111,6 +111,13 @@
           @if (displayName().length > 0 && !displayNameIsValid()) { <small>Ingresá un nombre no vacío de hasta 100 caracteres.</small> }
         </label>
 
+        <label>
+          <span>Sucursal asignada</span>
+          <select name="userBranch" [disabled]="mutationsBlocked()" [ngModel]="branchId()" (ngModelChange)="branchId.set($event)">
+            @for (branch of branches.branches(); track branch.id) { <option [ngValue]="branch.id">{{ branch.name }}</option> }
+          </select>
+          <small>Caja y cocina trabajan en esta sucursal. Los administradores pueden cambiar de local.</small>
+        </label>
         @if (!editingUserId()) {
           <label>
             <span>Contraseña inicial</span>

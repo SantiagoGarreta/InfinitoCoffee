@@ -6,4 +6,5 @@ public sealed record CreateUserCommand(
     string Username,
     string DisplayName,
     string Password,
-    UserRole Role);
+    UserRole Role,
+    int BranchId = 1);

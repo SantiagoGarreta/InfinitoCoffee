@@ -68,7 +68,7 @@ public sealed class SignalROrderEventPublisher : IOrderEventPublisher
             eventName,
             order,
             "private orders",
-            () => publishAction(_ordersHubContext.Clients.All),
+            () => publishAction(_ordersHubContext.Clients.Group($"branch:{order.BranchId}")),
             cancellationToken);
     }
 
@@ -82,7 +82,7 @@ public sealed class SignalROrderEventPublisher : IOrderEventPublisher
             eventName,
             order,
             "public pickup",
-            () => publishAction(_pickupHubContext.Clients.All),
+            () => publishAction(_pickupHubContext.Clients.Group($"branch:{order.BranchId}")),
             cancellationToken);
     }
 

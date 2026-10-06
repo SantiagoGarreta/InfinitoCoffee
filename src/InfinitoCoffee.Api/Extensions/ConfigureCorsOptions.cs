@@ -31,6 +31,7 @@ public sealed class ConfigureCorsOptions : IConfigureOptions<CorsOptions>
                     "Authorization",
                     "X-Requested-With",
                     "X-SignalR-User-Agent",
+                    "X-Branch-Id",
                     Antiforgery.AntiforgeryConstants.HeaderName)
                 .AllowCredentials();
         });

@@ -23,6 +23,7 @@ app.UseHttpsRedirection();
 app.UseCors(ApiServiceCollectionExtensions.DevelopmentCorsPolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<InfinitoCoffee.Api.Branches.BranchScopeMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {

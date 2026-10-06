@@ -32,11 +32,16 @@ describe('AuthenticatedSidebarComponent', () => {
     hidden.forEach((label) => expect(text).not.toContain(label));
     expect(text).toContain('Displayed User');
     expect(text).toContain(role);
+    expect(text).toContain('Sucursal 1');
+    expect(text).not.toContain('Cambiar nombre');
+    const selector = fixture.nativeElement.querySelector('select[aria-label="Sucursal"]') as HTMLSelectElement | null;
+    expect(selector === null).toBe(role !== 'Administrator');
+    if (selector) expect([...selector.options].map(option => option.textContent)).toEqual(['Sucursal 1', 'Sucursal 2']);
     expect(text).toContain('Cerrar sesión');
 
     const pickup = [...fixture.nativeElement.querySelectorAll('a')]
       .find((anchor: HTMLAnchorElement) => anchor.textContent?.includes('Pickup')) as HTMLAnchorElement;
-    expect(pickup.getAttribute('href')).toBe('/pickup');
+    expect(pickup.getAttribute('href')).toBe('/pickup?branchId=1');
     expect(pickup.getAttribute('target')).toBe('_blank');
     expect(pickup.getAttribute('rel')).toContain('noopener');
   });

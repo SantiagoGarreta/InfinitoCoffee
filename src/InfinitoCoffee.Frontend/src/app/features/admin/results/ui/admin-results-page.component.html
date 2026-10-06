@@ -132,7 +132,7 @@
         </div>
 
         @if (!trendChart()) {
-          <p class="results-empty">Todavia no hay periodos entregados para comparar.</p>
+          <p class="results-empty">Todavia no hay ventas para comparar.</p>
         } @else {
           <div class="results-history" aria-label="Grafico de tendencia historica">
             <div class="chart-legend">
@@ -168,7 +168,7 @@
                   <tr>
                     <th scope="col">Periodo</th>
                     <th scope="col">Pedidos</th>
-                    <th scope="col">Entregados</th>
+                    <th scope="col">Con ventas</th>
                     <th scope="col">Ingresos</th>
                     <th scope="col">Ganancia</th>
                   </tr>
@@ -193,11 +193,11 @@
       <section class="results-panel" aria-labelledby="results-products-title">
         <div class="results-panel__header">
           <h2 id="results-products-title">Productos mas vendidos</h2>
-          <p>Ranking del periodo actual segun unidades entregadas y facturacion.</p>
+          <p>Ranking del periodo actual segun unidades vendidas y facturacion.</p>
         </div>
 
         @if (productChart().length === 0) {
-          <p class="results-empty">Todavia no hay productos entregados para rankear.</p>
+          <p class="results-empty">Todavia no hay productos vendidos para rankear.</p>
         } @else {
           <div class="column-chart column-chart--products" aria-label="Grafico de productos mas vendidos">
             @for (product of productChart(); track trackChartItem($index, product)) {

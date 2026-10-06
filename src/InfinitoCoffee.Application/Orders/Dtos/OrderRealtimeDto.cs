@@ -11,4 +11,5 @@ public sealed record OrderRealtimeDto(
     DateTime? CancelledAtUtc,
     string? Notes,
     decimal Total,
-    IReadOnlyCollection<OrderRealtimeItemDto> Items);
+    IReadOnlyCollection<OrderRealtimeItemDto> Items,
+    int BranchId = 1);

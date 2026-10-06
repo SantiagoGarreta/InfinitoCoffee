@@ -5,12 +5,14 @@ export interface CreateUserRequest {
   displayName: string;
   password: string;
   role: UserRole;
+  branchId?: number;
 }
 
 export interface UpdateUserRequest {
   username: string;
   displayName: string;
   role: UserRole;
+  branchId?: number;
 }
 
 export interface ResetUserPasswordRequest {

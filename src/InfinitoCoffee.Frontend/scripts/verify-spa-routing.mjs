@@ -13,7 +13,7 @@ const sidebarHtml = read('src/app/layout/authenticated-sidebar/authenticated-sid
 assert.match(sidebarHtml, /routerLink="\/admin"/);
 assert.match(sidebarHtml, /routerLink="\/kitchen"/);
 assert.match(sidebarHtml, /routerLink="\/orders\/new"/);
-assert.match(sidebarHtml, /href="\/pickup"[^>]*target="_blank"[^>]*rel="noopener"/);
+assert.match(sidebarHtml, /\[href\]="'\/pickup\?branchId=' \+ branch\.privateId\(\)"[^>]*target="_blank"[^>]*rel="noopener"/);
 assert.doesNotMatch(appHtml, /http:\/\/localhost\/(?:kitchen|pickup|orders\/new)/);
 
 const appTs = read('src/app/app.ts');

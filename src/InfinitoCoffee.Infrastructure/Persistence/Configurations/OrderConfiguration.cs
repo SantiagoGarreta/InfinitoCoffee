@@ -11,6 +11,8 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.ToTable("Orders");
 
         builder.HasKey(order => order.Id);
+        builder.HasOne<InfinitoCoffee.Domain.Branches.Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(x => new { x.BranchId, x.Id });
 
         builder.Property(order => order.OrderNumber)
             .IsRequired()

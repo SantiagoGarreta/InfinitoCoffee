@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, from, switchMap, throwError } from 'rxjs';
 
+import { BranchState } from '../branches/branch-state.service';
 import { AuthenticationState } from '../auth/authentication-state.service';
 import { CsrfTokenStore } from '../auth/csrf-token.store';
 import { APP_RUNTIME_CONFIG } from '../config/app-runtime-config';
@@ -21,12 +22,16 @@ export const apiAuthInterceptor: HttpInterceptorFn = (request, next) => {
     return next(request);
   }
 
+  const branch = inject(BranchState);
   const token = csrfTokenStore.getToken();
+  const headers: Record<string, string> = {};
+  if (unsafeMethods.has(request.method.toUpperCase()) && token) headers['X-XSRF-TOKEN'] = token;
+  const path = new URL(request.url, runtimeConfig.apiBaseUrl).pathname;
+  if ((path.includes('/api/orders') && !path.endsWith('/pickup')) || path.includes('/api/stock'))
+    headers['X-Branch-Id'] = String(branch.privateId());
   const authenticatedRequest = request.clone({
     withCredentials: true,
-    setHeaders: unsafeMethods.has(request.method.toUpperCase()) && token
-      ? { 'X-XSRF-TOKEN': token }
-      : {},
+    setHeaders: headers,
   });
 
   return next(authenticatedRequest).pipe(

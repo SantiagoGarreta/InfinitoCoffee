@@ -58,6 +58,7 @@ public sealed class AuthenticationService
             user.Id,
             user.Username,
             user.DisplayName,
-            user.Role);
+            user.Role,
+            user.BranchId);
     }
 }
