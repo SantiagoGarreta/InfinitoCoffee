@@ -19,6 +19,7 @@ Si ya se usaba el registro de producción, los productos terminados existentes c
 - **Ingresar un producto sin producción:** se suman unidades únicamente al local seleccionado. No consume ingredientes. Usar esta opción para traslados o correcciones de productos ya preparados.
 - **Ajustar stock:** aumentar ingredientes por compras o disminuir artículos por pérdidas, descartes y correcciones, siempre con un motivo. Disminuir un producto terminado no modifica ingredientes.
 - **Vender un producto:** se descuentan solo los productos terminados de la sucursal del pedido, en caja para artículos de Cantina o al entregar para los demás. Si faltan productos en ese local, no se confirma la venta o entrega, aunque existan en el otro. Los ingredientes ya se descontaron en la producción.
+- **Cancelar un pedido sin entregar:** se devuelve el stock que ya se descontó en caja por artículos de Cantina. Los productos de cocina todavía no se descontaron. La cancelación y la devolución se guardan juntas, y el pedido deja de sumar en resultados.
 - **Actualizar una receta:** crea una versión nueva. Los próximos ingresos de productos terminados usan la última versión; los movimientos anteriores conservan las cantidades descontadas.
 - **Consultar historial:** muestra movimientos de productos del local seleccionado y movimientos de ingredientes compartidos de ambas sucursales. Cada operación identifica la sucursal que la originó, el motivo, usuario, saldo anterior, cambio y saldo resultante. Las ventas muestran el pedido asociado.
 

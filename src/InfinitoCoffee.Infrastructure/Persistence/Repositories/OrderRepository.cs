@@ -123,6 +123,31 @@ public sealed class OrderRepository : IOrderRepository
 
         order.Void(voidedAtUtc);
 
+        var reversedOperationIds = await ReverseSalesAsync(order, voidedAtUtc, actorId, cancellationToken);
+
+        try
+        {
+            await EfRepositorySaveChanges.SaveAsync(_dbContext, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("El pedido ya fue anulado.");
+        }
+        catch (DbUpdateException) when (reversedOperationIds.Length > 0)
+        {
+            throw new ConflictException("El pedido ya fue anulado.");
+        }
+
+        return order;
+    }
+
+    private async Task<Guid[]> ReverseSalesAsync(
+        Order order,
+        DateTime reversedAtUtc,
+        Guid? actorId,
+        CancellationToken cancellationToken)
+    {
         var sales = await _dbContext.StockOperations
             .Include(operation => operation.Movements)
             .Where(operation => operation.OrderId == order.Id && operation.Type == "Sale")
@@ -157,9 +182,11 @@ public sealed class OrderRepository : IOrderRepository
                 Id = Guid.NewGuid(),
                 BranchId = order.BranchId,
                 Type = "SaleReversal",
-                CreatedAtUtc = voidedAtUtc,
+                CreatedAtUtc = reversedAtUtc,
                 ActorId = actorId,
-                Notes = $"Anulación de venta del pedido {order.OrderNumber}",
+                Notes = order.Status == OrderStatus.Cancelled
+                    ? $"Cancelación de venta del pedido {order.OrderNumber}"
+                    : $"Anulación de venta del pedido {order.OrderNumber}",
                 OrderId = order.Id,
                 ReversesOperationId = sale.Id
             };
@@ -185,21 +212,7 @@ public sealed class OrderRepository : IOrderRepository
             }
         }
 
-        try
-        {
-            await EfRepositorySaveChanges.SaveAsync(_dbContext, cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            throw new ConflictException("El pedido ya fue anulado.");
-        }
-        catch (DbUpdateException) when (reversedOperationIds.Length > 0)
-        {
-            throw new ConflictException("El pedido ya fue anulado.");
-        }
-
-        return order;
+        return reversedOperationIds;
     }
 
     public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -214,14 +227,23 @@ public sealed class OrderRepository : IOrderRepository
                 && entry.Entity.Status == OrderStatus.Delivered
                 && entry.Property(x => x.Status).OriginalValue != OrderStatus.Delivered)
             .Select(entry => entry.Entity).ToArray();
-        if (delivered.Length == 0 && created.Length == 0)
+        var cancelled = _dbContext.ChangeTracker.Entries<Order>()
+            .Where(entry => entry.State == EntityState.Modified
+                && entry.Entity.Status == OrderStatus.Cancelled
+                && entry.Property(x => x.Status).OriginalValue != OrderStatus.Cancelled)
+            .Select(entry => entry.Entity).ToArray();
+        if (delivered.Length == 0 && created.Length == 0 && cancelled.Length == 0)
         {
             await EfRepositorySaveChanges.SaveAsync(_dbContext, cancellationToken);
             return;
         }
 
-        // Each sale stage and its stock consumption commit together.
+        // Sales, cancellations, and their stock movements commit together.
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        foreach (var order in cancelled)
+        {
+            await ReverseSalesAsync(order, order.CancelledAtUtc!.Value, null, cancellationToken);
+        }
         foreach (var order in created.Concat(delivered))
         {
             var soldAtCreation = created.Contains(order);

@@ -184,7 +184,7 @@ public sealed class OrderService
     {
         var orders = (await _orderRepository.GetAllAsync(cancellationToken)).Where(x => x.BranchId == _branch.BranchId).ToArray();
         var soldItems = orders
-            .Where(order => order.Status != OrderStatus.Voided)
+            .Where(order => order.Status is not (OrderStatus.Voided or OrderStatus.Cancelled))
             .SelectMany(order => order.Items.Select(item => new
             {
                 Item = item,
@@ -498,7 +498,7 @@ public sealed class OrderService
             .ToArray();
 
         var soldItemsInPeriod = orders
-            .Where(order => order.Status != OrderStatus.Voided)
+            .Where(order => order.Status is not (OrderStatus.Voided or OrderStatus.Cancelled))
             .SelectMany(order => order.Items.Select(item => new
             {
                 OrderId = order.Id,
