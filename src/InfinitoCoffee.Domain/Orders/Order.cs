@@ -66,11 +66,13 @@ public class Order
 
     public DateTime? CancelledAtUtc { get; private set; }
 
+    public DateTime? VoidedAtUtc { get; private set; }
+
     public string? Notes { get; private set; }
 
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
 
-    public bool IsActive => Status is not OrderStatus.Delivered and not OrderStatus.Cancelled;
+    public bool IsActive => Status is OrderStatus.Pending or OrderStatus.Preparing or OrderStatus.Ready;
 
     public decimal Total => _items.Sum(item => item.LineTotal);
 
@@ -115,7 +117,7 @@ public class Order
 
     public void Cancel(DateTime utcNow)
     {
-        if (Status == OrderStatus.Delivered)
+        if (Status is OrderStatus.Delivered or OrderStatus.Voided)
         {
             throw new InvalidOrderStateTransitionException(Status, OrderStatus.Cancelled);
         }
@@ -127,6 +129,14 @@ public class Order
 
         CancelledAtUtc = UtcDateTime.Ensure(utcNow, nameof(utcNow));
         Status = OrderStatus.Cancelled;
+    }
+
+    public void Void(DateTime voidedAtUtc)
+    {
+        EnsureTransition(OrderStatus.Delivered, OrderStatus.Voided);
+
+        VoidedAtUtc = UtcDateTime.Ensure(voidedAtUtc, nameof(voidedAtUtc));
+        Status = OrderStatus.Voided;
     }
 
     public bool IsVisibleForPickup(DateTime utcNow, TimeSpan readyVisibilityDuration)

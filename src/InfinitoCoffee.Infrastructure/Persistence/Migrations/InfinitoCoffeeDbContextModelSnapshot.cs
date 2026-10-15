@@ -95,9 +95,14 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 
+                    b.Property<DateTime?>("VoidedAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.HasKey("Id");
 
                     b.HasIndex("BranchId", "Id");
+
+                    b.HasIndex("BranchId", "CreatedAtUtc", "Id");
 
                     b.ToTable("Orders", (string)null);
                 });
@@ -337,6 +342,9 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
+                    b.Property<Guid?>("ReversesOperationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -351,6 +359,10 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                     b.HasIndex("OrderId");
 
                     b.HasIndex("RecipeId");
+
+                    b.HasIndex("ReversesOperationId")
+                        .IsUnique()
+                        .HasFilter("[ReversesOperationId] IS NOT NULL");
 
                     b.HasIndex("CreatedAtUtc", "Id");
 
@@ -614,6 +626,11 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                     b.HasOne("InfinitoCoffee.Domain.Stock.StockRecipe", null)
                         .WithMany()
                         .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("InfinitoCoffee.Domain.Stock.StockOperation", null)
+                        .WithOne()
+                        .HasForeignKey("InfinitoCoffee.Domain.Stock.StockOperation", "ReversesOperationId")
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 

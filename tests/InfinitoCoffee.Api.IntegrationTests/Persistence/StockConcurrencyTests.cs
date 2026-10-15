@@ -1,10 +1,68 @@
 using InfinitoCoffee.Domain.Stock;
+using InfinitoCoffee.Domain.Orders;
 using Microsoft.EntityFrameworkCore;
 
 namespace InfinitoCoffee.Api.IntegrationTests.Persistence;
 
 public sealed class StockConcurrencyTests
 {
+    [Fact]
+    public async Task SaleOperation_CanOnlyHaveOneReversalAtDatabaseLevel()
+    {
+        using var factory = new SqliteInMemoryDbContextFactory();
+        Guid orderId;
+        Guid saleId;
+
+        await using (var setup = factory.CreateDbContext())
+        {
+            var order = new Order("1", DateTime.UtcNow,
+                [new OrderItem(Guid.NewGuid(), "Latte", 100m, 40m, 1)]);
+            setup.Orders.Add(order);
+            var sale = new StockOperation
+            {
+                Id = Guid.NewGuid(),
+                BranchId = 1,
+                Type = "Sale",
+                CreatedAtUtc = DateTime.UtcNow,
+                OrderId = order.Id,
+                Notes = "Venta"
+            };
+            setup.StockOperations.Add(sale);
+            await setup.SaveChangesAsync();
+            orderId = order.Id;
+            saleId = sale.Id;
+        }
+
+        await using (var firstReversal = factory.CreateDbContext())
+        {
+            firstReversal.StockOperations.Add(new StockOperation
+            {
+                Id = Guid.NewGuid(),
+                BranchId = 1,
+                Type = "SaleReversal",
+                CreatedAtUtc = DateTime.UtcNow,
+                OrderId = orderId,
+                ReversesOperationId = saleId,
+                Notes = "Primera"
+            });
+            await firstReversal.SaveChangesAsync();
+        }
+
+        await using var duplicate = factory.CreateDbContext();
+        duplicate.StockOperations.Add(new StockOperation
+        {
+            Id = Guid.NewGuid(),
+            BranchId = 1,
+            Type = "SaleReversal",
+            CreatedAtUtc = DateTime.UtcNow,
+            OrderId = orderId,
+            ReversesOperationId = saleId,
+            Notes = "Segunda"
+        });
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => duplicate.SaveChangesAsync());
+    }
+
     [Fact]
     public async Task ConcurrentBalanceUpdates_CannotSilentlyOverwriteAnotherMovement()
     {

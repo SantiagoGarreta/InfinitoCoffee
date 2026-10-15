@@ -29,6 +29,7 @@ export function toRealtimeOrder(order: Order): OrderRealtimeDto {
     readyAtUtc: order.readyAtUtc,
     deliveredAtUtc: order.deliveredAtUtc,
     cancelledAtUtc: order.cancelledAtUtc,
+    voidedAtUtc: order.voidedAtUtc,
     notes: order.notes,
     total: order.total,
     items: order.items,

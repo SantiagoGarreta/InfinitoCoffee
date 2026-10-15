@@ -29,7 +29,8 @@ public sealed record OrderOperationalSnapshotResponse(
     int PreparingOrdersCount,
     int ReadyOrdersCount,
     int DeliveredOrdersCount,
-    int CancelledOrdersCount);
+    int CancelledOrdersCount,
+    int VoidedOrdersCount);
 
 public sealed record OrderHistoryPointResponse(
     DateOnly StartDate,

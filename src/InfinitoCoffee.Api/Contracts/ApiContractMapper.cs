@@ -22,6 +22,7 @@ internal static class ApiContractMapper
             order.ReadyAtUtc,
             order.DeliveredAtUtc,
             order.CancelledAtUtc,
+            order.VoidedAtUtc,
             order.Notes,
             order.Total,
             order.Items.Select(MapOrderItem).ToArray(),
@@ -163,7 +164,8 @@ internal static class ApiContractMapper
             snapshot.PreparingOrdersCount,
             snapshot.ReadyOrdersCount,
             snapshot.DeliveredOrdersCount,
-            snapshot.CancelledOrdersCount);
+            snapshot.CancelledOrdersCount,
+            snapshot.VoidedOrdersCount);
     }
 
     private static OrderHistoryPointResponse MapHistoryPoint(OrderHistoryPointDto historyPoint)

@@ -50,9 +50,11 @@ internal static class StockConfiguration
         operation.Property(x => x.Notes).HasMaxLength(1000).IsRequired();
         operation.HasIndex(x => new { x.CreatedAtUtc, x.Id });
         operation.HasIndex(x => x.OrderId);
+        operation.HasIndex(x => x.ReversesOperationId).IsUnique().HasFilter("[ReversesOperationId] IS NOT NULL");
         operation.HasOne<InfinitoCoffee.Domain.Branches.Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
         operation.HasOne<StockRecipe>().WithMany().HasForeignKey(x => x.RecipeId).OnDelete(DeleteBehavior.Restrict);
         operation.HasOne<Order>().WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
+        operation.HasOne<StockOperation>().WithOne().HasForeignKey<StockOperation>(x => x.ReversesOperationId).OnDelete(DeleteBehavior.Restrict);
         operation.HasOne<User>().WithMany().HasForeignKey(x => x.ActorId).OnDelete(DeleteBehavior.Restrict);
         operation.HasMany(x => x.Movements).WithOne().HasForeignKey(x => x.OperationId).OnDelete(DeleteBehavior.Cascade);
         var movement = model.Entity<StockMovement>();

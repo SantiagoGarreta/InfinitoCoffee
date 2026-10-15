@@ -149,6 +149,8 @@ export class AdminResultsPageComponent implements OnInit {
       { label: 'En preparacion', value: snapshot.preparingOrdersCount },
       { label: 'Listos para retiro', value: snapshot.readyOrdersCount },
       { label: 'Cancelados', value: snapshot.cancelledOrdersCount },
+      { label: 'Entregados', value: snapshot.deliveredOrdersCount },
+      { label: 'Anulados', value: snapshot.voidedOrdersCount },
     ];
   });
   readonly trendChart = computed<TrendChartModel | null>(() => {

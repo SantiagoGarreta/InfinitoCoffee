@@ -8,6 +8,7 @@ using InfinitoCoffee.Application.Orders.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
+using System.Security.Claims;
 
 namespace InfinitoCoffee.Api.Controllers;
 
@@ -61,6 +62,23 @@ public sealed class OrdersController : ControllerBase
     {
         var orders = await _orderService.GetActiveOrdersAsync(cancellationToken);
         return Ok(orders.Select(ApiContractMapper.MapOrder).ToArray());
+    }
+
+    [HttpGet("history")]
+    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOnly)]
+    [ProducesResponseType(typeof(OrderHistoryPageResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<OrderHistoryPageResponse>> GetHistory(
+        [FromQuery] int take = 20,
+        [FromQuery] string? cursor = null,
+        CancellationToken cancellationToken = default)
+    {
+        var page = await _orderService.GetOrderHistoryAsync(
+            new GetOrderHistoryQuery(take, cursor),
+            cancellationToken);
+        return Ok(new OrderHistoryPageResponse(
+            page.Items.Select(ApiContractMapper.MapOrder).ToArray(),
+            page.NextCursor));
     }
 
     [HttpGet("summary")]
@@ -128,6 +146,19 @@ public sealed class OrdersController : ControllerBase
     public async Task<ActionResult<OrderResponse>> Cancel(Guid id, CancellationToken cancellationToken)
     {
         var order = await _orderService.CancelOrderAsync(new CancelOrderCommand(id), cancellationToken);
+        return Ok(ApiContractMapper.MapOrder(order));
+    }
+
+    [HttpPost("{id:guid}/void")]
+    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOnly)]
+    [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<OrderResponse>> Void(Guid id, CancellationToken cancellationToken)
+    {
+        var actorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var order = await _orderService.VoidOrderAsync(new VoidOrderCommand(id, actorId), cancellationToken);
         return Ok(ApiContractMapper.MapOrder(order));
     }
 }

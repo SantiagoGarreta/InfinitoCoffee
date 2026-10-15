@@ -45,6 +45,18 @@ describe('AdminResultsPageComponent', () => {
     expect(text).toContain('Productos mas vendidos');
     expect(text).toContain('Latte');
     expect(text).toContain('Cookie');
+    expect(text).toContain('Entregados');
+    expect(text).toContain('Anulados');
+    expect(fixture.componentInstance.operationalStats()).toEqual([
+      { label: 'Pedidos totales', value: 42 },
+      { label: 'Pedidos activos', value: 3 },
+      { label: 'Pendientes', value: 1 },
+      { label: 'En preparacion', value: 1 },
+      { label: 'Listos para retiro', value: 1 },
+      { label: 'Cancelados', value: 3 },
+      { label: 'Entregados', value: 36 },
+      { label: 'Anulados', value: 2 },
+    ]);
   });
 
   it('reloads data when the grouping changes', async () => {
@@ -63,6 +75,26 @@ describe('AdminResultsPageComponent', () => {
     fixture.detectChanges();
 
     expect(service.calls).toEqual(['Daily', 'Weekly']);
+  });
+
+  it('shows zero for delivered and voided orders when there are none', async () => {
+    const service = TestBed.inject(OrdersApiService) as unknown as FakeOrdersApiService;
+    service.response = {
+      ...service.response,
+      operationalSnapshot: {
+        ...service.response.operationalSnapshot,
+        deliveredOrdersCount: 0,
+        voidedOrdersCount: 0,
+      },
+    };
+    const fixture = TestBed.createComponent(AdminResultsPageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const stats = fixture.componentInstance.operationalStats();
+    expect(stats.at(-2)).toEqual({ label: 'Entregados', value: 0 });
+    expect(stats.at(-1)).toEqual({ label: 'Anulados', value: 0 });
   });
 
   it('shows retryable load errors', async () => {
@@ -123,6 +155,7 @@ function createResponse(groupBy: OrderResultsGroupBy): OrderResults {
       readyOrdersCount: 1,
       deliveredOrdersCount: 36,
       cancelledOrdersCount: 3,
+      voidedOrdersCount: 2,
     },
     topSellingProducts: [
       { productId: 'latte', productName: 'Latte', quantitySold: 8, revenue: 720 },

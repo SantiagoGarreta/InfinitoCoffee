@@ -2,6 +2,7 @@ using InfinitoCoffee.Application.Orders.Contracts;
 using InfinitoCoffee.Domain.Orders;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
+using InfinitoCoffee.Application.Common.Exceptions;
 using InfinitoCoffee.Domain.Stock;
 using InfinitoCoffee.Infrastructure.Persistence.Stock;
 
@@ -41,9 +42,33 @@ public sealed class OrderRepository : IOrderRepository
         return await BranchOrders
             .AsNoTracking()
             .Include(order => order.Items)
-            .Where(order => order.Status != OrderStatus.Delivered && order.Status != OrderStatus.Cancelled)
+            .Where(order => order.Status == OrderStatus.Pending
+                || order.Status == OrderStatus.Preparing
+                || order.Status == OrderStatus.Ready)
             .OrderBy(order => order.CreatedAtUtc)
             .ThenBy(order => order.OrderNumber)
+            .ToArrayAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<Order>> GetHistoryAsync(
+        int take,
+        DateTime? beforeCreatedAtUtc,
+        Guid? beforeId,
+        CancellationToken cancellationToken = default)
+    {
+        var query = BranchOrders.AsNoTracking().Include(order => order.Items).AsQueryable();
+
+        if (beforeCreatedAtUtc.HasValue && beforeId.HasValue)
+        {
+            query = query.Where(order => order.CreatedAtUtc < beforeCreatedAtUtc.Value
+                || (order.CreatedAtUtc == beforeCreatedAtUtc.Value
+                    && order.Id.CompareTo(beforeId.Value) < 0));
+        }
+
+        return await query
+            .OrderByDescending(order => order.CreatedAtUtc)
+            .ThenByDescending(order => order.Id)
+            .Take(take)
             .ToArrayAsync(cancellationToken);
     }
 
@@ -70,6 +95,111 @@ public sealed class OrderRepository : IOrderRepository
             .OrderByDescending(order => order.CreatedAtUtc)
             .Select(order => order.OrderNumber)
             .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<Order?> VoidSaleAsync(
+        Guid orderId,
+        Guid actorId,
+        DateTime voidedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+
+        var order = await BranchOrders
+            .Include(candidate => candidate.Items)
+            .SingleOrDefaultAsync(candidate => candidate.Id == orderId, cancellationToken);
+
+        if (order is null)
+        {
+            return null;
+        }
+
+        if (order.Status == OrderStatus.Voided)
+        {
+            throw new ConflictException("El pedido ya fue anulado.");
+        }
+
+        order.Void(voidedAtUtc);
+
+        var sales = await _dbContext.StockOperations
+            .Include(operation => operation.Movements)
+            .Where(operation => operation.OrderId == order.Id && operation.Type == "Sale")
+            .OrderBy(operation => operation.CreatedAtUtc)
+            .ThenBy(operation => operation.Id)
+            .ToArrayAsync(cancellationToken);
+        var reversedOperationIds = sales.Select(operation => operation.Id).ToArray();
+
+        if (reversedOperationIds.Length > 0
+            && await _dbContext.StockOperations.AnyAsync(
+                operation => operation.ReversesOperationId.HasValue
+                    && reversedOperationIds.Contains(operation.ReversesOperationId.Value),
+                cancellationToken))
+        {
+            throw new ConflictException("El pedido ya fue anulado.");
+        }
+
+        var movementItemIds = sales
+            .SelectMany(operation => operation.Movements)
+            .Where(movement => movement.Delta < 0)
+            .Select(movement => movement.ItemId)
+            .Distinct()
+            .ToArray();
+        var items = await _dbContext.StockItems
+            .Where(item => movementItemIds.Contains(item.Id))
+            .ToDictionaryAsync(item => item.Id, cancellationToken);
+
+        foreach (var sale in sales)
+        {
+            var reversal = new StockOperation
+            {
+                Id = Guid.NewGuid(),
+                BranchId = order.BranchId,
+                Type = "SaleReversal",
+                CreatedAtUtc = voidedAtUtc,
+                ActorId = actorId,
+                Notes = $"Anulación de venta del pedido {order.OrderNumber}",
+                OrderId = order.Id,
+                ReversesOperationId = sale.Id
+            };
+            _dbContext.StockOperations.Add(reversal);
+
+            foreach (var movement in sale.Movements.OrderBy(movement => movement.ItemId))
+            {
+                if (movement.Delta >= 0
+                    || !items.TryGetValue(movement.ItemId, out var item)
+                    || item.Kind != StockItemKind.FinishedProduct)
+                {
+                    continue;
+                }
+
+                await StockLedger.PostAsync(
+                    _dbContext,
+                    reversal,
+                    item,
+                    movement.Location,
+                    -movement.Delta,
+                    cancellationToken,
+                    movement.BranchId);
+            }
+        }
+
+        try
+        {
+            await EfRepositorySaveChanges.SaveAsync(_dbContext, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("El pedido ya fue anulado.");
+        }
+        catch (DbUpdateException) when (reversedOperationIds.Length > 0)
+        {
+            throw new ConflictException("El pedido ya fue anulado.");
+        }
+
+        return order;
     }
 
     public async Task SaveChangesAsync(CancellationToken cancellationToken = default)

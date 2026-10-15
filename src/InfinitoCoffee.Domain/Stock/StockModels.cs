@@ -56,6 +56,7 @@ public sealed class StockOperation
     public string Notes { get; set; } = string.Empty;
     public Guid? RecipeId { get; set; }
     public Guid? OrderId { get; set; }
+    public Guid? ReversesOperationId { get; set; }
     public List<StockMovement> Movements { get; set; } = [];
 }
 

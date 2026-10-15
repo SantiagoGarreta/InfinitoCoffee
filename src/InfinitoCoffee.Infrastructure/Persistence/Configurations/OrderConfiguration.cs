@@ -13,6 +13,7 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.HasKey(order => order.Id);
         builder.HasOne<InfinitoCoffee.Domain.Branches.Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(x => new { x.BranchId, x.Id });
+        builder.HasIndex(x => new { x.BranchId, x.CreatedAtUtc, x.Id });
 
         builder.Property(order => order.OrderNumber)
             .IsRequired()
@@ -30,6 +31,7 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(order => order.ReadyAtUtc);
         builder.Property(order => order.DeliveredAtUtc);
         builder.Property(order => order.CancelledAtUtc);
+        builder.Property(order => order.VoidedAtUtc);
 
         builder.Property(order => order.Notes)
             .HasMaxLength(1000);
