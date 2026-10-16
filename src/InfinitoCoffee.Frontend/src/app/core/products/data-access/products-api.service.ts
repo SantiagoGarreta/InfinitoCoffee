@@ -12,6 +12,7 @@ export interface SaveProductRequest {
   cost: number;
   categoryId: string;
   minimumQuantity?: number | null;
+  stockMode?: 'Stocked' | 'MadeToOrder';
 }
 
 @Injectable({ providedIn: 'root' })

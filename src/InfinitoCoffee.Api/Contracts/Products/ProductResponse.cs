@@ -1,3 +1,5 @@
+using InfinitoCoffee.Domain.Products;
+
 namespace InfinitoCoffee.Api.Contracts.Products;
 
 public sealed record ProductResponse(
@@ -8,4 +10,5 @@ public sealed record ProductResponse(
     decimal Cost,
     Guid? CategoryId,
     bool IsActive,
-    decimal? MinimumQuantity);
+    decimal? MinimumQuantity,
+    ProductStockMode StockMode);

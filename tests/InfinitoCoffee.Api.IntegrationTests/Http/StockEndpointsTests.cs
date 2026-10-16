@@ -418,6 +418,30 @@ public sealed class StockEndpointsTests
     }
 
     [Fact]
+    public async Task DeletingRecipeRemovesItFromCurrentUseButPreservesProductionHistory()
+    {
+        await using var api = new ApiTestContext();
+        var setup = await Setup(api);
+        await Adjust(api, setup.Egg.Id, 30);
+        await Adjust(api, setup.Scone.Id, 10);
+        var before = await Quantity(api, setup.Egg.Id);
+
+        var response = await api.SendWithCsrfAsync(new HttpRequestMessage(HttpMethod.Delete,
+            $"/api/stock/recipes/{setup.Scone.Id}"));
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var dashboard = await Read<StockDashboardDto>(await api.Client.GetAsync("/api/stock"));
+        Assert.DoesNotContain(dashboard.Recipes, recipe => recipe.ItemId == setup.Scone.Id);
+        await api.ExecuteDbContextAsync(async db =>
+        {
+            Assert.All(await db.StockRecipes.Where(x => x.ItemId == setup.Scone.Id).ToArrayAsync(),
+                recipe => Assert.True(recipe.IsArchived));
+            Assert.True(await db.StockOperations.AnyAsync(x => x.RecipeId != null));
+        });
+        await Adjust(api, setup.Scone.Id, 1);
+        Assert.Equal(before, await Quantity(api, setup.Egg.Id));
+    }
+
+    [Fact]
     public async Task LegacyStationEndpointsAreGoneAndStockRemainsAdministratorOnly()
     {
         await using var api = new ApiTestContext();

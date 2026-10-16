@@ -26,6 +26,7 @@ export class AdminProductsPageComponent implements OnInit {
   readonly price = signal<number | null>(null);
   readonly cost = signal<number | null>(null);
   readonly minimumQuantity = signal<number | null>(null);
+  readonly stockMode = signal<'Stocked' | 'MadeToOrder'>('Stocked');
   readonly categoryId = signal('');
 
   readonly formCategories = computed(() => {
@@ -50,7 +51,6 @@ export class AdminProductsPageComponent implements OnInit {
     const price = this.price();
     const cost = this.cost();
     const minimumQuantity = this.minimumQuantity();
-    const needsMinimum = !this.editingProductId() || this.editingProduct()?.minimumQuantity != null;
     return trimmedName.length > 0
       && trimmedName.length <= 150
       && description.length <= 1000
@@ -58,7 +58,7 @@ export class AdminProductsPageComponent implements OnInit {
       && price >= 0.01
       && cost !== null
       && cost >= 0
-      && (!needsMinimum || (minimumQuantity !== null && Number.isInteger(minimumQuantity)
+      && (this.stockMode() === 'MadeToOrder' || (minimumQuantity !== null && Number.isInteger(minimumQuantity)
         && minimumQuantity >= 0 && minimumQuantity <= 999999999))
       && this.categoryId().length > 0
       && !this.store.saving();
@@ -95,7 +95,8 @@ export class AdminProductsPageComponent implements OnInit {
     this.description.set(product.description ?? '');
     this.price.set(product.price);
     this.cost.set(product.cost);
-    this.minimumQuantity.set(product.minimumQuantity ?? null);
+    this.minimumQuantity.set(product.minimumQuantity ?? 0);
+    this.stockMode.set(product.stockMode ?? 'Stocked');
     this.categoryId.set(product.categoryId ?? '');
   }
 
@@ -110,7 +111,8 @@ export class AdminProductsPageComponent implements OnInit {
       description: normalizeOptionalString(this.description()),
       price: this.price()!,
       cost: this.cost()!,
-      minimumQuantity: this.minimumQuantity(),
+      minimumQuantity: this.stockMode() === 'Stocked' ? this.minimumQuantity() : 0,
+      stockMode: this.stockMode(),
       categoryId: this.categoryId(),
     };
     const result = productId
@@ -168,6 +170,7 @@ export class AdminProductsPageComponent implements OnInit {
     this.price.set(null);
     this.cost.set(null);
     this.minimumQuantity.set(null);
+    this.stockMode.set('Stocked');
     this.categoryId.set(this.store.activeCategories()[0]?.id ?? '');
   }
 }

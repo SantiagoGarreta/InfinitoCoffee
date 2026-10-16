@@ -1,3 +1,5 @@
+using InfinitoCoffee.Domain.Products;
+
 namespace InfinitoCoffee.Application.Products.Commands;
 
 public sealed record CreateProductCommand(
@@ -6,4 +8,5 @@ public sealed record CreateProductCommand(
     decimal Price,
     decimal Cost,
     string? Description,
-    decimal MinimumQuantity = 0);
+    decimal MinimumQuantity = 0,
+    ProductStockMode StockMode = ProductStockMode.Stocked);

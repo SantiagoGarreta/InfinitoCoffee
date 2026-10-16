@@ -25,6 +25,7 @@ public interface IStockService
     Task<StockItemDto> UpdateItemAsync(Guid id, StockItemUpdate request, CancellationToken ct);
     Task DeleteItemAsync(Guid id, CancellationToken ct);
     Task<RecipeDto> SaveRecipeAsync(RecipeRequest request, Guid actorId, CancellationToken ct);
+    Task ArchiveRecipeAsync(Guid itemId, CancellationToken ct);
     Task RecordAdjustmentAsync(StockAdjustmentRequest request, Guid actorId, CancellationToken ct);
     Task<StockHistoryDto> GetHistoryAsync(int page, Guid? itemId, CancellationToken ct);
 }

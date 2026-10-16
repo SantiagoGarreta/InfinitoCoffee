@@ -24,7 +24,7 @@ internal static class StockArchiver
         if (item.Kind == StockItemKind.Ingredient)
         {
             var usedInCurrentRecipe = await db.StockRecipes.AnyAsync(recipe =>
-                recipe.Lines.Any(line => line.ItemId == item.Id)
+                !recipe.IsArchived && recipe.Lines.Any(line => line.ItemId == item.Id)
                 && db.StockItems.Any(output => output.Id == recipe.ItemId && !output.IsDeleted)
                 && !db.StockRecipes.Any(newer => newer.ItemId == recipe.ItemId && newer.Version > recipe.Version), ct);
             if (usedInCurrentRecipe)

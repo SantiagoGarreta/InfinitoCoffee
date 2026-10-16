@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using InfinitoCoffee.Api.Contracts.Products;
 using InfinitoCoffee.Application.Stock;
 using InfinitoCoffee.Domain.Stock;
+using InfinitoCoffee.Domain.Products;
 using InfinitoCoffee.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 
@@ -84,6 +85,46 @@ public sealed class ProductEndpointsTests
         recipeResponse.EnsureSuccessStatusCode();
         var recipe = await ReadStock<RecipeDto>(recipeResponse);
         Assert.Equal(item.Id, recipe.ItemId);
+    }
+
+    [Fact]
+    public async Task ProductCanSwitchBetweenStockedAndMadeToOrderOnlyWithZeroBalances()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
+        var categoryId = await api.ExecuteDbContextAsync(async db =>
+            (await TestDataSeeder.AddCategoryAsync(db)).Id);
+        var product = await api.ReadRequiredAsync<ProductResponse>(await api.PostAsJsonWithCsrfAsync("/api/products",
+            new CreateProductRequest { Name = "Capuchino", Price = 150, Cost = 50,
+                CategoryId = categoryId, MinimumQuantity = 2 }));
+        var itemId = await api.ExecuteDbContextAsync(async db =>
+            (await db.StockItems.SingleAsync(x => x.ProductId == product.Id)).Id);
+        await api.ExecuteDbContextAsync(async db =>
+        {
+            (await db.StockBalances.SingleAsync(x => x.ItemId == itemId && x.BranchId == 1)).Quantity = 1;
+            await db.SaveChangesAsync();
+        });
+        var request = new UpdateProductRequest { Name = "Capuchino", Price = 150, Cost = 50,
+            CategoryId = categoryId, StockMode = ProductStockMode.MadeToOrder };
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await api.PutAsJsonWithCsrfAsync($"/api/products/{product.Id}", request)).StatusCode);
+        await api.ExecuteDbContextAsync(async db =>
+        {
+            (await db.StockBalances.SingleAsync(x => x.ItemId == itemId && x.BranchId == 1)).Quantity = 0;
+            await db.SaveChangesAsync();
+        });
+        var prepared = await api.ReadRequiredAsync<ProductResponse>(
+            await api.PutAsJsonWithCsrfAsync($"/api/products/{product.Id}", request));
+        Assert.Equal(ProductStockMode.MadeToOrder, prepared.StockMode);
+        Assert.Null(prepared.MinimumQuantity);
+        Assert.False(await api.ExecuteDbContextAsync(db => db.StockBalances.AnyAsync(x => x.ItemId == itemId)));
+        var stocked = await api.ReadRequiredAsync<ProductResponse>(await api.PutAsJsonWithCsrfAsync(
+            $"/api/products/{product.Id}", new UpdateProductRequest
+            { Name = "Capuchino", Price = 150, Cost = 50, CategoryId = categoryId,
+                StockMode = ProductStockMode.Stocked, MinimumQuantity = 3 }));
+        Assert.Equal(ProductStockMode.Stocked, stocked.StockMode);
+        Assert.Equal(3m, stocked.MinimumQuantity);
+        Assert.Equal(2, await api.ExecuteDbContextAsync(db => db.StockBalances.CountAsync(x => x.ItemId == itemId)));
     }
 
     [Fact]
@@ -205,7 +246,7 @@ public sealed class ProductEndpointsTests
     }
 
     [Fact]
-    public async Task UpdateProduct_ReturnsOk()
+    public async Task UpdateLegacyProduct_RegistersMissingStockItem()
     {
         await using var api = new ApiTestContext();
         await api.AuthenticateAsync();
@@ -234,9 +275,12 @@ public sealed class ProductEndpointsTests
         Assert.Equal(180m, product.Price);
         Assert.Equal(74m, product.Cost);
         Assert.Equal(data.CategoryId, product.CategoryId);
-        Assert.Null(product.MinimumQuantity);
-        Assert.False(await api.ExecuteDbContextAsync(dbContext =>
-            dbContext.StockItems.AnyAsync(item => item.ProductId == data.ProductId)));
+        Assert.Equal(0m, product.MinimumQuantity);
+        var stockItem = await api.ExecuteDbContextAsync(dbContext =>
+            dbContext.StockItems.SingleAsync(item => item.ProductId == data.ProductId));
+        Assert.Equal("Latte grande", stockItem.Name);
+        Assert.Equal(2, await api.ExecuteDbContextAsync(dbContext =>
+            dbContext.StockBalances.CountAsync(balance => balance.ItemId == stockItem.Id)));
     }
 
     [Fact]

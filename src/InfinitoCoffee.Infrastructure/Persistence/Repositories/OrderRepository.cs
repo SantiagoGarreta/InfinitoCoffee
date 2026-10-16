@@ -217,11 +217,16 @@ public sealed class OrderRepository : IOrderRepository
 
     public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        var created = _dbContext.ChangeTracker.Entries<Order>()
+        var newOrders = _dbContext.ChangeTracker.Entries<Order>()
             .Where(entry => entry.State == EntityState.Added)
             .Select(entry => entry.Entity)
-            .Where(order => order.Items.Any(item => item.SoldAtUtc is not null))
             .ToArray();
+        var created = newOrders.Where(order => order.Items.Any(item => item.SoldAtUtc is not null)).ToArray();
+        var ready = _dbContext.ChangeTracker.Entries<Order>()
+            .Where(entry => entry.State == EntityState.Modified
+                && entry.Entity.Status == OrderStatus.Ready
+                && entry.Property(x => x.Status).OriginalValue != OrderStatus.Ready)
+            .Select(entry => entry.Entity).ToArray();
         var delivered = _dbContext.ChangeTracker.Entries<Order>()
             .Where(entry => entry.State == EntityState.Modified
                 && entry.Entity.Status == OrderStatus.Delivered
@@ -232,14 +237,16 @@ public sealed class OrderRepository : IOrderRepository
                 && entry.Entity.Status == OrderStatus.Cancelled
                 && entry.Property(x => x.Status).OriginalValue != OrderStatus.Cancelled)
             .Select(entry => entry.Entity).ToArray();
-        if (delivered.Length == 0 && created.Length == 0 && cancelled.Length == 0)
+        if (delivered.Length == 0 && newOrders.Length == 0 && ready.Length == 0 && cancelled.Length == 0)
         {
             await EfRepositorySaveChanges.SaveAsync(_dbContext, cancellationToken);
             return;
         }
 
-        // Sales, cancellations, and their stock movements commit together.
+        // Sales, preparations, cancellations, and their stock movements commit together.
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        foreach (var order in newOrders)
+            await EnsurePreparedProductsHaveRecipesAsync(order, cancellationToken);
         foreach (var order in cancelled)
         {
             await ReverseSalesAsync(order, order.CancelledAtUtc!.Value, null, cancellationToken);
@@ -250,9 +257,12 @@ public sealed class OrderRepository : IOrderRepository
             var soldItems = soldAtCreation
                 ? order.Items.Where(item => item.SoldAtUtc is not null).ToArray()
                 : order.Items.Where(item => item.SoldAtUtc is null).ToArray();
+            if (soldAtCreation)
+                await PostPreparationsAsync(order, soldItems, order.CreatedAtUtc, cancellationToken);
             var productIds = soldItems.Select(x => x.ProductId).Distinct().ToArray();
             var trackedItems = await _dbContext.StockItems
-                .Where(x => x.ProductId.HasValue && productIds.Contains(x.ProductId.Value)).ToListAsync(cancellationToken);
+                .Where(x => x.Kind == StockItemKind.FinishedProduct && !x.IsDeleted
+                    && x.ProductId.HasValue && productIds.Contains(x.ProductId.Value)).ToListAsync(cancellationToken);
             if (trackedItems.Count == 0) continue;
             var operation = new StockOperation
             {
@@ -270,7 +280,65 @@ public sealed class OrderRepository : IOrderRepository
                 await StockLedger.PostAsync(_dbContext, operation, item, StockLocation.Factory, -quantity, cancellationToken, order.BranchId);
             }
         }
+        foreach (var order in ready)
+            await PostPreparationsAsync(order, order.Items.Where(item => item.SoldAtUtc is null),
+                order.ReadyAtUtc!.Value, cancellationToken);
         await EfRepositorySaveChanges.SaveAsync(_dbContext, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+    }
+
+    private async Task EnsurePreparedProductsHaveRecipesAsync(Order order, CancellationToken cancellationToken)
+    {
+        var productIds = order.Items.Select(x => x.ProductId).Distinct().ToArray();
+        var prepared = await _dbContext.StockItems.AsNoTracking()
+            .Where(x => !x.IsDeleted && x.Kind == StockItemKind.MadeToOrder
+                && x.ProductId.HasValue && productIds.Contains(x.ProductId.Value))
+            .ToArrayAsync(cancellationToken);
+        foreach (var item in prepared)
+            if (!await _dbContext.StockRecipes.AnyAsync(x => x.ItemId == item.Id && !x.IsArchived, cancellationToken))
+                throw new ConflictException($"Cargá una receta para {item.Name} antes de venderlo.");
+    }
+
+    private async Task PostPreparationsAsync(Order order, IEnumerable<OrderItem> orderItems,
+        DateTime preparedAtUtc, CancellationToken cancellationToken)
+    {
+        var quantities = orderItems.GroupBy(x => x.ProductId)
+            .ToDictionary(group => group.Key, group => group.Sum(line => line.Quantity));
+        if (quantities.Count == 0) return;
+        var productIds = quantities.Keys.ToArray();
+        var preparedItems = await _dbContext.StockItems
+            .Where(x => !x.IsDeleted && x.Kind == StockItemKind.MadeToOrder
+                && x.ProductId.HasValue && productIds.Contains(x.ProductId.Value))
+            .OrderBy(x => x.Id).ToArrayAsync(cancellationToken);
+        foreach (var item in preparedItems)
+        {
+            var recipe = await _dbContext.StockRecipes.Include(x => x.Lines)
+                .Where(x => x.ItemId == item.Id && !x.IsArchived).OrderByDescending(x => x.Version)
+                .FirstOrDefaultAsync(cancellationToken)
+                ?? throw new ConflictException($"Cargá una receta para {item.Name} antes de prepararlo.");
+            var operation = new StockOperation
+            {
+                Id = Guid.NewGuid(),
+                Type = "Preparation",
+                BranchId = order.BranchId,
+                OrderId = order.Id,
+                RecipeId = recipe.Id,
+                CreatedAtUtc = preparedAtUtc,
+                Notes = $"Preparación de {item.Name} para el pedido {order.OrderNumber}"
+            };
+            _dbContext.StockOperations.Add(operation);
+            foreach (var line in recipe.Lines.OrderBy(x => x.ItemId))
+            {
+                var ingredient = await _dbContext.StockItems.SingleAsync(x => x.Id == line.ItemId && !x.IsDeleted,
+                    cancellationToken);
+                var consumed = decimal.Round(line.Quantity * quantities[item.ProductId!.Value] / recipe.Yield,
+                    3, MidpointRounding.AwayFromZero);
+                if (consumed <= 0)
+                    throw new ConflictException($"La receta de {item.Name} requiere más precisión para esta cantidad.");
+                StockQuantity.ValidateBase(consumed, ingredient.Unit, true);
+                await StockLedger.PostAsync(_dbContext, operation, ingredient, StockLocation.Factory,
+                    -consumed, cancellationToken);
+            }
+        }
     }
 }

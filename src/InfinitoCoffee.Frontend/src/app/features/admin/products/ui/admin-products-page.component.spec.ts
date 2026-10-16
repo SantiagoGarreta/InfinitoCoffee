@@ -114,5 +114,28 @@ describe('AdminProductsPageComponent', () => {
     component.minimumQuantity.set(8);
     await component.submit();
     expect(store.updateRequest?.minimumQuantity).toBe(8);
+
+    component.startEdit(store.products()[1]!);
+    expect(component.minimumQuantity()).toBe(0);
+    expect(component.canSubmit()).toBe(true);
+  });
+
+  it('creates a prepared product without asking for finished stock', async () => {
+    const fixture = TestBed.createComponent(AdminProductsPageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const component = fixture.componentInstance;
+    const store = TestBed.inject(AdminProductsStore) as unknown as FakeAdminProductsStore;
+    component.startCreate();
+    component.name.set('Capuchino');
+    component.price.set(150);
+    component.cost.set(50);
+    component.stockMode.set('MadeToOrder');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('input[name="minimumQuantity"]')).toBeNull();
+    expect(component.canSubmit()).toBe(true);
+    await component.submit();
+    expect(store.createRequest?.stockMode).toBe('MadeToOrder');
+    expect(store.createRequest?.minimumQuantity).toBe(0);
   });
 });

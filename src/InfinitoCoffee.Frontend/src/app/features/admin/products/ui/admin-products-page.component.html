@@ -44,7 +44,8 @@
                   <div>
                     <strong>Precio: {{ product.price | currency:'UYU':'symbol-narrow':'1.2-2' }}</strong>
                     <small>Costo: {{ product.cost | currency:'UYU':'symbol-narrow':'1.2-2' }}</small>
-                    @if (product.minimumQuantity != null) {
+                    <small>{{ product.stockMode === 'MadeToOrder' ? 'Preparado al momento' : 'Con stock' }}</small>
+                    @if (product.stockMode !== 'MadeToOrder' && product.minimumQuantity != null) {
                       <small>Stock mínimo: {{ product.minimumQuantity }} un. por sucursal</small>
                     }
                   </div>
@@ -131,14 +132,21 @@
           @if (cost() !== null && (cost() ?? 0) < 0) { <small>El costo mínimo es 0.</small> }
         </label>
 
-        @if (!editingProductId() || editingProduct()?.minimumQuantity != null) {
+        <label>
+          <span>Control de stock</span>
+          <select name="stockMode" [disabled]="store.saving()" [ngModel]="stockMode()" (ngModelChange)="stockMode.set($event)">
+            <option value="Stocked">Con stock</option>
+            <option value="MadeToOrder">Preparado al momento</option>
+          </select>
+          <small>Los preparados al momento no tienen existencias propias. Cargá su receta en Stock → Recetas para poder venderlos.</small>
+        </label>
+
+        @if (stockMode() === 'Stocked') {
           <label>
             <span>Stock mínimo por sucursal (unidades)</span>
             <input name="minimumQuantity" type="number" required min="0" max="999999999" step="1" [disabled]="store.saving()" [ngModel]="minimumQuantity()" (ngModelChange)="minimumQuantity.set($event)" />
-            <small>Ingresá 0 si no querés alertas. El artículo se crea en Stock con 0 unidades en cada sucursal.</small>
+            <small>Ingresá 0 si no querés alertas. Este producto tendrá existencias en cada sucursal.</small>
           </label>
-        } @else {
-          <p class="admin-catalog__notice">Este producto anterior aún no tiene artículo de stock. Registralo desde Stock para vincularlo.</p>
         }
 
         <label>

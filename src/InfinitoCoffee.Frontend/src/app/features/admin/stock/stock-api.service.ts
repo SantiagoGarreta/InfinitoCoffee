@@ -7,7 +7,7 @@ import { APP_RUNTIME_CONFIG } from '../../../core/config/app-runtime-config';
 export type Location = 'Factory' | 'Cafe' | 'Transit';
 export type Unit = 'Unit' | 'Gram' | 'Milliliter';
 export interface StockItem {
-  id: string; name: string; kind: 'Ingredient' | 'FinishedProduct'; unit: Unit;
+  id: string; name: string; kind: 'Ingredient' | 'FinishedProduct' | 'MadeToOrder'; unit: Unit;
   productId?: string | null; minimumQuantity: number;
 }
 export interface Balance { branchId?: number; itemId: string; location: Location; quantity: number; revision: string }
@@ -48,6 +48,9 @@ export class StockApiService {
   }
   saveRecipe(itemId: string, yieldQuantity: number, lines: LineInput[]): Promise<Recipe> {
     return firstValueFrom(this.http.post<Recipe>(`${this.url}/recipes`, { itemId, yield: yieldQuantity, lines }));
+  }
+  async archiveRecipe(itemId: string): Promise<void> {
+    await firstValueFrom(this.http.delete<void>(`${this.url}/recipes/${itemId}`));
   }
   async record(path: string, body: object): Promise<void> {
     const key = JSON.stringify([this.branch.privateId(), path, body]);

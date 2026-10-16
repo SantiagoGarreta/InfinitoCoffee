@@ -1,3 +1,5 @@
+using InfinitoCoffee.Domain.Products;
+
 namespace InfinitoCoffee.Application.Products.Dtos;
 
 public sealed record ProductDto(
@@ -8,4 +10,5 @@ public sealed record ProductDto(
     decimal Cost,
     Guid? CategoryId,
     bool IsActive,
-    decimal? MinimumQuantity);
+    decimal? MinimumQuantity,
+    ProductStockMode StockMode);

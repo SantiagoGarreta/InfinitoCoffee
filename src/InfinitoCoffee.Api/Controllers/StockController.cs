@@ -39,6 +39,14 @@ public sealed class StockController(IStockService stock) : ControllerBase
     public Task<RecipeDto> SaveRecipe(RecipeRequest request, CancellationToken ct)
         => stock.SaveRecipeAsync(request, ActorId, ct);
 
+    [HttpDelete("recipes/{itemId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ArchiveRecipe(Guid itemId, CancellationToken ct)
+    {
+        await stock.ArchiveRecipeAsync(itemId, ct);
+        return NoContent();
+    }
+
     [HttpPost("adjustments")]
     public async Task<IActionResult> Adjustment(StockAdjustmentRequest request, CancellationToken ct)
     {

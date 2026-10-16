@@ -30,16 +30,16 @@ public sealed class ProductService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
-        StockQuantity.ValidateBase(command.MinimumQuantity, StockUnit.Unit);
+        ValidateMode(command.StockMode, command.MinimumQuantity);
 
         var category = await GetActiveCategoryAsync(command.CategoryId, cancellationToken);
         var product = new Product(category.Id, command.Name, command.Price, command.Cost, command.Description);
 
         await _productRepository.AddAsync(product, cancellationToken);
-        await _productStockRepository.AddForProductAsync(product, command.MinimumQuantity, cancellationToken);
+        await _productStockRepository.AddForProductAsync(product, command.MinimumQuantity, command.StockMode, cancellationToken);
         await _productRepository.SaveChangesAsync(cancellationToken);
 
-        return MapProduct(product, command.MinimumQuantity);
+        return MapProduct(product, command.StockMode == ProductStockMode.Stocked ? command.MinimumQuantity : null, command.StockMode);
     }
 
     public async Task<ProductDto> GetProductByIdAsync(
@@ -51,7 +51,8 @@ public sealed class ProductService
         var product = await _productRepository.GetByIdAsync(query.ProductId, cancellationToken)
             ?? throw new NotFoundException("Product", query.ProductId);
 
-        return MapProduct(product, await _productStockRepository.GetMinimumQuantityAsync(product.Id, cancellationToken));
+        return MapProduct(product, await _productStockRepository.GetMinimumQuantityAsync(product.Id, cancellationToken),
+            await _productStockRepository.GetModeAsync(product.Id, cancellationToken));
     }
 
     public async Task<IReadOnlyCollection<ProductDto>> GetProductsAsync(CancellationToken cancellationToken = default)
@@ -59,12 +60,15 @@ public sealed class ProductService
         var products = await _productRepository.GetAllAsync(cancellationToken);
         var minimums = await _productStockRepository.GetMinimumQuantitiesAsync(
             products.Select(product => product.Id).ToArray(), cancellationToken);
+        var modes = await _productStockRepository.GetModesAsync(
+            products.Select(product => product.Id).ToArray(), cancellationToken);
 
         return products
             .OrderBy(product => product.Name, StringComparer.Ordinal)
             .ThenBy(product => product.Id)
             .Select(product => MapProduct(product,
-                minimums.TryGetValue(product.Id, out var minimum) ? minimum : null))
+                minimums.TryGetValue(product.Id, out var minimum) ? minimum : null,
+                modes.TryGetValue(product.Id, out var mode) ? mode : ProductStockMode.Stocked))
             .ToArray();
     }
 
@@ -73,7 +77,9 @@ public sealed class ProductService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
-        if (command.MinimumQuantity.HasValue)
+        if (command.StockMode.HasValue)
+            ValidateMode(command.StockMode.Value, command.MinimumQuantity);
+        else if (command.MinimumQuantity.HasValue)
             StockQuantity.ValidateBase(command.MinimumQuantity.Value, StockUnit.Unit);
 
         var product = await _productRepository.GetByIdAsync(command.ProductId, cancellationToken)
@@ -91,10 +97,11 @@ public sealed class ProductService
         product.ChangeDescription(command.Description);
 
         var minimumQuantity = await _productStockRepository.UpdateForProductAsync(
-            product, command.MinimumQuantity, cancellationToken);
+            product, command.MinimumQuantity, command.StockMode, cancellationToken);
         await _productRepository.SaveChangesAsync(cancellationToken);
 
-        return MapProduct(product, minimumQuantity);
+        return MapProduct(product, minimumQuantity,
+            command.StockMode ?? await _productStockRepository.GetModeAsync(product.Id, cancellationToken));
     }
 
     public async Task<ProductDto> ActivateProductAsync(
@@ -109,7 +116,8 @@ public sealed class ProductService
         product.Activate();
         await _productRepository.SaveChangesAsync(cancellationToken);
 
-        return MapProduct(product, await _productStockRepository.GetMinimumQuantityAsync(product.Id, cancellationToken));
+        return MapProduct(product, await _productStockRepository.GetMinimumQuantityAsync(product.Id, cancellationToken),
+            await _productStockRepository.GetModeAsync(product.Id, cancellationToken));
     }
 
     public async Task<ProductDto> DeactivateProductAsync(
@@ -124,7 +132,8 @@ public sealed class ProductService
         product.Deactivate();
         await _productRepository.SaveChangesAsync(cancellationToken);
 
-        return MapProduct(product, await _productStockRepository.GetMinimumQuantityAsync(product.Id, cancellationToken));
+        return MapProduct(product, await _productStockRepository.GetMinimumQuantityAsync(product.Id, cancellationToken),
+            await _productStockRepository.GetModeAsync(product.Id, cancellationToken));
     }
 
     public async Task DeleteProductAsync(Guid productId, CancellationToken cancellationToken = default)
@@ -148,7 +157,16 @@ public sealed class ProductService
         return category;
     }
 
-    private static ProductDto MapProduct(Product product, decimal? minimumQuantity)
+    private static void ValidateMode(ProductStockMode mode, decimal? minimumQuantity)
+    {
+        if (!Enum.IsDefined(mode)) throw new ArgumentException("Elegí un modo de stock válido.");
+        if (mode == ProductStockMode.Stocked)
+            StockQuantity.ValidateBase(minimumQuantity ?? 0m, StockUnit.Unit);
+        else if (minimumQuantity is > 0m)
+            throw new ArgumentException("Un producto preparado al momento no tiene stock mínimo.");
+    }
+
+    private static ProductDto MapProduct(Product product, decimal? minimumQuantity, ProductStockMode mode)
     {
         return new ProductDto(
             product.Id,
@@ -158,6 +176,7 @@ public sealed class ProductService
             product.Cost,
             product.CategoryId,
             product.IsActive,
-            minimumQuantity);
+            minimumQuantity,
+            mode);
     }
 }

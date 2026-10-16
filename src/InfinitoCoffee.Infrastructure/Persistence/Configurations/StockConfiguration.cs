@@ -32,6 +32,7 @@ internal static class StockConfiguration
         recipe.ToTable("StockRecipes");
         recipe.HasKey(x => x.Id);
         recipe.Property(x => x.Yield).HasPrecision(18, 3);
+        recipe.Property(x => x.IsArchived).IsRequired().HasDefaultValue(false);
         recipe.HasIndex(x => new { x.ItemId, x.Version }).IsUnique();
         recipe.HasOne<StockItem>().WithMany().HasForeignKey(x => x.ItemId).OnDelete(DeleteBehavior.Restrict);
         recipe.HasOne<User>().WithMany().HasForeignKey(x => x.CreatedBy).OnDelete(DeleteBehavior.Restrict);

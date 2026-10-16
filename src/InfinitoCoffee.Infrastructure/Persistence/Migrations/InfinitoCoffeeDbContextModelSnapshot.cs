@@ -395,6 +395,11 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ItemId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<int>("Version")
                         .HasColumnType("int");
 

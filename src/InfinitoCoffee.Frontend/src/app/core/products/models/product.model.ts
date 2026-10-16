@@ -7,4 +7,5 @@ export interface Product {
   categoryId: string | null;
   isActive: boolean;
   minimumQuantity?: number | null;
+  stockMode?: 'Stocked' | 'MadeToOrder';
 }
