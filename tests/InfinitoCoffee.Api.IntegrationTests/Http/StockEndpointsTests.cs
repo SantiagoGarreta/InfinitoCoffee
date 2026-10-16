@@ -429,6 +429,40 @@ public sealed class StockEndpointsTests
         Assert.Equal(HttpStatusCode.Forbidden, (await api.PostAsJsonWithCsrfAsync("/api/stock/adjustments", new { })).StatusCode);
     }
 
+    [Fact]
+    public async Task DeleteIngredient_RequiresZeroBalanceAndPreservesMovementHistory()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
+        var item = await CreateItem(api, new("Harina", StockItemKind.Ingredient, StockUnit.Unit, null));
+        await Adjust(api, item.Id, 3);
+
+        var route = $"/api/stock/items/{item.Id}";
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await api.SendWithCsrfAsync(new HttpRequestMessage(HttpMethod.Delete, route))).StatusCode);
+        await Adjust(api, item.Id, -3);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await api.SendWithCsrfAsync(new HttpRequestMessage(HttpMethod.Delete, route))).StatusCode);
+
+        var dashboard = await Read<StockDashboardDto>(await api.Client.GetAsync("/api/stock"));
+        Assert.DoesNotContain(dashboard.Items, x => x.Id == item.Id);
+        var history = await Read<StockHistoryDto>(await api.Client.GetAsync($"/api/stock/history?itemId={item.Id}"));
+        Assert.Equal(2, history.Items.Count);
+        Assert.All(history.Items, operation => Assert.Contains(operation.Movements, movement => movement.ItemId == item.Id));
+        var replacement = await CreateItem(api, new("Harina", StockItemKind.Ingredient, StockUnit.Unit, null));
+        Assert.NotEqual(item.Id, replacement.Id);
+    }
+
+    [Fact]
+    public async Task DeleteIngredient_UsedByCurrentRecipe_ReturnsConflict()
+    {
+        await using var api = new ApiTestContext();
+        var setup = await Setup(api);
+        var response = await api.SendWithCsrfAsync(new HttpRequestMessage(HttpMethod.Delete,
+            $"/api/stock/items/{setup.Egg.Id}"));
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
     private static async Task<(StockItemDto Egg, StockItemDto Scone)> Setup(ApiTestContext api)
     {
         await api.AuthenticateAsync();

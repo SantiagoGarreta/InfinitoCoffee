@@ -99,6 +99,15 @@ public sealed class ProductCategoryService
         return MapCategory(category);
     }
 
+    public async Task DeleteProductCategoryAsync(Guid categoryId, CancellationToken cancellationToken = default)
+    {
+        var category = await _productCategoryRepository.GetByIdAsync(categoryId, cancellationToken)
+            ?? throw new NotFoundException("ProductCategory", categoryId);
+
+        _productCategoryRepository.Remove(category);
+        await _productCategoryRepository.SaveChangesAsync(cancellationToken);
+    }
+
     private static ProductCategoryDto MapCategory(ProductCategory category)
     {
         return new ProductCategoryDto(

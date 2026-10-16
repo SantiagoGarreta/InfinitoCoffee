@@ -765,7 +765,7 @@ public class OrderServiceTests
         IReadOnlyCollection<Product> products)
     {
         var repository = new FakeProductCategoryRepository();
-        foreach (var categoryId in products.Select(product => product.CategoryId).Distinct())
+        foreach (var categoryId in products.Select(product => product.CategoryId).OfType<Guid>().Distinct())
         {
             repository.SeedForId(categoryId, new ProductCategory("Active category"));
         }

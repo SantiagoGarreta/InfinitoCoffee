@@ -25,6 +25,7 @@ class FakeProductsApiService {
   deactivateProduct(id: string): Promise<Product> {
     return this.result({ ...this.products.find((product) => product.id === id)!, isActive: false });
   }
+  deleteProduct(): Promise<void> { return this.result(undefined); }
   private result<T>(value: T): Promise<T> { return this.error ? Promise.reject(this.error) : Promise.resolve(value); }
 }
 
@@ -70,6 +71,13 @@ describe('AdminProductsStore', () => {
     expect(store.products().find((product) => product.id === 'p-1')?.isActive).toBe(true);
     await store.deactivate('p-2');
     expect(store.products().find((product) => product.id === 'p-2')?.isActive).toBe(false);
+  });
+
+  it('removes an archived product from the list', async () => {
+    const store = TestBed.inject(AdminProductsStore);
+    await store.load();
+    expect(await store.delete('p-1')).toBe(true);
+    expect(store.products().some((product) => product.id === 'p-1')).toBe(false);
   });
 
   it('exposes load and mutation errors', async () => {

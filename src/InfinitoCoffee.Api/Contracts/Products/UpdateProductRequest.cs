@@ -30,4 +30,7 @@ public sealed class UpdateProductRequest
 
     [NotEmptyGuid(ErrorMessage = "CategoryId is required.")]
     public Guid CategoryId { get; init; }
+
+    [Range(0, 999999999)]
+    public decimal? MinimumQuantity { get; init; }
 }

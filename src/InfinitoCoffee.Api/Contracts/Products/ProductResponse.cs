@@ -6,5 +6,6 @@ public sealed record ProductResponse(
     string? Description,
     decimal Price,
     decimal Cost,
-    Guid CategoryId,
-    bool IsActive);
+    Guid? CategoryId,
+    bool IsActive,
+    decimal? MinimumQuantity);

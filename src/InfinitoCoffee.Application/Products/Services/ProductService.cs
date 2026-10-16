@@ -5,6 +5,7 @@ using InfinitoCoffee.Application.Products.Contracts;
 using InfinitoCoffee.Application.Products.Dtos;
 using InfinitoCoffee.Application.Products.Queries;
 using InfinitoCoffee.Domain.Products;
+using InfinitoCoffee.Domain.Stock;
 
 namespace InfinitoCoffee.Application.Products.Services;
 
@@ -12,13 +13,16 @@ public sealed class ProductService
 {
     private readonly IProductCategoryRepository _productCategoryRepository;
     private readonly IProductRepository _productRepository;
+    private readonly IProductStockRepository _productStockRepository;
 
     public ProductService(
         IProductRepository productRepository,
-        IProductCategoryRepository productCategoryRepository)
+        IProductCategoryRepository productCategoryRepository,
+        IProductStockRepository productStockRepository)
     {
         _productRepository = productRepository;
         _productCategoryRepository = productCategoryRepository;
+        _productStockRepository = productStockRepository;
     }
 
     public async Task<ProductDto> CreateProductAsync(
@@ -26,14 +30,16 @@ public sealed class ProductService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        StockQuantity.ValidateBase(command.MinimumQuantity, StockUnit.Unit);
 
         var category = await GetActiveCategoryAsync(command.CategoryId, cancellationToken);
         var product = new Product(category.Id, command.Name, command.Price, command.Cost, command.Description);
 
         await _productRepository.AddAsync(product, cancellationToken);
+        await _productStockRepository.AddForProductAsync(product, command.MinimumQuantity, cancellationToken);
         await _productRepository.SaveChangesAsync(cancellationToken);
 
-        return MapProduct(product);
+        return MapProduct(product, command.MinimumQuantity);
     }
 
     public async Task<ProductDto> GetProductByIdAsync(
@@ -45,17 +51,20 @@ public sealed class ProductService
         var product = await _productRepository.GetByIdAsync(query.ProductId, cancellationToken)
             ?? throw new NotFoundException("Product", query.ProductId);
 
-        return MapProduct(product);
+        return MapProduct(product, await _productStockRepository.GetMinimumQuantityAsync(product.Id, cancellationToken));
     }
 
     public async Task<IReadOnlyCollection<ProductDto>> GetProductsAsync(CancellationToken cancellationToken = default)
     {
         var products = await _productRepository.GetAllAsync(cancellationToken);
+        var minimums = await _productStockRepository.GetMinimumQuantitiesAsync(
+            products.Select(product => product.Id).ToArray(), cancellationToken);
 
         return products
             .OrderBy(product => product.Name, StringComparer.Ordinal)
             .ThenBy(product => product.Id)
-            .Select(MapProduct)
+            .Select(product => MapProduct(product,
+                minimums.TryGetValue(product.Id, out var minimum) ? minimum : null))
             .ToArray();
     }
 
@@ -64,6 +73,8 @@ public sealed class ProductService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        if (command.MinimumQuantity.HasValue)
+            StockQuantity.ValidateBase(command.MinimumQuantity.Value, StockUnit.Unit);
 
         var product = await _productRepository.GetByIdAsync(command.ProductId, cancellationToken)
             ?? throw new NotFoundException("Product", command.ProductId);
@@ -79,9 +90,11 @@ public sealed class ProductService
         product.ChangeCost(command.Cost);
         product.ChangeDescription(command.Description);
 
+        var minimumQuantity = await _productStockRepository.UpdateForProductAsync(
+            product, command.MinimumQuantity, cancellationToken);
         await _productRepository.SaveChangesAsync(cancellationToken);
 
-        return MapProduct(product);
+        return MapProduct(product, minimumQuantity);
     }
 
     public async Task<ProductDto> ActivateProductAsync(
@@ -96,7 +109,7 @@ public sealed class ProductService
         product.Activate();
         await _productRepository.SaveChangesAsync(cancellationToken);
 
-        return MapProduct(product);
+        return MapProduct(product, await _productStockRepository.GetMinimumQuantityAsync(product.Id, cancellationToken));
     }
 
     public async Task<ProductDto> DeactivateProductAsync(
@@ -111,7 +124,15 @@ public sealed class ProductService
         product.Deactivate();
         await _productRepository.SaveChangesAsync(cancellationToken);
 
-        return MapProduct(product);
+        return MapProduct(product, await _productStockRepository.GetMinimumQuantityAsync(product.Id, cancellationToken));
+    }
+
+    public async Task DeleteProductAsync(Guid productId, CancellationToken cancellationToken = default)
+    {
+        var product = await _productRepository.GetByIdAsync(productId, cancellationToken)
+            ?? throw new NotFoundException("Product", productId);
+
+        await _productStockRepository.ArchiveProductAsync(product, cancellationToken);
     }
 
     private async Task<ProductCategory> GetActiveCategoryAsync(Guid categoryId, CancellationToken cancellationToken)
@@ -127,7 +148,7 @@ public sealed class ProductService
         return category;
     }
 
-    private static ProductDto MapProduct(Product product)
+    private static ProductDto MapProduct(Product product, decimal? minimumQuantity)
     {
         return new ProductDto(
             product.Id,
@@ -136,6 +157,7 @@ public sealed class ProductService
             product.Price,
             product.Cost,
             product.CategoryId,
-            product.IsActive);
+            product.IsActive,
+            minimumQuantity);
     }
 }

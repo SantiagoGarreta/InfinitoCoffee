@@ -100,4 +100,14 @@ public sealed class ProductCategoriesController : ControllerBase
 
         return Ok(ApiContractMapper.MapProductCategory(category));
     }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOnly)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        await _productCategoryService.DeleteProductCategoryAsync(id, cancellationToken);
+        return NoContent();
+    }
 }

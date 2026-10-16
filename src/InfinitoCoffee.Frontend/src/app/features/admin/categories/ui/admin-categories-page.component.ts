@@ -18,6 +18,7 @@ export class AdminCategoriesPageComponent implements OnInit {
   readonly store = inject(AdminCategoriesStore);
   readonly editingCategoryId = signal<string | null>(null);
   readonly confirmingDeactivateId = signal<string | null>(null);
+  readonly confirmingDeleteId = signal<string | null>(null);
   readonly name = signal('');
   readonly canSubmit = computed(() => {
     const name = this.name().trim();
@@ -33,12 +34,14 @@ export class AdminCategoriesPageComponent implements OnInit {
     this.store.clearFeedback();
     this.editingCategoryId.set(null);
     this.confirmingDeactivateId.set(null);
+    this.confirmingDeleteId.set(null);
     this.name.set('');
   }
 
   startEdit(category: ProductCategory): void {
     this.store.clearFeedback();
     this.confirmingDeactivateId.set(null);
+    this.confirmingDeleteId.set(null);
     this.editingCategoryId.set(category.id);
     this.name.set(category.name);
   }
@@ -70,5 +73,23 @@ export class AdminCategoriesPageComponent implements OnInit {
 
   async confirmDeactivate(categoryId: string): Promise<void> {
     if (await this.store.deactivate(categoryId)) this.confirmingDeactivateId.set(null);
+  }
+
+  askToDelete(categoryId: string): void {
+    this.store.clearFeedback();
+    this.confirmingDeactivateId.set(null);
+    this.confirmingDeleteId.set(categoryId);
+  }
+
+  cancelDelete(): void { this.confirmingDeleteId.set(null); }
+
+  async confirmDelete(categoryId: string): Promise<void> {
+    if (await this.store.delete(categoryId)) {
+      this.confirmingDeleteId.set(null);
+      if (this.editingCategoryId() === categoryId) {
+        this.editingCategoryId.set(null);
+        this.name.set('');
+      }
+    }
   }
 }

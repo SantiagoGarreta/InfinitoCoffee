@@ -72,8 +72,13 @@ public sealed class OrderService
                 throw new ConflictException($"The product '{product.Name}' is inactive.");
             }
 
-            var category = await _productCategoryRepository.GetByIdAsync(product.CategoryId, cancellationToken)
-                ?? throw new NotFoundException("ProductCategory", product.CategoryId);
+            if (product.CategoryId is null)
+            {
+                throw new ConflictException($"The product '{product.Name}' needs a category before it can be sold.");
+            }
+
+            var category = await _productCategoryRepository.GetByIdAsync(product.CategoryId.Value, cancellationToken)
+                ?? throw new NotFoundException("ProductCategory", product.CategoryId.Value);
 
             if (!category.IsActive)
             {

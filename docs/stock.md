@@ -9,12 +9,13 @@ Aplicar las migraciones con `dotnet run --project .\src\InfinitoCoffee.DbSetup -
 Si ya se usaba el registro de producción, los productos terminados existentes conservarán su saldo y sus ingredientes ya descontados. Si se usó la versión que descontaba ingredientes también al entregar pedidos, revisar esos movimientos del historial y corregir sus saldos con un ajuste documentado.
 
 1. Crear los ingredientes con su unidad (unidades, gramos o mililitros).
-2. Crear los productos terminados y vincularlos con los productos del catálogo.
+2. Crear cada producto nuevo desde **Administración → Productos** e indicar su stock mínimo en unidades. Se crea automáticamente el artículo terminado vinculado, con saldo cero en cada sucursal. Los productos anteriores que aún no tienen artículo vinculado se registran desde **Stock → Artículos**.
 3. Guardar una receta para cada producto que consuma ingredientes. La receta indica cuántas unidades rinde y la cantidad de cada ingrediente para ese rendimiento.
 4. Usar **Ajustar stock → Aumentar** para cargar las cantidades iniciales de ingredientes. Luego seleccionar la sucursal e ingresar los productos terminados: **Producción** consume ingredientes; **Ingreso sin producción** permite cargar existencias ya producidas o recibidas del otro local. El motivo es obligatorio.
 
 ## Uso diario
 
+- **Editar un producto con artículo vinculado:** el nombre y el stock mínimo del artículo se actualizan desde **Productos**. El mínimo se aplica al saldo de cada sucursal y solo genera un aviso cuando se baja de él; no agrega existencias.
 - **Aumentar un producto terminado como producción:** se suman sus unidades a la sucursal seleccionada y se descuentan los ingredientes compartidos de la última receta, proporcionalmente a la cantidad ingresada. Ambos cambios se guardan juntos. Si faltan ingredientes, no se registra el producto. Un producto sin receta puede ingresarse, pero no consume ingredientes.
 - **Ingresar un producto sin producción:** se suman unidades únicamente al local seleccionado. No consume ingredientes. Usar esta opción para traslados o correcciones de productos ya preparados.
 - **Ajustar stock:** aumentar ingredientes por compras o disminuir artículos por pérdidas, descartes y correcciones, siempre con un motivo. Disminuir un producto terminado no modifica ingredientes.
@@ -22,6 +23,8 @@ Si ya se usaba el registro de producción, los productos terminados existentes c
 - **Cancelar un pedido sin entregar:** se devuelve el stock que ya se descontó en caja por artículos de Cantina. Los productos de cocina todavía no se descontaron. La cancelación y la devolución se guardan juntas, y el pedido deja de sumar en resultados.
 - **Actualizar una receta:** crea una versión nueva. Los próximos ingresos de productos terminados usan la última versión; los movimientos anteriores conservan las cantidades descontadas.
 - **Consultar historial:** muestra movimientos de productos del local seleccionado y movimientos de ingredientes compartidos de ambas sucursales. Cada operación identifica la sucursal que la originó, el motivo, usuario, saldo anterior, cambio y saldo resultante. Las ventas muestran el pedido asociado.
+- **Eliminar un producto o artículo:** desde Productos o Stock → Artículos se oculta el producto y su artículo vinculado. Se conservan los pedidos, recetas y movimientos anteriores. Antes hay que dejar el saldo en cero en todas las sucursales y terminar o cancelar los pedidos en curso. Un ingrediente usado en la receta vigente de un producto activo requiere actualizar esa receta antes de eliminarlo. Los nombres de artículos eliminados pueden volver a usarse.
+- **Eliminar una categoría:** sus productos permanecen en Productos como «Sin categoría» y dejan de estar disponibles en Caja. Para venderlos de nuevo hay que editar y reasignar cada producto a una categoría activa.
 
 Por ejemplo, con 30 huevos y una receta de 10 scones que usa 5 huevos, producir 10 en Sucursal 1 y 10 en Sucursal 2 deja 20 huevos compartidos y 10 scones en cada local. Vender 3 en Sucursal 1 deja 20 huevos, 7 scones allí y 10 en Sucursal 2. El consumo proporcional al ingreso se redondea a tres decimales.
 

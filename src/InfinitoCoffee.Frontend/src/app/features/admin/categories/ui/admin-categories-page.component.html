@@ -36,6 +36,7 @@
                     } @else {
                       <button type="button" class="button" [disabled]="store.saving()" (click)="activate(category.id)">Activar</button>
                     }
+                    <button type="button" class="button button--danger" [disabled]="store.saving()" (click)="askToDelete(category.id)">Eliminar</button>
                   </div>
                 </div>
                 @if (confirmingDeactivateId() === category.id) {
@@ -44,6 +45,15 @@
                     <div>
                       <button type="button" class="button button--danger" [disabled]="store.saving()" (click)="confirmDeactivate(category.id)">Confirmar</button>
                       <button type="button" class="button button--secondary" [disabled]="store.saving()" (click)="cancelDeactivate()">Cancelar</button>
+                    </div>
+                  </div>
+                }
+                @if (confirmingDeleteId() === category.id) {
+                  <div class="inline-confirmation">
+                    <p>¿Eliminar {{ category.name }}? Sus productos quedarán sin categoría y no aparecerán en Caja hasta reasignarlos uno por uno desde Productos.</p>
+                    <div>
+                      <button type="button" class="button button--danger" [disabled]="store.saving()" (click)="confirmDelete(category.id)">Confirmar eliminación</button>
+                      <button type="button" class="button button--secondary" [disabled]="store.saving()" (click)="cancelDelete()">Cancelar</button>
                     </div>
                   </div>
                 }

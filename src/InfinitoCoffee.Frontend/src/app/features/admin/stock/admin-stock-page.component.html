@@ -88,9 +88,13 @@
       }
       @if (tab() === 'items') {
         <div class="split-layout"><div class="panel"><h2>Ingredientes y productos</h2>
-          @for (item of data().items; track item.id) { <div class="transfer-row"><div><strong>{{ item.name }}</strong><small>{{ item.kind === 'Ingredient' ? 'Ingrediente compartido' : 'Producto de esta sucursal' }} · {{ unitLabel(item.unit) }}</small>
+          @for (item of data().items; track item.id) { <div class="stock-item-entry"><div class="transfer-row"><div><strong>{{ item.name }}</strong><small>{{ item.kind === 'Ingredient' ? 'Ingrediente compartido' : 'Producto de esta sucursal' }} · {{ unitLabel(item.unit) }}</small>
             @if (item.minimumQuantity > 0) { <small>Mínimo: {{ item.minimumQuantity | number:'1.0-3' }}</small> }</div>
-            <button type="button" class="text-button" (click)="editItem(item)">Editar</button></div>
+            <div><button type="button" class="text-button" [disabled]="busy()" (click)="editItem(item)">Editar</button>
+              <button type="button" class="text-button danger-text" [disabled]="busy()" (click)="askToDeleteItem(item.id)">Eliminar</button></div></div>
+            @if (confirmingDeleteItemId() === item.id) { <div class="notice"><p>¿Eliminar {{ item.name }}? Se conservará el historial. El saldo debe estar en cero{{ item.productId ? ' y no debe haber pedidos en curso' : ' y no debe figurar en recetas vigentes' }}.{{ item.productId ? ' También se quitará el producto del catálogo.' : '' }}</p>
+              <button type="button" [disabled]="busy()" (click)="confirmDeleteItem(item.id)">Confirmar eliminación</button>
+              <button type="button" class="secondary" [disabled]="busy()" (click)="cancelDeleteItem()">Cancelar</button></div> }</div>
           } @empty { <p class="empty">Agregá, por ejemplo, huevos y scones.</p> }</div>
           <form class="panel form-panel" (ngSubmit)="saveItem()"><div class="section-header"><h2>{{ itemId ? 'Editar artículo' : 'Nuevo artículo' }}</h2>
             @if (itemId) { <button type="button" class="text-button" (click)="newItem()">Nuevo</button> }</div>

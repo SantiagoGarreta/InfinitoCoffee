@@ -28,16 +28,20 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
             .IsRequired();
 
         builder.Property(product => product.CategoryId)
-            .IsRequired();
+            .IsRequired(false);
 
         builder.Property(product => product.IsActive)
             .IsRequired();
+
+        builder.Property(product => product.IsDeleted)
+            .IsRequired()
+            .HasDefaultValue(false);
 
         builder.HasIndex(product => product.CategoryId);
 
         builder.HasOne<ProductCategory>()
             .WithMany()
             .HasForeignKey(product => product.CategoryId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

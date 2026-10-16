@@ -15,13 +15,14 @@ public class ProductRepository : IProductRepository
 
     public async Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Products.SingleOrDefaultAsync(product => product.Id == id, cancellationToken);
+        return await _dbContext.Products.SingleOrDefaultAsync(product => product.Id == id && !product.IsDeleted, cancellationToken);
     }
 
     public async Task<IReadOnlyCollection<Product>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         return await _dbContext.Products
             .AsNoTracking()
+            .Where(product => !product.IsDeleted)
             .OrderBy(product => product.Name)
             .ThenBy(product => product.Id)
             .ToArrayAsync(cancellationToken);

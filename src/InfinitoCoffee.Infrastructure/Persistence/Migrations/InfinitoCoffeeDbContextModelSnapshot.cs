@@ -155,7 +155,7 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("CategoryId")
+                    b.Property<Guid?>("CategoryId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Cost")
@@ -168,6 +168,11 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -237,6 +242,11 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<int>("Kind")
                         .HasColumnType("int");
 
@@ -263,11 +273,12 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedName")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("ProductId")
                         .IsUnique()
-                        .HasFilter("[ProductId] IS NOT NULL");
+                        .HasFilter("[ProductId] IS NOT NULL AND [IsDeleted] = 0");
 
                     b.ToTable("StockItems", (string)null);
                 });
@@ -569,8 +580,7 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                     b.HasOne("InfinitoCoffee.Domain.Products.ProductCategory", null)
                         .WithMany()
                         .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("InfinitoCoffee.Domain.Stock.StockBalance", b =>

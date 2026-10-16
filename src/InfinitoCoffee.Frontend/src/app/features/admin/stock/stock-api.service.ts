@@ -43,6 +43,9 @@ export class StockApiService {
   updateItem(id: string, name: string, minimumQuantity: number): Promise<StockItem> {
     return firstValueFrom(this.http.put<StockItem>(`${this.url}/items/${id}`, { name, minimumQuantity }));
   }
+  async deleteItem(id: string): Promise<void> {
+    await firstValueFrom(this.http.delete<void>(`${this.url}/items/${id}`));
+  }
   saveRecipe(itemId: string, yieldQuantity: number, lines: LineInput[]): Promise<Recipe> {
     return firstValueFrom(this.http.post<Recipe>(`${this.url}/recipes`, { itemId, yield: yieldQuantity, lines }));
   }

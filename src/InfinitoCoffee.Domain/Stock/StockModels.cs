@@ -13,6 +13,7 @@ public sealed class StockItem
     public StockUnit Unit { get; set; }
     public Guid? ProductId { get; set; }
     public decimal MinimumQuantity { get; set; }
+    public bool IsDeleted { get; set; }
 }
 
 public sealed class StockBalance

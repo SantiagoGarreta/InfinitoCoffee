@@ -71,7 +71,8 @@ internal static class ApiContractMapper
             product.Price,
             product.Cost,
             product.CategoryId,
-            product.IsActive);
+            product.IsActive,
+            product.MinimumQuantity);
     }
 
     public static ProductCategoryResponse MapProductCategory(ProductCategoryDto category)

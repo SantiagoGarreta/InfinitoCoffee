@@ -23,8 +23,8 @@ export class AdminProductsStore {
   readonly sortedProducts = computed(() => {
     const categoryNames = new Map(this.categories().map((category) => [category.id, category.name]));
     return [...this.products()].sort((left, right) => {
-      const categoryComparison = (categoryNames.get(left.categoryId) ?? '')
-        .localeCompare(categoryNames.get(right.categoryId) ?? '', 'es');
+      const categoryComparison = (categoryNames.get(left.categoryId ?? '') ?? '')
+        .localeCompare(categoryNames.get(right.categoryId ?? '') ?? '', 'es');
       return categoryComparison
         || left.name.localeCompare(right.name, 'es')
         || left.id.localeCompare(right.id);
@@ -84,12 +84,28 @@ export class AdminProductsStore {
     );
   }
 
+  async delete(productId: string): Promise<boolean> {
+    this.saving.set(true);
+    this.clearFeedback();
+    try {
+      await this.productsApiService.deleteProduct(productId);
+      this.products.update((products) => products.filter((product) => product.id !== productId));
+      this.successMessage.set('Producto eliminado del catálogo y de Stock. Se conservó su historial.');
+      return true;
+    } catch (error: unknown) {
+      this.mutationError.set(toUserMessage(error, 'No fue posible eliminar el producto.'));
+      return false;
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
   clearFeedback(): void {
     this.mutationError.set(null);
     this.successMessage.set(null);
   }
 
-  categoryFor(categoryId: string): ProductCategory | undefined {
+  categoryFor(categoryId: string | null): ProductCategory | undefined {
     return this.categories().find((category) => category.id === categoryId);
   }
 

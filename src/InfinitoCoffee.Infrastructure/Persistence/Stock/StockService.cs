@@ -16,11 +16,13 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
     private int BranchId => branch?.BranchId ?? 1;
     public async Task<StockDashboardDto> GetDashboardAsync(CancellationToken ct)
     {
-        var items = await db.StockItems.AsNoTracking().OrderBy(x => x.Name).ToListAsync(ct);
+        var items = await db.StockItems.AsNoTracking().Where(x => !x.IsDeleted).OrderBy(x => x.Name).ToListAsync(ct);
         var balances = await db.StockBalances.AsNoTracking()
-            .Where(x => x.Location == StockLocation.Factory && (x.BranchId == 0 || x.BranchId == BranchId)).ToListAsync(ct);
+            .Where(x => x.Location == StockLocation.Factory && (x.BranchId == 0 || x.BranchId == BranchId)
+                && db.StockItems.Any(item => item.Id == x.ItemId && !item.IsDeleted)).ToListAsync(ct);
         var recipes = await db.StockRecipes.AsNoTracking().Include(x => x.Lines)
-            .Where(x => !db.StockRecipes.Any(newer => newer.ItemId == x.ItemId && newer.Version > x.Version)).ToListAsync(ct);
+            .Where(x => db.StockItems.Any(item => item.Id == x.ItemId && !item.IsDeleted)
+                && !db.StockRecipes.Any(newer => newer.ItemId == x.ItemId && newer.Version > x.Version)).ToListAsync(ct);
         return new(items.Select(MapItem).ToArray(),
             balances.Select(x => new StockBalanceDto(x.ItemId, x.Location, x.Quantity, x.Revision, x.BranchId)).ToArray(),
             recipes.Select(MapRecipe).ToArray());
@@ -35,10 +37,10 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
             throw new ArgumentException("Vinculá el producto del catálogo. Los productos terminados se cuentan por unidad.");
         if (request.Kind == StockItemKind.Ingredient && request.ProductId is not null)
             throw new ArgumentException("Un ingrediente no se vincula a un producto de venta.");
-        if (request.ProductId is not null && !await db.Products.AnyAsync(x => x.Id == request.ProductId, ct))
+        if (request.ProductId is not null && !await db.Products.AnyAsync(x => x.Id == request.ProductId && !x.IsDeleted, ct))
             throw new NotFoundException("Product", request.ProductId.Value);
-        if (await db.StockItems.AnyAsync(x => x.NormalizedName == name.ToUpperInvariant()
-            || (request.ProductId != null && x.ProductId == request.ProductId), ct))
+        if (await db.StockItems.AnyAsync(x => !x.IsDeleted && (x.NormalizedName == name.ToUpperInvariant()
+            || (request.ProductId != null && x.ProductId == request.ProductId)), ct))
             throw new ConflictException("Ya existe ese artículo o el producto ya tiene control de stock.");
         var item = new StockItem
         {
@@ -62,13 +64,22 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
         var item = await GetItem(id, ct);
         var name = Name(request.Name);
         StockQuantity.ValidateBase(request.MinimumQuantity, item.Unit);
-        if (await db.StockItems.AnyAsync(x => x.Id != id && x.NormalizedName == name.ToUpperInvariant(), ct))
+        if (await db.StockItems.AnyAsync(x => !x.IsDeleted && x.Id != id && x.NormalizedName == name.ToUpperInvariant(), ct))
             throw new ConflictException("Ya existe un artículo con ese nombre.");
         item.Name = name;
         item.NormalizedName = name.ToUpperInvariant();
         item.MinimumQuantity = request.MinimumQuantity;
         await db.SaveChangesAsync(ct);
         return MapItem(item);
+    }
+
+    public async Task DeleteItemAsync(Guid id, CancellationToken ct)
+    {
+        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        var item = await GetItem(id, ct);
+        await StockArchiver.ArchiveItemAsync(db, item, ct);
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
     }
 
     public async Task<RecipeDto> SaveRecipeAsync(RecipeRequest request, Guid actorId, CancellationToken ct)
@@ -201,7 +212,7 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
     }
 
     private async Task<StockItem> GetItem(Guid id, CancellationToken ct) =>
-        await db.StockItems.SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new NotFoundException("StockItem", id);
+        await db.StockItems.SingleOrDefaultAsync(x => x.Id == id && !x.IsDeleted, ct) ?? throw new NotFoundException("StockItem", id);
     private static string Name(string? value)
     {
         if (string.IsNullOrWhiteSpace(value) || value.Trim().Length > 150) throw new ArgumentException("Ingresá un nombre de hasta 150 caracteres.");

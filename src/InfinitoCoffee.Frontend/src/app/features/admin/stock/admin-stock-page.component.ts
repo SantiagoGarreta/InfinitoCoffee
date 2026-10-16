@@ -30,6 +30,7 @@ export class AdminStockPageComponent implements OnInit {
   readonly tab = signal<Tab>('overview');
   readonly search = signal('');
   readonly showOnlyLowStock = signal(false);
+  readonly confirmingDeleteItemId = signal<string | null>(null);
   readonly ingredients = computed(() => this.data().items.filter(x => x.kind === 'Ingredient'));
   readonly finished = computed(() => this.data().items.filter(x => x.kind === 'FinishedProduct'));
   readonly filteredItems = computed(() => this.data().items.filter(x =>
@@ -129,6 +130,16 @@ export class AdminStockPageComponent implements OnInit {
       else await this.api.createItem({ name: this.itemName.trim(), kind: this.itemKind, unit: this.itemUnit,
         productId: this.itemProductId || null, minimumQuantity: this.itemMinimum! });
     }, 'Artículo guardado. Cargá la cantidad inicial desde Ajustar stock.', () => this.newItem());
+  }
+  askToDeleteItem(id: string): void { this.error.set(null); this.confirmingDeleteItemId.set(id); }
+  cancelDeleteItem(): void { this.confirmingDeleteItemId.set(null); }
+  async confirmDeleteItem(id: string): Promise<void> {
+    if (this.busy()) return;
+    await this.save(() => this.api.deleteItem(id), 'Artículo eliminado. Se conservó su historial.', () => {
+      if (this.itemId === id) this.newItem();
+      if (this.recipeItemId === id) this.recipeItemId = '';
+      this.confirmingDeleteItemId.set(null);
+    });
   }
   selectRecipeItem(): void {
     const recipe = this.data().recipes.find(x => x.itemId === this.recipeItemId);

@@ -5,4 +5,5 @@ public sealed record CreateProductCommand(
     string Name,
     decimal Price,
     decimal Cost,
-    string? Description);
+    string? Description,
+    decimal MinimumQuantity = 0);
