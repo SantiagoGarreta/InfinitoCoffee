@@ -1,4 +1,5 @@
 using InfinitoCoffee.Domain.Products;
+using InfinitoCoffee.Domain.Stock;
 using InfinitoCoffee.Domain.Users;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -157,6 +158,40 @@ public sealed class DevelopmentDataSeeder
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    private static async Task RegisterSeedProductsInStockAsync(
+        InfinitoCoffeeDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var products = await dbContext.Products.AsNoTracking()
+            .Where(x => !x.IsDeleted).ToArrayAsync(cancellationToken);
+        var existingIds = await dbContext.StockItems.AsNoTracking().Where(x => x.ProductId.HasValue)
+            .Select(x => x.ProductId!.Value).ToArrayAsync(cancellationToken);
+        var categories = await dbContext.ProductCategories.AsNoTracking()
+            .ToDictionaryAsync(x => x.Id, x => x.Name, cancellationToken);
+        var branchIds = await dbContext.Branches.Select(x => x.Id).ToArrayAsync(cancellationToken);
+        foreach (var product in products.Where(x => !existingIds.Contains(x.Id)))
+        {
+            var prepared = product.CategoryId.HasValue && categories[product.CategoryId.Value] == "Cafes";
+            var item = new StockItem
+            {
+                Name = product.Name,
+                NormalizedName = product.Name.ToUpperInvariant(),
+                Kind = prepared ? StockItemKind.MadeToOrder : StockItemKind.FinishedProduct,
+                Unit = StockUnit.Unit,
+                ProductId = product.Id
+            };
+            dbContext.StockItems.Add(item);
+            if (prepared) continue;
+            foreach (var branchId in branchIds)
+                dbContext.StockBalances.Add(new StockBalance
+                {
+                    ItemId = item.Id,
+                    BranchId = branchId,
+                    Location = StockLocation.Factory
+                });
+        }
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     private static async Task SeedProductsAsync(
         InfinitoCoffeeDbContext dbContext,
         CancellationToken cancellationToken)
@@ -204,6 +239,7 @@ public sealed class DevelopmentDataSeeder
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await RegisterSeedProductsInStockAsync(dbContext, cancellationToken);
     }
 
     private sealed record SeedCategory(string Name, bool IsActive);

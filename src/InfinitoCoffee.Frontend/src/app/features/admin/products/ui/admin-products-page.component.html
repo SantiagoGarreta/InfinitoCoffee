@@ -35,7 +35,7 @@
               <article class="catalog-item" [class.catalog-item--inactive]="!product.isActive">
                 <div class="catalog-item__main">
                   <div>
-                    <p class="catalog-item__category">{{ categoryFor(product)?.name ?? 'Categoría no disponible' }}</p>
+                    <p class="catalog-item__category">{{ categoryFor(product)?.name ?? 'Sin categoría' }}</p>
                     <h3>{{ product.name }}</h3>
                     @if (product.description) {
                       <p>{{ product.description }}</p>
@@ -44,6 +44,10 @@
                   <div>
                     <strong>Precio: {{ product.price | currency:'UYU':'symbol-narrow':'1.2-2' }}</strong>
                     <small>Costo: {{ product.cost | currency:'UYU':'symbol-narrow':'1.2-2' }}</small>
+                    <small>{{ product.stockMode === 'MadeToOrder' ? 'Preparado al momento' : 'Con stock' }}</small>
+                    @if (product.stockMode !== 'MadeToOrder' && product.minimumQuantity != null) {
+                      <small>Stock mínimo: {{ product.minimumQuantity }} un. por sucursal</small>
+                    }
                   </div>
                 </div>
 
@@ -52,7 +56,7 @@
                 } @else if (categoryFor(product)?.isActive) {
                   <p class="catalog-item__status catalog-item__status--available">Activo · Disponible en Caja</p>
                 } @else {
-                  <p class="catalog-item__status catalog-item__status--unavailable">Activo · No disponible: categoría inactiva</p>
+                  <p class="catalog-item__status catalog-item__status--unavailable">Activo · No disponible: {{ product.categoryId ? 'categoría inactiva' : 'asigná una categoría' }}</p>
                 }
 
                 <div class="catalog-item__actions">
@@ -62,6 +66,7 @@
                   } @else {
                     <button type="button" class="button" [disabled]="store.saving()" (click)="activate(product.id)">Activar</button>
                   }
+                  <button type="button" class="button button--danger" [disabled]="store.saving()" (click)="askToDelete(product.id)">Eliminar</button>
                 </div>
 
                 @if (confirmingDeactivateId() === product.id) {
@@ -70,6 +75,15 @@
                     <div>
                       <button type="button" class="button button--danger" [disabled]="store.saving()" (click)="confirmDeactivate(product.id)">Confirmar</button>
                       <button type="button" class="button button--secondary" [disabled]="store.saving()" (click)="cancelDeactivate()">Cancelar</button>
+                    </div>
+                  </div>
+                }
+                @if (confirmingDeleteId() === product.id) {
+                  <div class="inline-confirmation">
+                    <p>¿Eliminar {{ product.name }} del catálogo y de Stock? Se conservará el historial. Antes, el stock debe estar en cero y no debe haber pedidos en curso.</p>
+                    <div>
+                      <button type="button" class="button button--danger" [disabled]="store.saving()" (click)="confirmDelete(product.id)">Confirmar eliminación</button>
+                      <button type="button" class="button button--secondary" [disabled]="store.saving()" (click)="cancelDelete()">Cancelar</button>
                     </div>
                   </div>
                 }
@@ -117,6 +131,23 @@
           <input name="cost" type="number" required min="0" step="0.01" [disabled]="store.saving()" [ngModel]="cost()" (ngModelChange)="cost.set($event)" />
           @if (cost() !== null && (cost() ?? 0) < 0) { <small>El costo mínimo es 0.</small> }
         </label>
+
+        <label>
+          <span>Control de stock</span>
+          <select name="stockMode" [disabled]="store.saving()" [ngModel]="stockMode()" (ngModelChange)="stockMode.set($event)">
+            <option value="Stocked">Con stock</option>
+            <option value="MadeToOrder">Preparado al momento</option>
+          </select>
+          <small>Los preparados al momento no tienen existencias propias. Cargá su receta en Stock → Recetas para poder venderlos.</small>
+        </label>
+
+        @if (stockMode() === 'Stocked') {
+          <label>
+            <span>Stock mínimo por sucursal (unidades)</span>
+            <input name="minimumQuantity" type="number" required min="0" max="999999999" step="1" [disabled]="store.saving()" [ngModel]="minimumQuantity()" (ngModelChange)="minimumQuantity.set($event)" />
+            <small>Ingresá 0 si no querés alertas. Este producto tendrá existencias en cada sucursal.</small>
+          </label>
+        }
 
         <label>
           <span>Categoría</span>

@@ -19,6 +19,7 @@ public class OrderTests
         Assert.Null(order.ReadyAtUtc);
         Assert.Null(order.DeliveredAtUtc);
         Assert.Null(order.CancelledAtUtc);
+        Assert.Null(order.VoidedAtUtc);
         Assert.Equal("Sin azucar", order.Notes);
         Assert.True(order.IsActive);
         Assert.Single(order.Items);
@@ -56,6 +57,7 @@ public class OrderTests
     [InlineData(OrderStatus.Ready, true)]
     [InlineData(OrderStatus.Delivered, false)]
     [InlineData(OrderStatus.Cancelled, false)]
+    [InlineData(OrderStatus.Voided, false)]
     public void IsActive_ShouldReflectStatus(OrderStatus status, bool expected)
     {
         var order = CreateOrderInStatus(status);
@@ -160,6 +162,38 @@ public class OrderTests
 
         Assert.Throws<InvalidOrderStateTransitionException>(action);
         Assert.Equal(previousCancelledAtUtc, order.CancelledAtUtc);
+    }
+
+    [Fact]
+    public void Void_DeliveredOrder_ChangesToTerminalVoidedState()
+    {
+        var order = CreateDeliveredOrder();
+        var voidedAtUtc = new DateTime(2026, 7, 21, 12, 15, 0, DateTimeKind.Utc);
+
+        order.Void(voidedAtUtc);
+
+        Assert.Equal(OrderStatus.Voided, order.Status);
+        Assert.Equal(voidedAtUtc, order.VoidedAtUtc);
+        Assert.False(order.IsActive);
+        Assert.Throws<InvalidOrderStateTransitionException>(() => order.Void(voidedAtUtc.AddMinutes(1)));
+        Assert.Throws<InvalidOrderStateTransitionException>(() => order.Cancel(voidedAtUtc.AddMinutes(1)));
+        Assert.Throws<InvalidOrderStateTransitionException>(() => order.StartPreparing(voidedAtUtc.AddMinutes(1)));
+        Assert.Throws<InvalidOrderStateTransitionException>(() => order.MarkReady(voidedAtUtc.AddMinutes(1)));
+        Assert.Throws<InvalidOrderStateTransitionException>(() => order.Deliver(voidedAtUtc.AddMinutes(1)));
+    }
+
+    [Theory]
+    [InlineData(OrderStatus.Pending)]
+    [InlineData(OrderStatus.Preparing)]
+    [InlineData(OrderStatus.Ready)]
+    [InlineData(OrderStatus.Cancelled)]
+    public void Void_NonDeliveredOrder_IsRejected(OrderStatus status)
+    {
+        var order = CreateOrderInStatus(status);
+
+        Assert.Throws<InvalidOrderStateTransitionException>(() =>
+            order.Void(new DateTime(2026, 7, 21, 12, 15, 0, DateTimeKind.Utc)));
+        Assert.Null(order.VoidedAtUtc);
     }
 
     [Fact]
@@ -313,6 +347,13 @@ public class OrderTests
         if (targetStatus == OrderStatus.Delivered)
         {
             order.Deliver(new DateTime(2026, 7, 21, 12, 10, 0, DateTimeKind.Utc));
+            return order;
+        }
+
+        if (targetStatus == OrderStatus.Voided)
+        {
+            order.Deliver(new DateTime(2026, 7, 21, 12, 10, 0, DateTimeKind.Utc));
+            order.Void(new DateTime(2026, 7, 21, 12, 11, 0, DateTimeKind.Utc));
             return order;
         }
 

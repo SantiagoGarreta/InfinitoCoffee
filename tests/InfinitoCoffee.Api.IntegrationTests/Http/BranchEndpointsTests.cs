@@ -13,6 +13,34 @@ namespace InfinitoCoffee.Api.IntegrationTests.Http;
 public sealed class BranchEndpointsTests
 {
     [Fact]
+    public async Task OrderHistoryAndVoidAreLimitedToSelectedBranch()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
+        var otherOrderId = await api.ExecuteDbContextAsync(async db =>
+        {
+            var order = new InfinitoCoffee.Domain.Orders.Order(
+                "1",
+                DateTime.UtcNow,
+                [new InfinitoCoffee.Domain.Orders.OrderItem(Guid.NewGuid(), "Scone", 50m, 10m, 1)],
+                branchId: 2);
+            order.StartPreparing(DateTime.UtcNow);
+            order.MarkReady(DateTime.UtcNow);
+            order.Deliver(DateTime.UtcNow);
+            db.Orders.Add(order);
+            await db.SaveChangesAsync();
+            return order.Id;
+        });
+
+        Assert.Empty((await Read<OrderHistoryPageResponse>(await api.Client.GetAsync("/api/orders/history"))).Items);
+        Assert.Equal(HttpStatusCode.NotFound, (await api.PostWithCsrfAsync($"/api/orders/{otherOrderId}/void")).StatusCode);
+
+        Select(api, 2);
+        Assert.Equal(otherOrderId, Assert.Single((await Read<OrderHistoryPageResponse>(
+            await api.Client.GetAsync("/api/orders/history"))).Items).Id);
+    }
+
+    [Fact]
     public async Task BothBranchesConsumeSharedIngredientsButOwnFinishedProductsAndSales()
     {
         await using var api = new ApiTestContext();

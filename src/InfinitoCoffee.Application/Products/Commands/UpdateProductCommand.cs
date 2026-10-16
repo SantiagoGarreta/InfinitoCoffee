@@ -1,3 +1,5 @@
+using InfinitoCoffee.Domain.Products;
+
 namespace InfinitoCoffee.Application.Products.Commands;
 
 public sealed record UpdateProductCommand(
@@ -6,4 +8,6 @@ public sealed record UpdateProductCommand(
     string Name,
     decimal Price,
     decimal Cost,
-    string? Description);
+    string? Description,
+    decimal? MinimumQuantity = null,
+    ProductStockMode? StockMode = null);

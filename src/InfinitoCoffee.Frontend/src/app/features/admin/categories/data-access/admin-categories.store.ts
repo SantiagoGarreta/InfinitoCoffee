@@ -66,6 +66,22 @@ export class AdminCategoriesStore {
     );
   }
 
+  async delete(categoryId: string): Promise<boolean> {
+    this.saving.set(true);
+    this.clearFeedback();
+    try {
+      await this.categoriesApiService.deleteProductCategory(categoryId);
+      this.categories.update((categories) => categories.filter((category) => category.id !== categoryId));
+      this.successMessage.set('Categoría eliminada. Sus productos quedaron sin categoría y deben reasignarse desde Productos.');
+      return true;
+    } catch (error: unknown) {
+      this.mutationError.set(toUserMessage(error, 'No fue posible eliminar la categoría.'));
+      return false;
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
   clearFeedback(): void {
     this.mutationError.set(null);
     this.successMessage.set(null);

@@ -22,13 +22,13 @@ internal sealed class FakeProductRepository : IProductRepository
     public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         LastGetByIdToken = cancellationToken;
-        return Task.FromResult(_products.SingleOrDefault(product => product.Id == id));
+        return Task.FromResult(_products.SingleOrDefault(product => product.Id == id && !product.IsDeleted));
     }
 
     public Task<IReadOnlyCollection<Product>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         LastGetAllToken = cancellationToken;
-        return Task.FromResult<IReadOnlyCollection<Product>>(_products.ToArray());
+        return Task.FromResult<IReadOnlyCollection<Product>>(_products.Where(product => !product.IsDeleted).ToArray());
     }
 
     public Task AddAsync(Product product, CancellationToken cancellationToken = default)

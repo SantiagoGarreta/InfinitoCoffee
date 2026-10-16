@@ -432,6 +432,7 @@ public class OrderServiceTests
         Assert.Equal(0, result.OperationalSnapshot.ReadyOrdersCount);
         Assert.Equal(2, result.OperationalSnapshot.DeliveredOrdersCount);
         Assert.Equal(1, result.OperationalSnapshot.CancelledOrdersCount);
+        Assert.Equal(0, result.OperationalSnapshot.VoidedOrdersCount);
         Assert.Collection(
             result.TopSellingProducts,
             first =>
@@ -445,6 +446,70 @@ public class OrderServiceTests
         Assert.Equal(new DateOnly(2026, 8, 20), latestHistoryPoint.StartDate);
         Assert.Equal(15m, latestHistoryPoint.TotalRevenue);
         Assert.Equal(1, latestHistoryPoint.DeliveredOrdersCount);
+    }
+
+    [Fact]
+    public async Task GetOrderResultsAsync_VoidedOrderDoesNotContributeSales()
+    {
+        var now = new DateTime(2026, 8, 20, 12, 0, 0, DateTimeKind.Utc);
+        var delivered = CreateDeliveredOrder(
+            "1",
+            now.AddHours(-1),
+            new OrderItem(Guid.NewGuid(), "Latte", 100m, 40m, 2));
+        delivered.Void(now);
+        var repository = new FakeOrderRepository();
+        repository.Seed(delivered, CreateCancelledOrder("2", now.AddMinutes(-30)));
+        var service = CreateOrderService(repository, new FakeProductRepository(), new FakeDateTimeProvider { UtcNow = now });
+
+        var result = await service.GetOrderResultsAsync();
+
+        Assert.Equal(0m, result.CurrentPeriod.TotalRevenue);
+        Assert.Equal(0m, result.CurrentPeriod.TotalCost);
+        Assert.Equal(0m, result.CurrentPeriod.TotalProfit);
+        Assert.Equal(0, result.CurrentPeriod.DeliveredItemsCount);
+        Assert.Equal(0, result.CurrentPeriod.DeliveredOrdersCount);
+        Assert.Empty(result.TopSellingProducts);
+        Assert.Equal(1, result.CurrentPeriod.CancelledOrdersCount);
+        Assert.Equal(2, result.OperationalSnapshot.TotalOrdersCount);
+        Assert.Equal(0, result.OperationalSnapshot.DeliveredOrdersCount);
+        Assert.Equal(1, result.OperationalSnapshot.CancelledOrdersCount);
+        Assert.Equal(1, result.OperationalSnapshot.VoidedOrdersCount);
+    }
+
+    [Fact]
+    public async Task GetOrderHistoryAsync_UsesStableCursorAndReturnsNewestFirst()
+    {
+        var repository = new FakeOrderRepository();
+        var start = new DateTime(2026, 8, 20, 12, 0, 0, DateTimeKind.Utc);
+        repository.Seed(Enumerable.Range(1, 22)
+            .Select(index => CreatePendingOrder(index.ToString(), start.AddMinutes(index)))
+            .ToArray());
+        var service = CreateOrderService(repository, new FakeProductRepository());
+
+        var first = await service.GetOrderHistoryAsync(new GetOrderHistoryQuery());
+        var second = await service.GetOrderHistoryAsync(new GetOrderHistoryQuery(20, first.NextCursor));
+
+        Assert.Equal(20, first.Items.Count);
+        Assert.Equal("22", first.Items.First().OrderNumber);
+        Assert.NotNull(first.NextCursor);
+        Assert.Equal(2, second.Items.Count);
+        Assert.Equal("2", second.Items.First().OrderNumber);
+        Assert.Null(second.NextCursor);
+    }
+
+    [Fact]
+    public async Task VoidOrderAsync_DelegatesAtomicVoidAndMapsResult()
+    {
+        var now = new DateTime(2026, 8, 20, 12, 0, 0, DateTimeKind.Utc);
+        var order = CreateDeliveredOrder("1", now.AddHours(-1));
+        var repository = new FakeOrderRepository();
+        repository.Seed(order);
+        var service = CreateOrderService(repository, new FakeProductRepository(), new FakeDateTimeProvider { UtcNow = now });
+
+        var result = await service.VoidOrderAsync(new VoidOrderCommand(order.Id, Guid.NewGuid()));
+
+        Assert.Equal(OrderStatus.Voided, result.Status);
+        Assert.Equal(now, result.VoidedAtUtc);
     }
 
     [Fact]
@@ -700,7 +765,7 @@ public class OrderServiceTests
         IReadOnlyCollection<Product> products)
     {
         var repository = new FakeProductCategoryRepository();
-        foreach (var categoryId in products.Select(product => product.CategoryId).Distinct())
+        foreach (var categoryId in products.Select(product => product.CategoryId).OfType<Guid>().Distinct())
         {
             repository.SeedForId(categoryId, new ProductCategory("Active category"));
         }

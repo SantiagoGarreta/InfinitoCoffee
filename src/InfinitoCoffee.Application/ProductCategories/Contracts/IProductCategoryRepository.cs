@@ -10,5 +10,7 @@ public interface IProductCategoryRepository
 
     Task AddAsync(ProductCategory category, CancellationToken cancellationToken = default);
 
+    void Remove(ProductCategory category);
+
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

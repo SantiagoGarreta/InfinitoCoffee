@@ -23,6 +23,7 @@ class FakeCategoriesApiService {
   deactivateProductCategory(id: string): Promise<ProductCategory> {
     return this.result({ ...this.categories.find((category) => category.id === id)!, isActive: false });
   }
+  deleteProductCategory(): Promise<void> { return this.result(undefined); }
   private result<T>(value: T): Promise<T> { return this.error ? Promise.reject(this.error) : Promise.resolve(value); }
 }
 
@@ -60,5 +61,12 @@ describe('AdminCategoriesStore', () => {
     expect(store.loadError()).not.toBeNull();
     await store.create({ name: 'Fríos' });
     expect(store.mutationError()).not.toBeNull();
+  });
+
+  it('removes a deleted category from the list', async () => {
+    const store = TestBed.inject(AdminCategoriesStore);
+    await store.load();
+    expect(await store.delete('c-1')).toBe(true);
+    expect(store.categories().some((category) => category.id === 'c-1')).toBe(false);
   });
 });

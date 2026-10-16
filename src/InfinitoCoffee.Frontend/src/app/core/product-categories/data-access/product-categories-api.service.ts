@@ -34,4 +34,8 @@ export class ProductCategoriesApiService {
   deactivateProductCategory(categoryId: string): Promise<ProductCategory> {
     return firstValueFrom(this.httpClient.post<ProductCategory>(`${this.categoriesBaseUrl}/${categoryId}/deactivate`, null));
   }
+
+  async deleteProductCategory(categoryId: string): Promise<void> {
+    await firstValueFrom(this.httpClient.delete<void>(`${this.categoriesBaseUrl}/${categoryId}`));
+  }
 }

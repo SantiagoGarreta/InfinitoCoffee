@@ -20,10 +20,13 @@ export class AdminProductsPageComponent implements OnInit {
   readonly store = inject(AdminProductsStore);
   readonly editingProductId = signal<string | null>(null);
   readonly confirmingDeactivateId = signal<string | null>(null);
+  readonly confirmingDeleteId = signal<string | null>(null);
   readonly name = signal('');
   readonly description = signal('');
   readonly price = signal<number | null>(null);
   readonly cost = signal<number | null>(null);
+  readonly minimumQuantity = signal<number | null>(null);
+  readonly stockMode = signal<'Stocked' | 'MadeToOrder'>('Stocked');
   readonly categoryId = signal('');
 
   readonly formCategories = computed(() => {
@@ -47,6 +50,7 @@ export class AdminProductsPageComponent implements OnInit {
     const description = this.description().trim();
     const price = this.price();
     const cost = this.cost();
+    const minimumQuantity = this.minimumQuantity();
     return trimmedName.length > 0
       && trimmedName.length <= 150
       && description.length <= 1000
@@ -54,6 +58,8 @@ export class AdminProductsPageComponent implements OnInit {
       && price >= 0.01
       && cost !== null
       && cost >= 0
+      && (this.stockMode() === 'MadeToOrder' || (minimumQuantity !== null && Number.isInteger(minimumQuantity)
+        && minimumQuantity >= 0 && minimumQuantity <= 999999999))
       && this.categoryId().length > 0
       && !this.store.saving();
   });
@@ -83,12 +89,15 @@ export class AdminProductsPageComponent implements OnInit {
   startEdit(product: Product): void {
     this.store.clearFeedback();
     this.confirmingDeactivateId.set(null);
+    this.confirmingDeleteId.set(null);
     this.editingProductId.set(product.id);
     this.name.set(product.name);
     this.description.set(product.description ?? '');
     this.price.set(product.price);
     this.cost.set(product.cost);
-    this.categoryId.set(product.categoryId);
+    this.minimumQuantity.set(product.minimumQuantity ?? 0);
+    this.stockMode.set(product.stockMode ?? 'Stocked');
+    this.categoryId.set(product.categoryId ?? '');
   }
 
   async submit(): Promise<void> {
@@ -102,6 +111,8 @@ export class AdminProductsPageComponent implements OnInit {
       description: normalizeOptionalString(this.description()),
       price: this.price()!,
       cost: this.cost()!,
+      minimumQuantity: this.stockMode() === 'Stocked' ? this.minimumQuantity() : 0,
+      stockMode: this.stockMode(),
       categoryId: this.categoryId(),
     };
     const result = productId
@@ -120,6 +131,7 @@ export class AdminProductsPageComponent implements OnInit {
 
   askToDeactivate(productId: string): void {
     this.store.clearFeedback();
+    this.confirmingDeleteId.set(null);
     this.confirmingDeactivateId.set(productId);
   }
 
@@ -134,13 +146,31 @@ export class AdminProductsPageComponent implements OnInit {
     }
   }
 
+  askToDelete(productId: string): void {
+    this.store.clearFeedback();
+    this.confirmingDeactivateId.set(null);
+    this.confirmingDeleteId.set(productId);
+  }
+
+  cancelDelete(): void { this.confirmingDeleteId.set(null); }
+
+  async confirmDelete(productId: string): Promise<void> {
+    if (await this.store.delete(productId)) {
+      if (this.editingProductId() === productId) this.resetForm();
+      this.confirmingDeleteId.set(null);
+    }
+  }
+
   private resetForm(): void {
     this.editingProductId.set(null);
     this.confirmingDeactivateId.set(null);
+    this.confirmingDeleteId.set(null);
     this.name.set('');
     this.description.set('');
     this.price.set(null);
     this.cost.set(null);
+    this.minimumQuantity.set(null);
+    this.stockMode.set('Stocked');
     this.categoryId.set(this.store.activeCategories()[0]?.id ?? '');
   }
 }

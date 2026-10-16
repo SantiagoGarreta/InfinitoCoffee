@@ -28,6 +28,7 @@ export interface OrderOperationalSnapshot {
   readyOrdersCount: number;
   deliveredOrdersCount: number;
   cancelledOrdersCount: number;
+  voidedOrdersCount: number;
 }
 
 export interface OrderHistoryPoint extends OrderPeriodSummary {}

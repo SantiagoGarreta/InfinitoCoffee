@@ -115,7 +115,7 @@ public class RepositoryPersistenceTests : IDisposable
     }
 
     [Fact]
-    public async Task ProductCategory_DeleteWithProducts_UsesRestrictBehavior()
+    public async Task ProductCategory_DeleteWithProducts_LeavesProductsWithoutCategory()
     {
         Guid categoryId;
 
@@ -133,7 +133,10 @@ public class RepositoryPersistenceTests : IDisposable
 
         deletionContext.ProductCategories.Remove(categoryToDelete);
 
-        await Assert.ThrowsAsync<DbUpdateException>(() => deletionContext.SaveChangesAsync());
+        await deletionContext.SaveChangesAsync();
+
+        await using var verificationContext = _dbContextFactory.CreateDbContext();
+        Assert.Null((await verificationContext.Products.SingleAsync()).CategoryId);
     }
 
     [Fact]

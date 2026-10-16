@@ -23,6 +23,7 @@ class FakeAdminCategoriesStore {
   update(): Promise<ProductCategory | null> { return Promise.resolve(this.categories()[0]!); }
   activate(): Promise<ProductCategory | null> { return Promise.resolve(this.categories()[1]!); }
   deactivate(): Promise<ProductCategory | null> { return Promise.resolve(this.categories()[0]!); }
+  delete(): Promise<boolean> { return Promise.resolve(true); }
 }
 
 describe('AdminCategoriesPageComponent', () => {
@@ -33,7 +34,7 @@ describe('AdminCategoriesPageComponent', () => {
     }).compileComponents();
   });
 
-  it('lists active and inactive categories without delete', async () => {
+  it('lists active and inactive categories with delete', async () => {
     const fixture = TestBed.createComponent(AdminCategoriesPageComponent);
     fixture.detectChanges();
     await fixture.whenStable();
@@ -43,7 +44,7 @@ describe('AdminCategoriesPageComponent', () => {
     expect(text).toContain('Activa');
     expect(text).toContain('Tés');
     expect(text).toContain('Inactiva');
-    expect(text).not.toContain('Eliminar');
+    expect(text).toContain('Eliminar');
   });
 
   it('shows the approved inline explanation before deactivation', async () => {

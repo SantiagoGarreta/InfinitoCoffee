@@ -3,13 +3,14 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { Product } from '../../../../core/products/models/product.model';
+import { SaveProductRequest } from '../../../../core/products/data-access/products-api.service';
 import { AdminProductsStore } from '../data-access/admin-products.store';
 import { AdminProductsPageComponent } from './admin-products-page.component';
 
 class FakeAdminProductsStore {
   readonly products = signal<Product[]>([
-    { id: 'p-1', name: 'Espresso', description: 'Corto', price: 8, cost: 3, categoryId: 'c-1', isActive: true },
-    { id: 'p-2', name: 'Latte', description: null, price: 10, cost: 4, categoryId: 'c-2', isActive: true },
+    { id: 'p-1', name: 'Espresso', description: 'Corto', price: 8, cost: 3, categoryId: 'c-1', isActive: true, minimumQuantity: 3 },
+    { id: 'p-2', name: 'Latte', description: null, price: 10, cost: 4, categoryId: 'c-2', isActive: true, minimumQuantity: null },
     { id: 'p-3', name: 'Mocha', description: null, price: 12, cost: 5, categoryId: 'c-1', isActive: false },
   ]);
   readonly categories = signal([
@@ -25,13 +26,16 @@ class FakeAdminProductsStore {
   readonly mutationError = signal<string | null>(null);
   readonly successMessage = signal<string | null>('Catálogo listo.');
   loadCalls = 0;
+  createRequest: SaveProductRequest | null = null;
+  updateRequest: SaveProductRequest | null = null;
   load(): Promise<void> { this.loadCalls++; return Promise.resolve(); }
   clearFeedback(): void { this.mutationError.set(null); this.successMessage.set(null); }
   categoryFor(id: string) { return this.categories().find((category) => category.id === id); }
-  create(): Promise<Product | null> { return Promise.resolve(this.products()[0]!); }
-  update(): Promise<Product | null> { return Promise.resolve(this.products()[0]!); }
+  create(request: SaveProductRequest): Promise<Product | null> { this.createRequest = request; return Promise.resolve(this.products()[0]!); }
+  update(_id: string, request: SaveProductRequest): Promise<Product | null> { this.updateRequest = request; return Promise.resolve(this.products()[0]!); }
   activate(): Promise<Product | null> { return Promise.resolve(this.products()[0]!); }
   deactivate(): Promise<Product | null> { return Promise.resolve(this.products()[0]!); }
+  delete(): Promise<boolean> { return Promise.resolve(true); }
 }
 
 describe('AdminProductsPageComponent', () => {
@@ -42,7 +46,7 @@ describe('AdminProductsPageComponent', () => {
     }).compileComponents();
   });
 
-  it('shows active, unavailable and inactive states without a delete action', async () => {
+  it('shows active, unavailable and inactive states with a delete action', async () => {
     const fixture = TestBed.createComponent(AdminProductsPageComponent);
     fixture.detectChanges();
     await fixture.whenStable();
@@ -51,7 +55,7 @@ describe('AdminProductsPageComponent', () => {
     expect(text).toContain('Disponible en Caja');
     expect(text).toContain('No disponible: categoría inactiva');
     expect(text).toContain('Inactivo');
-    expect(text).not.toContain('Eliminar');
+    expect(text).toContain('Eliminar');
   });
 
   it('keeps the current inactive category while excluding other inactive destinations', async () => {
@@ -86,5 +90,52 @@ describe('AdminProductsPageComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Necesitás una categoría activa');
     expect((fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('requires a whole stock minimum and sends it when creating and editing', async () => {
+    const fixture = TestBed.createComponent(AdminProductsPageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const component = fixture.componentInstance;
+    const store = TestBed.inject(AdminProductsStore) as unknown as FakeAdminProductsStore;
+    component.startCreate();
+    expect(component.minimumQuantity()).toBeNull();
+    component.name.set('Scones');
+    component.price.set(150);
+    component.cost.set(60);
+    component.minimumQuantity.set(2.5);
+    expect(component.canSubmit()).toBe(false);
+    component.minimumQuantity.set(4);
+    await component.submit();
+    expect(store.createRequest?.minimumQuantity).toBe(4);
+
+    component.startEdit(store.products()[0]!);
+    expect(component.minimumQuantity()).toBe(3);
+    component.minimumQuantity.set(8);
+    await component.submit();
+    expect(store.updateRequest?.minimumQuantity).toBe(8);
+
+    component.startEdit(store.products()[1]!);
+    expect(component.minimumQuantity()).toBe(0);
+    expect(component.canSubmit()).toBe(true);
+  });
+
+  it('creates a prepared product without asking for finished stock', async () => {
+    const fixture = TestBed.createComponent(AdminProductsPageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const component = fixture.componentInstance;
+    const store = TestBed.inject(AdminProductsStore) as unknown as FakeAdminProductsStore;
+    component.startCreate();
+    component.name.set('Capuchino');
+    component.price.set(150);
+    component.cost.set(50);
+    component.stockMode.set('MadeToOrder');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('input[name="minimumQuantity"]')).toBeNull();
+    expect(component.canSubmit()).toBe(true);
+    await component.submit();
+    expect(store.createRequest?.stockMode).toBe('MadeToOrder');
+    expect(store.createRequest?.minimumQuantity).toBe(0);
   });
 });

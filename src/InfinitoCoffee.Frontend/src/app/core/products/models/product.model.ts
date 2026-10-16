@@ -4,6 +4,8 @@ export interface Product {
   description: string | null;
   price: number;
   cost: number;
-  categoryId: string;
+  categoryId: string | null;
   isActive: boolean;
+  minimumQuantity?: number | null;
+  stockMode?: 'Stocked' | 'MadeToOrder';
 }

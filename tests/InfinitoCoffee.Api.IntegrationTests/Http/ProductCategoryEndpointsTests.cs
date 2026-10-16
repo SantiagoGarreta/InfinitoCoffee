@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using InfinitoCoffee.Api.Contracts.ProductCategories;
+using InfinitoCoffee.Api.Contracts.Products;
 using InfinitoCoffee.Domain.Users;
+using Microsoft.EntityFrameworkCore;
 
 namespace InfinitoCoffee.Api.IntegrationTests.Http;
 
@@ -79,5 +81,40 @@ public sealed class ProductCategoryEndpointsTests
 
         Assert.Equal(HttpStatusCode.OK, activateResponse.StatusCode);
         Assert.Equal(HttpStatusCode.OK, deactivateResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteCategory_LeavesProductsUnassignedUntilEachIsReassigned()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Administrator);
+        var ids = await api.ExecuteDbContextAsync(async db =>
+        {
+            var oldCategory = await TestDataSeeder.AddCategoryAsync(db, "Antigua");
+            var newCategory = await TestDataSeeder.AddCategoryAsync(db, "Nueva");
+            var product = await TestDataSeeder.AddProductAsync(db, oldCategory.Id, "Latte");
+            return (OldCategoryId: oldCategory.Id, NewCategoryId: newCategory.Id, ProductId: product.Id);
+        });
+
+        var deleted = await api.SendWithCsrfAsync(new HttpRequestMessage(HttpMethod.Delete,
+            $"/api/product-categories/{ids.OldCategoryId}"));
+
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await api.Client.GetAsync($"/api/product-categories/{ids.OldCategoryId}")).StatusCode);
+        var productAfterDelete = await api.ReadRequiredAsync<ProductResponse>(
+            await api.Client.GetAsync($"/api/products/{ids.ProductId}"));
+        Assert.Null(productAfterDelete.CategoryId);
+        Assert.Null(await api.ExecuteDbContextAsync(async db =>
+            (await db.Products.AsNoTracking().SingleAsync(x => x.Id == ids.ProductId)).CategoryId));
+
+        var reassigned = await api.PutAsJsonWithCsrfAsync($"/api/products/{ids.ProductId}", new UpdateProductRequest
+        {
+            Name = "Latte",
+            Price = 100m,
+            Cost = 30m,
+            CategoryId = ids.NewCategoryId
+        });
+        Assert.Equal(HttpStatusCode.OK, reassigned.StatusCode);
+        Assert.Equal(ids.NewCategoryId, (await api.ReadRequiredAsync<ProductResponse>(reassigned)).CategoryId);
     }
 }
