@@ -3,7 +3,8 @@ export type OrderStatus =
   | 'Preparing'
   | 'Ready'
   | 'Delivered'
-  | 'Cancelled';
+  | 'Cancelled'
+  | 'Voided';
 
 export interface OrderItem {
   id: string;
@@ -34,6 +35,7 @@ export interface Order {
   readyAtUtc: string | null;
   deliveredAtUtc: string | null;
   cancelledAtUtc: string | null;
+  voidedAtUtc?: string | null;
   notes: string | null;
   total: number;
   items: OrderItem[];
@@ -48,6 +50,7 @@ export interface OrderApiDto {
   readyAtUtc: string | null;
   deliveredAtUtc: string | null;
   cancelledAtUtc: string | null;
+  voidedAtUtc?: string | null;
   notes: string | null;
   total: number;
   items: OrderApiItemDto[];
@@ -72,6 +75,7 @@ export interface OrderRealtimeDto {
   readyAtUtc: string | null;
   deliveredAtUtc: string | null;
   cancelledAtUtc: string | null;
+  voidedAtUtc?: string | null;
   notes: string | null;
   total: number;
   items: OrderRealtimeItemDto[];
@@ -90,4 +94,9 @@ export interface CreateOrderItemRequest {
 export interface CreateOrderRequest {
   notes: string | null;
   items: CreateOrderItemRequest[];
+}
+
+export interface OrderHistoryPage {
+  items: OrderApiDto[];
+  nextCursor: string | null;
 }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using InfinitoCoffee.Application.Common.Exceptions;
 using InfinitoCoffee.Application.Common.Time;
 using InfinitoCoffee.Application.Orders.Commands;
@@ -71,8 +72,13 @@ public sealed class OrderService
                 throw new ConflictException($"The product '{product.Name}' is inactive.");
             }
 
-            var category = await _productCategoryRepository.GetByIdAsync(product.CategoryId, cancellationToken)
-                ?? throw new NotFoundException("ProductCategory", product.CategoryId);
+            if (product.CategoryId is null)
+            {
+                throw new ConflictException($"The product '{product.Name}' needs a category before it can be sold.");
+            }
+
+            var category = await _productCategoryRepository.GetByIdAsync(product.CategoryId.Value, cancellationToken)
+                ?? throw new NotFoundException("ProductCategory", product.CategoryId.Value);
 
             if (!category.IsActive)
             {
@@ -152,12 +158,38 @@ public sealed class OrderService
             .ToArray();
     }
 
+    public async Task<OrderHistoryPageDto> GetOrderHistoryAsync(
+        GetOrderHistoryQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        if (query.Take is < 1 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(query.Take), "Take must be between 1 and 100.");
+        }
+
+        var (beforeCreatedAtUtc, beforeId) = DecodeHistoryCursor(query.Cursor);
+        var orders = await _orderRepository.GetHistoryAsync(
+            query.Take + 1,
+            beforeCreatedAtUtc,
+            beforeId,
+            cancellationToken);
+        var page = orders.Take(query.Take).ToArray();
+        var nextCursor = orders.Count > query.Take
+            ? EncodeHistoryCursor(page[^1])
+            : null;
+
+        return new OrderHistoryPageDto(page.Select(MapOrder).ToArray(), nextCursor);
+    }
+
     public async Task<OrderResultsDto> GetOrderResultsAsync(
         OrderResultsGroupBy groupBy = OrderResultsGroupBy.Daily,
         CancellationToken cancellationToken = default)
     {
         var orders = (await _orderRepository.GetAllAsync(cancellationToken)).Where(x => x.BranchId == _branch.BranchId).ToArray();
         var soldItems = orders
+            .Where(order => order.Status is not (OrderStatus.Voided or OrderStatus.Cancelled))
             .SelectMany(order => order.Items.Select(item => new
             {
                 Item = item,
@@ -194,7 +226,8 @@ public sealed class OrderService
             orders.Count(order => order.Status == OrderStatus.Preparing),
             orders.Count(order => order.Status == OrderStatus.Ready),
             orders.Count(order => order.Status == OrderStatus.Delivered),
-            orders.Count(order => order.Status == OrderStatus.Cancelled));
+            orders.Count(order => order.Status == OrderStatus.Cancelled),
+            orders.Count(order => order.Status == OrderStatus.Voided));
 
         return new OrderResultsDto(
             groupBy,
@@ -285,6 +318,27 @@ public sealed class OrderService
             cancellationToken);
     }
 
+    public async Task<OrderDto> VoidOrderAsync(
+        VoidOrderCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        if (command.ActorId == Guid.Empty)
+        {
+            throw new ArgumentException("ActorId cannot be empty.", nameof(command.ActorId));
+        }
+
+        var order = await _orderRepository.VoidSaleAsync(
+            command.OrderId,
+            command.ActorId,
+            _dateTimeProvider.UtcNow,
+            cancellationToken)
+            ?? throw new NotFoundException("Order", command.OrderId);
+
+        return MapOrder(order);
+    }
+
     private async Task<OrderDto> ApplyStatusTransitionAsync(
         Guid orderId,
         Action<Order> transition,
@@ -320,6 +374,7 @@ public sealed class OrderService
             order.ReadyAtUtc,
             order.DeliveredAtUtc,
             order.CancelledAtUtc,
+            order.VoidedAtUtc,
             order.Notes,
             order.Total,
             order.Items.Select(MapOrderItem).ToArray(),
@@ -448,6 +503,7 @@ public sealed class OrderService
             .ToArray();
 
         var soldItemsInPeriod = orders
+            .Where(order => order.Status is not (OrderStatus.Voided or OrderStatus.Cancelled))
             .SelectMany(order => order.Items.Select(item => new
             {
                 OrderId = order.Id,
@@ -550,5 +606,42 @@ public sealed class OrderService
             DayOfWeek.Sunday => 6,
             _ => throw new ArgumentOutOfRangeException(nameof(dayOfWeek), dayOfWeek, "Unsupported day of week.")
         };
+    }
+
+    private static string EncodeHistoryCursor(Order order)
+    {
+        var value = $"{order.CreatedAtUtc.ToString("O", CultureInfo.InvariantCulture)}|{order.Id:N}";
+        return Convert.ToBase64String(Encoding.UTF8.GetBytes(value));
+    }
+
+    private static (DateTime? CreatedAtUtc, Guid? Id) DecodeHistoryCursor(string? cursor)
+    {
+        if (string.IsNullOrWhiteSpace(cursor))
+        {
+            return (null, null);
+        }
+
+        try
+        {
+            var value = Encoding.UTF8.GetString(Convert.FromBase64String(cursor));
+            var separator = value.IndexOf('|');
+            if (separator <= 0
+                || !DateTime.TryParseExact(
+                    value[..separator],
+                    "O",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.RoundtripKind,
+                    out var createdAtUtc)
+                || !Guid.TryParseExact(value[(separator + 1)..], "N", out var id))
+            {
+                throw new FormatException();
+            }
+
+            return (DateTime.SpecifyKind(createdAtUtc, DateTimeKind.Utc), id);
+        }
+        catch (FormatException)
+        {
+            throw new ArgumentException("The order history cursor is invalid.", nameof(cursor));
+        }
     }
 }

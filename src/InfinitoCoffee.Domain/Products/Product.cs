@@ -31,7 +31,7 @@ public class Product
 
     public Guid Id { get; private set; }
 
-    public Guid CategoryId { get; private set; }
+    public Guid? CategoryId { get; private set; }
 
     public string Name { get; private set; } = null!;
 
@@ -42,6 +42,8 @@ public class Product
     public decimal Cost { get; private set; }
 
     public bool IsActive { get; private set; }
+
+    public bool IsDeleted { get; private set; }
 
     public void Rename(string name)
     {
@@ -96,5 +98,10 @@ public class Product
     public void Activate()
     {
         IsActive = true;
+    }
+
+    public void Delete()
+    {
+        IsDeleted = true;
     }
 }

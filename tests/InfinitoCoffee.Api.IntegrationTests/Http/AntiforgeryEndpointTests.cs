@@ -160,6 +160,26 @@ public sealed class AntiforgeryEndpointTests
         Assert.Equal(OrderStatus.Pending, persistedStatus);
     }
 
+    [Fact]
+    public async Task VoidOrder_WithoutRequestToken_Returns400AndDoesNotMutateOrder()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Administrator);
+        var orderId = await api.ExecuteDbContextAsync(async dbContext =>
+            (await TestDataSeeder.AddOrderAsync(
+                dbContext,
+                "CSRF-VOID",
+                OrderStatus.Delivered,
+                DateTime.UtcNow.AddMinutes(-5))).Id);
+
+        var response = await api.Client.PostAsJsonAsync($"/api/orders/{orderId}/void", new { });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var persistedStatus = await api.ExecuteDbContextAsync(async dbContext =>
+            (await dbContext.Orders.FindAsync(orderId))!.Status);
+        Assert.Equal(OrderStatus.Delivered, persistedStatus);
+    }
+
     private static async Task AddCashierAsync(ApiTestContext api)
     {
         await api.ExecuteDbContextAsync(dbContext => TestDataSeeder.AddUserAsync(

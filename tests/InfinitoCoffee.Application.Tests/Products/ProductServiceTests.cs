@@ -19,11 +19,12 @@ public class ProductServiceTests
         var productRepository = new FakeProductRepository();
         var service = CreateProductService(productRepository, categoryRepository);
 
-        var result = await service.CreateProductAsync(new CreateProductCommand(category.Id, "Flat White", 6.50m, 2.40m, "Double shot"));
+        var result = await service.CreateProductAsync(new CreateProductCommand(category.Id, "Flat White", 6.50m, 2.40m, "Double shot", 5));
 
         Assert.Equal("Flat White", result.Name);
         Assert.Equal(category.Id, result.CategoryId);
         Assert.Equal(2.40m, result.Cost);
+        Assert.Equal(5m, result.MinimumQuantity);
         Assert.Equal(1, productRepository.SaveChangesCalls);
     }
 
@@ -229,6 +230,6 @@ public class ProductServiceTests
         FakeProductRepository productRepository,
         IProductCategoryRepository productCategoryRepository)
     {
-        return new ProductService(productRepository, productCategoryRepository);
+        return new ProductService(productRepository, productCategoryRepository, new FakeProductStockRepository());
     }
 }

@@ -9,6 +9,7 @@ public sealed record OrderResponse(
     DateTime? ReadyAtUtc,
     DateTime? DeliveredAtUtc,
     DateTime? CancelledAtUtc,
+    DateTime? VoidedAtUtc,
     string? Notes,
     decimal Total,
     IReadOnlyCollection<OrderItemResponse> Items,

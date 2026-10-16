@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using InfinitoCoffee.Api.Contracts.Common;
+using InfinitoCoffee.Domain.Products;
 
 namespace InfinitoCoffee.Api.Contracts.Products;
 
@@ -30,4 +31,9 @@ public sealed class UpdateProductRequest
 
     [NotEmptyGuid(ErrorMessage = "CategoryId is required.")]
     public Guid CategoryId { get; init; }
+
+    [Range(0, 999999999)]
+    public decimal? MinimumQuantity { get; init; }
+
+    public ProductStockMode? StockMode { get; init; }
 }

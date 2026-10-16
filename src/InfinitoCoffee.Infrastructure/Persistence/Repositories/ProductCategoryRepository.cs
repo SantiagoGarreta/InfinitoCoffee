@@ -32,6 +32,8 @@ public sealed class ProductCategoryRepository : IProductCategoryRepository
         return _dbContext.ProductCategories.AddAsync(category, cancellationToken).AsTask();
     }
 
+    public void Remove(ProductCategory category) => _dbContext.ProductCategories.Remove(category);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         return EfRepositorySaveChanges.SaveAsync(_dbContext, cancellationToken);

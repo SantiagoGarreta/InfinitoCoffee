@@ -36,7 +36,8 @@ public sealed record OrderOperationalSnapshotDto(
     int PreparingOrdersCount,
     int ReadyOrdersCount,
     int DeliveredOrdersCount,
-    int CancelledOrdersCount);
+    int CancelledOrdersCount,
+    int VoidedOrdersCount);
 
 public sealed record OrderHistoryPointDto(
     DateOnly StartDate,

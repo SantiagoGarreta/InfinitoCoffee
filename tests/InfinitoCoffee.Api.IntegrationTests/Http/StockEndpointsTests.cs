@@ -14,6 +14,121 @@ namespace InfinitoCoffee.Api.IntegrationTests.Http;
 public sealed class StockEndpointsTests
 {
     [Fact]
+    public async Task VoidSale_ReversesEverySaleMovementAgainstCurrentBalanceAndPreservesAudit()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
+        var productIds = await api.ExecuteDbContextAsync(async db =>
+        {
+            var cantina = await TestDataSeeder.AddCategoryAsync(db, "Cantina");
+            var kitchen = await TestDataSeeder.AddCategoryAsync(db, "Cocina");
+            return (
+                Gum: (await TestDataSeeder.AddProductAsync(db, cantina.Id, "Chicles", 50m, 20m)).Id,
+                Coffee: (await TestDataSeeder.AddProductAsync(db, kitchen.Id, "Espresso", 100m, 30m)).Id);
+        });
+        var gum = await CreateItem(api, new("Chicles", StockItemKind.FinishedProduct, StockUnit.Unit, productIds.Gum));
+        var coffee = await CreateItem(api, new("Espresso", StockItemKind.FinishedProduct, StockUnit.Unit, productIds.Coffee));
+        await Adjust(api, gum.Id, 5);
+        await Adjust(api, coffee.Id, 5);
+        var order = await Read<OrderResponse>(await api.PostAsJsonWithCsrfAsync("/api/orders", new CreateOrderRequest
+        {
+            Items =
+            [
+                new CreateOrderItemRequest { ProductId = productIds.Gum, Quantity = 2 },
+                new CreateOrderItemRequest { ProductId = productIds.Coffee, Quantity = 1 }
+            ]
+        }));
+        (await api.PostWithCsrfAsync($"/api/orders/{order.Id}/start-preparation")).EnsureSuccessStatusCode();
+        (await api.PostWithCsrfAsync($"/api/orders/{order.Id}/mark-ready")).EnsureSuccessStatusCode();
+        (await api.PostWithCsrfAsync($"/api/orders/{order.Id}/deliver")).EnsureSuccessStatusCode();
+        (await api.PostAsJsonWithCsrfAsync("/api/stock/adjustments",
+            new StockAdjustmentRequest(Guid.NewGuid(), "Ingreso posterior", [new(coffee.Id, 5, "unit")], false))).EnsureSuccessStatusCode();
+
+        var voided = await Read<OrderResponse>(await api.PostWithCsrfAsync($"/api/orders/{order.Id}/void"));
+
+        Assert.Equal("Voided", voided.Status);
+        Assert.Equal(5, await Quantity(api, gum.Id));
+        Assert.Equal(10, await Quantity(api, coffee.Id));
+        await api.ExecuteDbContextAsync(async db =>
+        {
+            var sales = await db.StockOperations.Include(x => x.Movements)
+                .Where(x => x.OrderId == order.Id && x.Type == "Sale").ToArrayAsync();
+            var reversals = await db.StockOperations.Include(x => x.Movements)
+                .Where(x => x.OrderId == order.Id && x.Type == "SaleReversal").ToArrayAsync();
+            Assert.Equal(2, sales.Length);
+            Assert.Equal(2, reversals.Length);
+            Assert.All(reversals, reversal => Assert.Equal(api.CurrentUserId, reversal.ActorId));
+            Assert.Equal(sales.Select(x => x.Id).Order(), reversals.Select(x => x.ReversesOperationId!.Value).Order());
+            Assert.Equal([1m, 2m], reversals.SelectMany(x => x.Movements).Select(x => x.Delta).Order().ToArray());
+        });
+        var results = await Read<OrderResultsResponse>(await api.Client.GetAsync("/api/orders/summary"));
+        Assert.Equal(0m, results.CurrentPeriod.TotalRevenue);
+        Assert.Empty(results.TopSellingProducts);
+        Assert.Equal(HttpStatusCode.Conflict, (await api.PostWithCsrfAsync($"/api/orders/{order.Id}/void")).StatusCode);
+        Assert.Equal(5, await Quantity(api, gum.Id));
+        Assert.Equal(10, await Quantity(api, coffee.Id));
+    }
+
+    [Fact]
+    public async Task VoidSale_WhenReversalFails_RollsBackOrderAndAudit()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
+        var data = await api.ExecuteDbContextAsync(async db =>
+        {
+            var category = await TestDataSeeder.AddCategoryAsync(db, "Cocina");
+            var product = await TestDataSeeder.AddProductAsync(db, category.Id, "Torta");
+            var item = new StockItem
+            {
+                Name = "Torta",
+                NormalizedName = "TORTA",
+                Kind = StockItemKind.FinishedProduct,
+                Unit = StockUnit.Unit,
+                ProductId = product.Id
+            };
+            db.StockItems.Add(item);
+            db.StockBalances.Add(new StockBalance
+            {
+                ItemId = item.Id,
+                BranchId = 1,
+                Location = StockLocation.Factory,
+                Quantity = StockQuantity.Maximum
+            });
+            var order = new Order("ROLLBACK", DateTime.UtcNow,
+                [new OrderItem(product.Id, product.Name, product.Price, product.Cost, 1)]);
+            order.StartPreparing(DateTime.UtcNow);
+            order.MarkReady(DateTime.UtcNow);
+            order.Deliver(DateTime.UtcNow);
+            db.Orders.Add(order);
+            var sale = new StockOperation
+            {
+                Id = Guid.NewGuid(),
+                BranchId = 1,
+                Type = "Sale",
+                CreatedAtUtc = DateTime.UtcNow,
+                OrderId = order.Id,
+                Notes = "Venta",
+                Movements = [new StockMovement
+                {
+                    ItemId = item.Id, BranchId = 1, Location = StockLocation.Factory,
+                    Before = 2, Delta = -1, After = 1
+                }]
+            };
+            db.StockOperations.Add(sale);
+            await db.SaveChangesAsync();
+            return (OrderId: order.Id, ItemId: item.Id);
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await api.PostWithCsrfAsync($"/api/orders/{data.OrderId}/void")).StatusCode);
+        await api.ExecuteDbContextAsync(async db =>
+        {
+            Assert.Equal(OrderStatus.Delivered, (await db.Orders.SingleAsync(x => x.Id == data.OrderId)).Status);
+            Assert.Equal(StockQuantity.Maximum, (await db.StockBalances.SingleAsync(x => x.ItemId == data.ItemId)).Quantity);
+            Assert.False(await db.StockOperations.AnyAsync(x => x.OrderId == data.OrderId && x.Type == "SaleReversal"));
+        });
+    }
+
+    [Fact]
     public async Task CantinaSaleConsumesStockWhenOrderIsCreated()
     {
         await using var api = new ApiTestContext();
@@ -79,6 +194,125 @@ public sealed class StockEndpointsTests
             operation => operation.Type == "Sale" && operation.OrderId == order.Id)));
     }
 
+    [Theory]
+    [InlineData(OrderStatus.Pending)]
+    [InlineData(OrderStatus.Preparing)]
+    [InlineData(OrderStatus.Ready)]
+    public async Task CancelMixedOrder_RestoresCantinaStockWithoutChangingUnsoldKitchenStock(OrderStatus status)
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
+        var productIds = await api.ExecuteDbContextAsync(async db =>
+        {
+            var cantina = await TestDataSeeder.AddCategoryAsync(db, "Cantina");
+            var kitchen = await TestDataSeeder.AddCategoryAsync(db, "Cocina");
+            return (
+                Cola: (await TestDataSeeder.AddProductAsync(db, cantina.Id, "Coca Cola", 80m, 30m)).Id,
+                Sandwich: (await TestDataSeeder.AddProductAsync(db, kitchen.Id, "Sanguche", 150m, 60m)).Id);
+        });
+        var cola = await CreateItem(api, new("Coca Cola", StockItemKind.FinishedProduct, StockUnit.Unit, productIds.Cola));
+        var sandwich = await CreateItem(api, new("Sanguche", StockItemKind.FinishedProduct, StockUnit.Unit, productIds.Sandwich));
+        await Adjust(api, cola.Id, 5);
+        await Adjust(api, sandwich.Id, 5);
+
+        var order = await Read<OrderResponse>(await api.PostAsJsonWithCsrfAsync("/api/orders", new CreateOrderRequest
+        {
+            Items =
+            [
+                new CreateOrderItemRequest { ProductId = productIds.Cola, Quantity = 2 },
+                new CreateOrderItemRequest { ProductId = productIds.Sandwich, Quantity = 1 }
+            ]
+        }));
+        Assert.Equal(3, await Quantity(api, cola.Id));
+        Assert.Equal(5, await Quantity(api, sandwich.Id));
+
+        if (status is OrderStatus.Preparing or OrderStatus.Ready)
+            (await api.PostWithCsrfAsync($"/api/orders/{order.Id}/start-preparation")).EnsureSuccessStatusCode();
+        if (status == OrderStatus.Ready)
+            (await api.PostWithCsrfAsync($"/api/orders/{order.Id}/mark-ready")).EnsureSuccessStatusCode();
+
+        var cancelled = await Read<OrderResponse>(await api.PostWithCsrfAsync($"/api/orders/{order.Id}/cancel"));
+
+        Assert.Equal("Cancelled", cancelled.Status);
+        Assert.Equal(5, await Quantity(api, cola.Id));
+        Assert.Equal(5, await Quantity(api, sandwich.Id));
+        await api.ExecuteDbContextAsync(async db =>
+        {
+            var sale = Assert.Single(await db.StockOperations.Include(x => x.Movements)
+                .Where(x => x.OrderId == order.Id && x.Type == "Sale").ToArrayAsync());
+            var reversal = Assert.Single(await db.StockOperations.Include(x => x.Movements)
+                .Where(x => x.OrderId == order.Id && x.Type == "SaleReversal").ToArrayAsync());
+            Assert.Equal(sale.Id, reversal.ReversesOperationId);
+            Assert.Equal(2m, Assert.Single(reversal.Movements).Delta);
+            Assert.Equal(cola.Id, Assert.Single(reversal.Movements).ItemId);
+        });
+        var results = await Read<OrderResultsResponse>(await api.Client.GetAsync("/api/orders/summary"));
+        Assert.Equal(0m, results.CurrentPeriod.TotalRevenue);
+        Assert.Empty(results.TopSellingProducts);
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await api.PostWithCsrfAsync($"/api/orders/{order.Id}/cancel")).StatusCode);
+        Assert.Equal(5, await Quantity(api, cola.Id));
+        Assert.Equal(1, await api.ExecuteDbContextAsync(db => db.StockOperations.CountAsync(
+            x => x.OrderId == order.Id && x.Type == "SaleReversal")));
+    }
+
+    [Fact]
+    public async Task CancelMixedOrder_WhenStockReversalFails_RollsBackCancellation()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
+        var orderId = await api.ExecuteDbContextAsync(async db =>
+        {
+            var category = await TestDataSeeder.AddCategoryAsync(db, "Cantina");
+            var product = await TestDataSeeder.AddProductAsync(db, category.Id, "Coca Cola");
+            var item = new StockItem
+            {
+                Name = "Coca Cola",
+                NormalizedName = "COCA COLA",
+                Kind = StockItemKind.FinishedProduct,
+                Unit = StockUnit.Unit,
+                ProductId = product.Id
+            };
+            db.StockItems.Add(item);
+            db.StockBalances.Add(new StockBalance
+            {
+                ItemId = item.Id,
+                BranchId = 1,
+                Location = StockLocation.Factory,
+                Quantity = StockQuantity.Maximum
+            });
+            var orderItem = new OrderItem(product.Id, product.Name, product.Price, product.Cost, 1);
+            orderItem.MarkSoldAtCashRegister(DateTime.UtcNow);
+            var order = new Order("CANCEL-ROLLBACK", DateTime.UtcNow, [orderItem]);
+            order.StartPreparing(DateTime.UtcNow);
+            db.Orders.Add(order);
+            db.StockOperations.Add(new StockOperation
+            {
+                Id = Guid.NewGuid(),
+                BranchId = 1,
+                Type = "Sale",
+                CreatedAtUtc = DateTime.UtcNow,
+                OrderId = order.Id,
+                Notes = "Venta",
+                Movements = [new StockMovement
+                {
+                    ItemId = item.Id, BranchId = 1, Location = StockLocation.Factory,
+                    Before = 2, Delta = -1, After = 1
+                }]
+            });
+            await db.SaveChangesAsync();
+            return order.Id;
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await api.PostWithCsrfAsync($"/api/orders/{orderId}/cancel")).StatusCode);
+        await api.ExecuteDbContextAsync(async db =>
+        {
+            Assert.Equal(OrderStatus.Preparing, (await db.Orders.SingleAsync(x => x.Id == orderId)).Status);
+            Assert.Equal(StockQuantity.Maximum, (await db.StockBalances.SingleAsync()).Quantity);
+            Assert.False(await db.StockOperations.AnyAsync(x => x.OrderId == orderId && x.Type == "SaleReversal"));
+        });
+    }
+
     [Fact]
     public async Task ReceivingFinishedProductsConsumesRecipeIngredientsAndDeliveryOnlyConsumesProducts()
     {
@@ -102,6 +336,10 @@ public sealed class StockEndpointsTests
         var received = Assert.Single(history.Items, x => x.Type == "Adjustment" && x.RecipeId.HasValue);
         Assert.Contains(received.Movements, x => x.ItemId == setup.Egg.Id && x.Delta == -5);
         Assert.Contains(received.Movements, x => x.ItemId == setup.Scone.Id && x.Delta == 10);
+
+        (await api.PostWithCsrfAsync($"/api/orders/{orderId}/void")).EnsureSuccessStatusCode();
+        Assert.Equal(10, await Quantity(api, setup.Scone.Id));
+        Assert.Equal(25, await Quantity(api, setup.Egg.Id));
     }
 
     [Fact]
@@ -180,6 +418,30 @@ public sealed class StockEndpointsTests
     }
 
     [Fact]
+    public async Task DeletingRecipeRemovesItFromCurrentUseButPreservesProductionHistory()
+    {
+        await using var api = new ApiTestContext();
+        var setup = await Setup(api);
+        await Adjust(api, setup.Egg.Id, 30);
+        await Adjust(api, setup.Scone.Id, 10);
+        var before = await Quantity(api, setup.Egg.Id);
+
+        var response = await api.SendWithCsrfAsync(new HttpRequestMessage(HttpMethod.Delete,
+            $"/api/stock/recipes/{setup.Scone.Id}"));
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var dashboard = await Read<StockDashboardDto>(await api.Client.GetAsync("/api/stock"));
+        Assert.DoesNotContain(dashboard.Recipes, recipe => recipe.ItemId == setup.Scone.Id);
+        await api.ExecuteDbContextAsync(async db =>
+        {
+            Assert.All(await db.StockRecipes.Where(x => x.ItemId == setup.Scone.Id).ToArrayAsync(),
+                recipe => Assert.True(recipe.IsArchived));
+            Assert.True(await db.StockOperations.AnyAsync(x => x.RecipeId != null));
+        });
+        await Adjust(api, setup.Scone.Id, 1);
+        Assert.Equal(before, await Quantity(api, setup.Egg.Id));
+    }
+
+    [Fact]
     public async Task LegacyStationEndpointsAreGoneAndStockRemainsAdministratorOnly()
     {
         await using var api = new ApiTestContext();
@@ -189,6 +451,40 @@ public sealed class StockEndpointsTests
         await api.AuthenticateAsync(UserRole.Cashier);
         Assert.Equal(HttpStatusCode.Forbidden, (await api.Client.GetAsync("/api/stock")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await api.PostAsJsonWithCsrfAsync("/api/stock/adjustments", new { })).StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteIngredient_RequiresZeroBalanceAndPreservesMovementHistory()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
+        var item = await CreateItem(api, new("Harina", StockItemKind.Ingredient, StockUnit.Unit, null));
+        await Adjust(api, item.Id, 3);
+
+        var route = $"/api/stock/items/{item.Id}";
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await api.SendWithCsrfAsync(new HttpRequestMessage(HttpMethod.Delete, route))).StatusCode);
+        await Adjust(api, item.Id, -3);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await api.SendWithCsrfAsync(new HttpRequestMessage(HttpMethod.Delete, route))).StatusCode);
+
+        var dashboard = await Read<StockDashboardDto>(await api.Client.GetAsync("/api/stock"));
+        Assert.DoesNotContain(dashboard.Items, x => x.Id == item.Id);
+        var history = await Read<StockHistoryDto>(await api.Client.GetAsync($"/api/stock/history?itemId={item.Id}"));
+        Assert.Equal(2, history.Items.Count);
+        Assert.All(history.Items, operation => Assert.Contains(operation.Movements, movement => movement.ItemId == item.Id));
+        var replacement = await CreateItem(api, new("Harina", StockItemKind.Ingredient, StockUnit.Unit, null));
+        Assert.NotEqual(item.Id, replacement.Id);
+    }
+
+    [Fact]
+    public async Task DeleteIngredient_UsedByCurrentRecipe_ReturnsConflict()
+    {
+        await using var api = new ApiTestContext();
+        var setup = await Setup(api);
+        var response = await api.SendWithCsrfAsync(new HttpRequestMessage(HttpMethod.Delete,
+            $"/api/stock/items/{setup.Egg.Id}"));
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
     private static async Task<(StockItemDto Egg, StockItemDto Scone)> Setup(ApiTestContext api)

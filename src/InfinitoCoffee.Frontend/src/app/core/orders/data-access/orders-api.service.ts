@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { APP_RUNTIME_CONFIG } from '../../config/app-runtime-config';
 import { OrderResults, OrderResultsGroupBy } from '../models/order-results.model';
-import { CreateOrderRequest, OrderApiDto } from '../models/order.model';
+import { CreateOrderRequest, OrderApiDto, OrderHistoryPage } from '../models/order.model';
 
 @Injectable({ providedIn: 'root' })
 export class OrdersApiService {
@@ -22,6 +22,16 @@ export class OrdersApiService {
         params: { groupBy },
       }),
     );
+  }
+
+  getOrderHistory(take = 20, cursor?: string | null): Promise<OrderHistoryPage> {
+    return firstValueFrom(this.httpClient.get<OrderHistoryPage>(`${this.ordersBaseUrl}/history`, {
+      params: cursor ? { take, cursor } : { take },
+    }));
+  }
+
+  voidOrder(orderId: string): Promise<OrderApiDto> {
+    return firstValueFrom(this.httpClient.post<OrderApiDto>(`${this.ordersBaseUrl}/${orderId}/void`, {}));
   }
 
   createOrder(request: CreateOrderRequest): Promise<OrderApiDto> {

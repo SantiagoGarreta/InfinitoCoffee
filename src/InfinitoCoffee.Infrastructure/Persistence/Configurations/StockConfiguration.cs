@@ -15,9 +15,10 @@ internal static class StockConfiguration
         item.HasKey(x => x.Id);
         item.Property(x => x.Name).HasMaxLength(150).IsRequired();
         item.Property(x => x.NormalizedName).HasMaxLength(150).IsRequired();
-        item.HasIndex(x => x.NormalizedName).IsUnique();
+        item.HasIndex(x => x.NormalizedName).IsUnique().HasFilter("[IsDeleted] = 0");
         item.Property(x => x.MinimumQuantity).HasPrecision(18, 3);
-        item.HasIndex(x => x.ProductId).IsUnique().HasFilter("[ProductId] IS NOT NULL");
+        item.Property(x => x.IsDeleted).IsRequired().HasDefaultValue(false);
+        item.HasIndex(x => x.ProductId).IsUnique().HasFilter("[ProductId] IS NOT NULL AND [IsDeleted] = 0");
         item.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
 
         var balance = model.Entity<StockBalance>();
@@ -31,6 +32,7 @@ internal static class StockConfiguration
         recipe.ToTable("StockRecipes");
         recipe.HasKey(x => x.Id);
         recipe.Property(x => x.Yield).HasPrecision(18, 3);
+        recipe.Property(x => x.IsArchived).IsRequired().HasDefaultValue(false);
         recipe.HasIndex(x => new { x.ItemId, x.Version }).IsUnique();
         recipe.HasOne<StockItem>().WithMany().HasForeignKey(x => x.ItemId).OnDelete(DeleteBehavior.Restrict);
         recipe.HasOne<User>().WithMany().HasForeignKey(x => x.CreatedBy).OnDelete(DeleteBehavior.Restrict);
@@ -50,9 +52,11 @@ internal static class StockConfiguration
         operation.Property(x => x.Notes).HasMaxLength(1000).IsRequired();
         operation.HasIndex(x => new { x.CreatedAtUtc, x.Id });
         operation.HasIndex(x => x.OrderId);
+        operation.HasIndex(x => x.ReversesOperationId).IsUnique().HasFilter("[ReversesOperationId] IS NOT NULL");
         operation.HasOne<InfinitoCoffee.Domain.Branches.Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
         operation.HasOne<StockRecipe>().WithMany().HasForeignKey(x => x.RecipeId).OnDelete(DeleteBehavior.Restrict);
         operation.HasOne<Order>().WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
+        operation.HasOne<StockOperation>().WithOne().HasForeignKey<StockOperation>(x => x.ReversesOperationId).OnDelete(DeleteBehavior.Restrict);
         operation.HasOne<User>().WithMany().HasForeignKey(x => x.ActorId).OnDelete(DeleteBehavior.Restrict);
         operation.HasMany(x => x.Movements).WithOne().HasForeignKey(x => x.OperationId).OnDelete(DeleteBehavior.Cascade);
         var movement = model.Entity<StockMovement>();

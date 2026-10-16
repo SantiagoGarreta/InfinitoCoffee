@@ -12,10 +12,10 @@ using Microsoft.Extensions.Options;
 
 var command = args.FirstOrDefault()?.Trim().ToLowerInvariant();
 
-if (command is not "migrate" and not "seed" and not "reset-system-password")
+if (command is not "migrate" and not "seed" and not "provision-system-user" and not "reset-system-password")
 {
     Console.Error.WriteLine(
-        "Usage: dotnet run --project .\\src\\InfinitoCoffee.DbSetup -- [migrate|seed|reset-system-password]");
+        "Usage: dotnet run --project .\\src\\InfinitoCoffee.DbSetup -- [migrate|seed|provision-system-user|reset-system-password]");
     return 1;
 }
 
@@ -24,7 +24,7 @@ ConfigureApplication(builder);
 
 builder.Services.AddInfrastructure(builder.Configuration);
 
-if (command is "seed" or "reset-system-password")
+if (command is "seed" or "provision-system-user" or "reset-system-password")
 {
     builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 }
@@ -39,6 +39,18 @@ if (command == "seed")
             Password = builder.Configuration["INITIAL_ADMIN_PASSWORD"]
         }));
     builder.Services.AddScoped<DevelopmentDataSeeder>();
+}
+
+if (command == "provision-system-user")
+{
+    builder.Services.AddSingleton<IOptions<InitialSystemUserOptions>>(
+        Options.Create(new InitialSystemUserOptions
+        {
+            Username = builder.Configuration["INITIAL_ADMIN_USERNAME"],
+            DisplayName = builder.Configuration["INITIAL_ADMIN_DISPLAY_NAME"],
+            Password = builder.Configuration["INITIAL_ADMIN_PASSWORD"]
+        }));
+    builder.Services.AddScoped<SystemUserProvisioner>();
 }
 
 if (command == "reset-system-password")
@@ -77,6 +89,13 @@ switch (command)
         var seeder = services.GetRequiredService<DevelopmentDataSeeder>();
         await seeder.SeedAsync(seedDbContext);
         Console.WriteLine("Development seed completed successfully.");
+        return 0;
+
+    case "provision-system-user":
+        Console.WriteLine("Provisioning production system user...");
+        var systemUserProvisioner = services.GetRequiredService<SystemUserProvisioner>();
+        await systemUserProvisioner.ProvisionAsync();
+        Console.WriteLine("Production system user provisioning completed successfully.");
         return 0;
 
     case "reset-system-password":

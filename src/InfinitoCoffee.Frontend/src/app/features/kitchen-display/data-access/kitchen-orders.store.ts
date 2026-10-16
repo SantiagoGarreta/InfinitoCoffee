@@ -188,6 +188,6 @@ export class KitchenOrdersStore {
   }
 
   private isActive(status: OrderStatus): boolean {
-    return status !== 'Delivered' && status !== 'Cancelled';
+    return status !== 'Delivered' && status !== 'Cancelled' && status !== 'Voided';
   }
 }

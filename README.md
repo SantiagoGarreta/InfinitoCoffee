@@ -294,11 +294,15 @@ En GitHub hay que crear un Environment llamado `production` y agregar estos secr
 - `PRODUCTION_HOST`
 - `PRODUCTION_USER`
 - `PRODUCTION_SSH_PORT` (opcional; usar `22` si se omite)
-- `PRODUCTION_SSH_PRIVATE_KEY`
+- `PRODUCTION_SSH_PRIVATE_KEY_B64`
 - `PRODUCTION_SSH_KNOWN_HOSTS`
 - `PRODUCTION_ENV_FILE`
 
 `PRODUCTION_ENV_FILE` debe contener los valores de `.env.production.example`, con secretos reales. No debe subirse al repositorio.
+
+`PRODUCTION_SSH_PRIVATE_KEY_B64` debe contener la clave privada de deploy codificada en Base64 para preservar su formato multilinea.
+
+`PRODUCTION_ENV_FILE` también debe incluir `INITIAL_ADMIN_USERNAME`, `INITIAL_ADMIN_DISPLAY_NAME` e `INITIAL_ADMIN_PASSWORD`. El deploy ejecuta `provision-system-user`, que crea el administrador inicial solo si todavía no existe; no modifica la contraseña de un administrador existente.
 
 Notas practicas:
 

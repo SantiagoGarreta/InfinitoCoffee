@@ -1,4 +1,5 @@
 using InfinitoCoffee.Domain.Users;
+using InfinitoCoffee.Domain.Stock;
 using InfinitoCoffee.Infrastructure.Persistence.Seed;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -35,6 +36,9 @@ public sealed class DevelopmentDataSeederTests
                 InitialPassword));
         Assert.Equal(6, await dbContext.ProductCategories.CountAsync());
         Assert.Equal(9, await dbContext.Products.CountAsync());
+        Assert.Equal(9, await dbContext.StockItems.CountAsync());
+        Assert.Equal(4, await dbContext.StockItems.CountAsync(x => x.Kind == StockItemKind.MadeToOrder));
+        Assert.Equal(10, await dbContext.StockBalances.CountAsync());
     }
 
     [Fact]
@@ -64,6 +68,8 @@ public sealed class DevelopmentDataSeederTests
         Assert.Equal(1, await dbContext.Users.CountAsync());
         Assert.Equal(6, await dbContext.ProductCategories.CountAsync());
         Assert.Equal(9, await dbContext.Products.CountAsync());
+        Assert.Equal(9, await dbContext.StockItems.CountAsync());
+        Assert.Equal(10, await dbContext.StockBalances.CountAsync());
     }
 
     [Theory]

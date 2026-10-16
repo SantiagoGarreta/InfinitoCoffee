@@ -39,6 +39,8 @@ internal sealed class FakeProductCategoryRepository : IProductCategoryRepository
         return Task.CompletedTask;
     }
 
+    public void Remove(ProductCategory category) => _categories.Remove(category);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         LastSaveChangesToken = cancellationToken;
