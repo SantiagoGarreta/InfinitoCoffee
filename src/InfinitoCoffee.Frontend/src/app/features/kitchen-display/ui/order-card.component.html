@@ -3,7 +3,8 @@
     <div class="order-card__header-primary">
       @if (!confirmingCancellation()
         && order().status !== 'Delivered'
-        && order().status !== 'Cancelled') {
+        && order().status !== 'Cancelled'
+        && order().status !== 'Voided') {
         <button
           type="button"
           class="order-card__cancel-trigger"

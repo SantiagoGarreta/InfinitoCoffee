@@ -11,6 +11,8 @@ export interface SaveProductRequest {
   price: number;
   cost: number;
   categoryId: string;
+  minimumQuantity?: number | null;
+  stockMode?: 'Stocked' | 'MadeToOrder';
 }
 
 @Injectable({ providedIn: 'root' })
@@ -37,5 +39,9 @@ export class ProductsApiService {
 
   deactivateProduct(productId: string): Promise<Product> {
     return firstValueFrom(this.httpClient.post<Product>(`${this.productsBaseUrl}/${productId}/deactivate`, null));
+  }
+
+  async deleteProduct(productId: string): Promise<void> {
+    await firstValueFrom(this.httpClient.delete<void>(`${this.productsBaseUrl}/${productId}`));
   }
 }

@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using InfinitoCoffee.Api.Antiforgery;
 using InfinitoCoffee.Api.Contracts.Authentication;
 using InfinitoCoffee.Domain.Users;
@@ -36,7 +38,10 @@ internal sealed class ApiTestContext : IAsyncDisposable
 
     public async Task<T> ReadRequiredAsync<T>(HttpResponseMessage response)
     {
-        var payload = await response.Content.ReadFromJsonAsync<T>();
+        var payload = await response.Content.ReadFromJsonAsync<T>(new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            Converters = { new JsonStringEnumConverter() }
+        });
         Assert.NotNull(payload);
         return payload;
     }

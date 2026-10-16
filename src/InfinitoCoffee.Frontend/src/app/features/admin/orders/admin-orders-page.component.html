@@ -1,0 +1,58 @@
+<section class="orders-history" aria-labelledby="orders-history-title">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Administración</p>
+      <h1 id="orders-history-title">Pedidos</h1>
+      <p>Historial de la sucursal seleccionada, desde los pedidos más recientes.</p>
+    </div>
+    <button type="button" class="secondary" [disabled]="loading() || loadingMore() || !!voidingId()" (click)="reload()">Actualizar</button>
+  </header>
+
+  @if (error()) { <app-error-message [message]="error()!" retryLabel="Reintentar" (retry)="reload()" /> }
+  @if (loading()) { <app-loading-state label="Cargando pedidos..." /> }
+  @else if (!orders().length) { <p class="panel empty">Todavía no hay pedidos en esta sucursal.</p> }
+  @else {
+    <div class="orders-list">
+      @for (order of orders(); track order.id) {
+        <article class="order-card">
+          <header class="order-card__header">
+            <div><span class="order-number">Pedido #{{ order.orderNumber }}</span><time [attr.datetime]="order.createdAtUtc">{{ order.createdAtUtc | date:'dd/MM/yyyy HH:mm' }}</time></div>
+            <span class="status" [class.status--cancelled]="order.status === 'Cancelled'" [class.status--voided]="order.status === 'Voided'">{{ statusLabel(order.status) }}</span>
+          </header>
+
+          <div class="order-summary">
+            <span>{{ itemCount(order) }} productos</span>
+            <strong>{{ order.total | currency:'UYU':'symbol-narrow':'1.2-2' }}</strong>
+          </div>
+
+          <details>
+            <summary>Ver detalle</summary>
+            <ul class="order-items">
+              @for (item of order.items; track item.id) {
+                <li><span><strong>{{ item.quantity }} × {{ item.productNameSnapshot }}</strong>@if (item.notes) { <small>{{ item.notes }}</small> }</span><span>{{ item.lineTotal | currency:'UYU':'symbol-narrow':'1.2-2' }}</span></li>
+              }
+            </ul>
+            @if (order.notes) { <p class="order-notes"><strong>Notas:</strong> {{ order.notes }}</p> }
+          </details>
+
+          @if (order.status === 'Delivered') {
+            @if (confirmingId() === order.id) {
+              <div class="void-confirmation" role="group" aria-label="Confirmar anulación">
+                <p>¿Deseas anular este pedido? Esta acción revertirá la venta y devolverá el stock correspondiente.</p>
+                <div class="confirmation-actions">
+                  <button type="button" class="secondary" [disabled]="voidingId() === order.id" (click)="closeConfirmation()">Volver</button>
+                  <button type="button" class="danger" [disabled]="voidingId() === order.id" (click)="voidOrder(order)">{{ voidingId() === order.id ? 'Anulando...' : 'Anular pedido' }}</button>
+                </div>
+              </div>
+            } @else {
+              <button type="button" class="danger-outline" [disabled]="!!voidingId()" (click)="askToVoid(order)">Anular pedido</button>
+            }
+          }
+        </article>
+      }
+    </div>
+    @if (nextCursor()) {
+      <div class="load-more"><button type="button" class="secondary" [disabled]="loadingMore() || !!voidingId()" (click)="loadMore()">{{ loadingMore() ? 'Cargando...' : 'Cargar más' }}</button></div>
+    }
+  }
+</section>

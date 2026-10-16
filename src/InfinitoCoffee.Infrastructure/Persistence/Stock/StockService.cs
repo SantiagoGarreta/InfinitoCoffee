@@ -6,6 +6,7 @@ using InfinitoCoffee.Application.Common.Exceptions;
 using InfinitoCoffee.Application.Common.Time;
 using InfinitoCoffee.Application.Stock;
 using InfinitoCoffee.Domain.Stock;
+using InfinitoCoffee.Domain.Orders;
 using Microsoft.EntityFrameworkCore;
 
 namespace InfinitoCoffee.Infrastructure.Persistence.Stock;
@@ -16,11 +17,13 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
     private int BranchId => branch?.BranchId ?? 1;
     public async Task<StockDashboardDto> GetDashboardAsync(CancellationToken ct)
     {
-        var items = await db.StockItems.AsNoTracking().OrderBy(x => x.Name).ToListAsync(ct);
+        var items = await db.StockItems.AsNoTracking().Where(x => !x.IsDeleted).OrderBy(x => x.Name).ToListAsync(ct);
         var balances = await db.StockBalances.AsNoTracking()
-            .Where(x => x.Location == StockLocation.Factory && (x.BranchId == 0 || x.BranchId == BranchId)).ToListAsync(ct);
+            .Where(x => x.Location == StockLocation.Factory && (x.BranchId == 0 || x.BranchId == BranchId)
+                && db.StockItems.Any(item => item.Id == x.ItemId && !item.IsDeleted)).ToListAsync(ct);
         var recipes = await db.StockRecipes.AsNoTracking().Include(x => x.Lines)
-            .Where(x => !db.StockRecipes.Any(newer => newer.ItemId == x.ItemId && newer.Version > x.Version)).ToListAsync(ct);
+            .Where(x => !x.IsArchived && db.StockItems.Any(item => item.Id == x.ItemId && !item.IsDeleted)
+                && !db.StockRecipes.Any(newer => newer.ItemId == x.ItemId && newer.Version > x.Version)).ToListAsync(ct);
         return new(items.Select(MapItem).ToArray(),
             balances.Select(x => new StockBalanceDto(x.ItemId, x.Location, x.Quantity, x.Revision, x.BranchId)).ToArray(),
             recipes.Select(MapRecipe).ToArray());
@@ -31,14 +34,16 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
         var name = Name(request.Name);
         if (!Enum.IsDefined(request.Kind) || !Enum.IsDefined(request.Unit)) throw new ArgumentException("Tipo o unidad inválida.");
         StockQuantity.ValidateBase(request.MinimumQuantity, request.Unit);
+        if (request.Kind is not (StockItemKind.Ingredient or StockItemKind.FinishedProduct))
+            throw new ArgumentException("Creá los productos preparados al momento desde Productos.");
         if (request.Kind == StockItemKind.FinishedProduct && (request.ProductId is null || request.Unit != StockUnit.Unit))
             throw new ArgumentException("Vinculá el producto del catálogo. Los productos terminados se cuentan por unidad.");
         if (request.Kind == StockItemKind.Ingredient && request.ProductId is not null)
             throw new ArgumentException("Un ingrediente no se vincula a un producto de venta.");
-        if (request.ProductId is not null && !await db.Products.AnyAsync(x => x.Id == request.ProductId, ct))
+        if (request.ProductId is not null && !await db.Products.AnyAsync(x => x.Id == request.ProductId && !x.IsDeleted, ct))
             throw new NotFoundException("Product", request.ProductId.Value);
-        if (await db.StockItems.AnyAsync(x => x.NormalizedName == name.ToUpperInvariant()
-            || (request.ProductId != null && x.ProductId == request.ProductId), ct))
+        if (await db.StockItems.AnyAsync(x => !x.IsDeleted && (x.NormalizedName == name.ToUpperInvariant()
+            || (request.ProductId != null && x.ProductId == request.ProductId)), ct))
             throw new ConflictException("Ya existe ese artículo o el producto ya tiene control de stock.");
         var item = new StockItem
         {
@@ -60,9 +65,11 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
     public async Task<StockItemDto> UpdateItemAsync(Guid id, StockItemUpdate request, CancellationToken ct)
     {
         var item = await GetItem(id, ct);
+        if (item.Kind == StockItemKind.MadeToOrder)
+            throw new ArgumentException("Los productos preparados al momento se editan desde Productos y no tienen stock mínimo.");
         var name = Name(request.Name);
         StockQuantity.ValidateBase(request.MinimumQuantity, item.Unit);
-        if (await db.StockItems.AnyAsync(x => x.Id != id && x.NormalizedName == name.ToUpperInvariant(), ct))
+        if (await db.StockItems.AnyAsync(x => !x.IsDeleted && x.Id != id && x.NormalizedName == name.ToUpperInvariant(), ct))
             throw new ConflictException("Ya existe un artículo con ese nombre.");
         item.Name = name;
         item.NormalizedName = name.ToUpperInvariant();
@@ -71,11 +78,21 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
         return MapItem(item);
     }
 
+    public async Task DeleteItemAsync(Guid id, CancellationToken ct)
+    {
+        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        var item = await GetItem(id, ct);
+        await StockArchiver.ArchiveItemAsync(db, item, ct);
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+    }
+
     public async Task<RecipeDto> SaveRecipeAsync(RecipeRequest request, Guid actorId, CancellationToken ct)
     {
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         var product = await GetItem(request.ItemId, ct);
-        if (product.Kind != StockItemKind.FinishedProduct) throw new ArgumentException("La receta debe producir un producto terminado.");
+        if (product.Kind is not (StockItemKind.FinishedProduct or StockItemKind.MadeToOrder))
+            throw new ArgumentException("La receta debe corresponder a un producto.");
         Positive(request.Yield, StockUnit.Unit);
         var lines = await NormalizeLines(request.Lines, false, ct);
         if (lines.Any(x => x.Item.Kind != StockItemKind.Ingredient))
@@ -96,6 +113,23 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
         return MapRecipe(recipe);
     }
 
+    public async Task ArchiveRecipeAsync(Guid itemId, CancellationToken ct)
+    {
+        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        var item = await GetItem(itemId, ct);
+        if (item.Kind == StockItemKind.MadeToOrder && item.ProductId.HasValue
+            && await db.OrderItems.AnyAsync(line => line.ProductId == item.ProductId.Value
+                && db.Orders.Any(order => order.Id == line.OrderId
+                    && (order.Status == OrderStatus.Pending || order.Status == OrderStatus.Preparing
+                        || order.Status == OrderStatus.Ready)), ct))
+            throw new ConflictException("Terminá o cancelá los pedidos en curso antes de quitar la receta.");
+        var recipes = await db.StockRecipes.Where(x => x.ItemId == itemId && !x.IsArchived).ToArrayAsync(ct);
+        if (recipes.Length == 0) throw new NotFoundException("StockRecipe", itemId);
+        foreach (var recipe in recipes) recipe.IsArchived = true;
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+    }
+
     public Task RecordAdjustmentAsync(StockAdjustmentRequest request, Guid actorId, CancellationToken ct) =>
         Execute(request.OperationId, "Adjustment", request, actorId, request.Notes, async op =>
         {
@@ -107,6 +141,8 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
             foreach (var line in request.Lines.OrderBy(x => x.ItemId))
             {
                 var item = await GetItem(line.ItemId, ct);
+                if (item.Kind == StockItemKind.MadeToOrder)
+                    throw new ArgumentException("Los productos preparados al momento no tienen existencias para ajustar.");
                 if (line.Delta == 0) throw new ArgumentException("El ajuste debe aumentar o disminuir la cantidad.");
                 var amount = StockQuantity.Convert(Math.Abs(line.Delta), line.Unit, item.Unit);
                 changes.Add((item, line.Delta < 0 ? -amount : amount));
@@ -116,7 +152,7 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
                 await StockLedger.PostAsync(db, op, change.Item, StockLocation.Factory, change.Delta, ct);
             foreach (var change in changes.Where(x => x.Item.Kind == StockItemKind.FinishedProduct && x.Delta > 0))
             {
-                var recipe = await db.StockRecipes.Include(x => x.Lines).Where(x => x.ItemId == change.Item.Id)
+                var recipe = await db.StockRecipes.Include(x => x.Lines).Where(x => x.ItemId == change.Item.Id && !x.IsArchived)
                     .OrderByDescending(x => x.Version).FirstOrDefaultAsync(ct);
                 if (recipe is not null && request.ConsumeIngredients)
                 {
@@ -141,7 +177,9 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
         if (page < 0 || page > 100000) throw new ArgumentException("Página inválida.");
         var query = db.StockOperations.AsNoTracking().Include(x => x.Movements)
             .Where(x => x.Movements.Any(m => m.BranchId == 0 || m.BranchId == BranchId));
-        if (itemId.HasValue) query = query.Where(x => x.Movements.Any(m => m.ItemId == itemId && (m.BranchId == 0 || m.BranchId == BranchId)));
+        if (itemId.HasValue) query = query.Where(x =>
+            x.Movements.Any(m => m.ItemId == itemId && (m.BranchId == 0 || m.BranchId == BranchId))
+            || db.StockRecipes.Any(recipe => recipe.Id == x.RecipeId && recipe.ItemId == itemId));
         var operations = await query.OrderByDescending(x => x.CreatedAtUtc).ThenByDescending(x => x.Id).Skip(page * 30).Take(31).ToListAsync(ct);
         var items = await db.StockItems.AsNoTracking().ToDictionaryAsync(x => x.Id, ct);
         var actors = operations.Where(x => x.ActorId.HasValue).Select(x => x.ActorId!.Value).Distinct().ToArray();
@@ -201,7 +239,7 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
     }
 
     private async Task<StockItem> GetItem(Guid id, CancellationToken ct) =>
-        await db.StockItems.SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new NotFoundException("StockItem", id);
+        await db.StockItems.SingleOrDefaultAsync(x => x.Id == id && !x.IsDeleted, ct) ?? throw new NotFoundException("StockItem", id);
     private static string Name(string? value)
     {
         if (string.IsNullOrWhiteSpace(value) || value.Trim().Length > 150) throw new ArgumentException("Ingresá un nombre de hasta 150 caracteres.");

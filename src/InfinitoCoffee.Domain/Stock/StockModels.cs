@@ -1,7 +1,7 @@
 namespace InfinitoCoffee.Domain.Stock;
 
 public enum StockLocation { Factory = 1, Cafe = 2, Transit = 3 }
-public enum StockItemKind { Ingredient = 1, FinishedProduct = 2 }
+public enum StockItemKind { Ingredient = 1, FinishedProduct = 2, MadeToOrder = 3 }
 public enum StockUnit { Unit = 1, Gram = 2, Milliliter = 3 }
 
 public sealed class StockItem
@@ -13,6 +13,7 @@ public sealed class StockItem
     public StockUnit Unit { get; set; }
     public Guid? ProductId { get; set; }
     public decimal MinimumQuantity { get; set; }
+    public bool IsDeleted { get; set; }
 }
 
 public sealed class StockBalance
@@ -34,6 +35,7 @@ public sealed class StockRecipe
     public decimal Yield { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public Guid CreatedBy { get; set; }
+    public bool IsArchived { get; set; }
     public List<StockRecipeLine> Lines { get; set; } = [];
 }
 
@@ -56,6 +58,7 @@ public sealed class StockOperation
     public string Notes { get; set; } = string.Empty;
     public Guid? RecipeId { get; set; }
     public Guid? OrderId { get; set; }
+    public Guid? ReversesOperationId { get; set; }
     public List<StockMovement> Movements { get; set; } = [];
 }
 

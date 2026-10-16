@@ -32,7 +32,8 @@ public sealed class ProductsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var product = await _productService.CreateProductAsync(
-            new CreateProductCommand(request.CategoryId, request.Name, request.Price, request.Cost, request.Description),
+            new CreateProductCommand(request.CategoryId, request.Name, request.Price, request.Cost, request.Description,
+                request.MinimumQuantity, request.StockMode),
             cancellationToken);
 
         return CreatedAtAction(nameof(GetById), new { id = product.Id }, ApiContractMapper.MapProduct(product));
@@ -69,7 +70,8 @@ public sealed class ProductsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var product = await _productService.UpdateProductAsync(
-            new UpdateProductCommand(id, request.CategoryId, request.Name, request.Price, request.Cost, request.Description),
+            new UpdateProductCommand(id, request.CategoryId, request.Name, request.Price, request.Cost, request.Description,
+                request.MinimumQuantity, request.StockMode),
             cancellationToken);
 
         return Ok(ApiContractMapper.MapProduct(product));
@@ -93,5 +95,16 @@ public sealed class ProductsController : ControllerBase
     {
         var product = await _productService.DeactivateProductAsync(new DeactivateProductCommand(id), cancellationToken);
         return Ok(ApiContractMapper.MapProduct(product));
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicyNames.AdministratorOnly)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        await _productService.DeleteProductAsync(id, cancellationToken);
+        return NoContent();
     }
 }

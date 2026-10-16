@@ -17,6 +17,8 @@ internal sealed class FakeOrderRepository : IOrderRepository
 
     public CancellationToken? LastGetPickupCandidatesToken { get; private set; }
 
+    public CancellationToken? LastGetHistoryToken { get; private set; }
+
     public CancellationToken? LastAddToken { get; private set; }
 
     public CancellationToken? LastGetLatestOrderNumberToken { get; private set; }
@@ -50,6 +52,24 @@ internal sealed class FakeOrderRepository : IOrderRepository
             _orders.Where(order => order.Status is OrderStatus.Preparing or OrderStatus.Ready).ToArray());
     }
 
+    public Task<IReadOnlyCollection<Order>> GetHistoryAsync(
+        int take,
+        DateTime? beforeCreatedAtUtc,
+        Guid? beforeId,
+        CancellationToken cancellationToken = default)
+    {
+        LastGetHistoryToken = cancellationToken;
+        var orders = _orders
+            .Where(order => !beforeCreatedAtUtc.HasValue
+                || order.CreatedAtUtc < beforeCreatedAtUtc.Value
+                || (order.CreatedAtUtc == beforeCreatedAtUtc.Value && order.Id.CompareTo(beforeId!.Value) < 0))
+            .OrderByDescending(order => order.CreatedAtUtc)
+            .ThenByDescending(order => order.Id)
+            .Take(take)
+            .ToArray();
+        return Task.FromResult<IReadOnlyCollection<Order>>(orders);
+    }
+
     public Task AddAsync(Order order, CancellationToken cancellationToken = default)
     {
         LastAddToken = cancellationToken;
@@ -65,6 +85,17 @@ internal sealed class FakeOrderRepository : IOrderRepository
                 .OrderByDescending(order => order.CreatedAtUtc)
                 .Select(order => order.OrderNumber)
                 .FirstOrDefault());
+    }
+
+    public Task<Order?> VoidSaleAsync(
+        Guid orderId,
+        Guid actorId,
+        DateTime voidedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        var order = _orders.SingleOrDefault(candidate => candidate.Id == orderId);
+        order?.Void(voidedAtUtc);
+        return Task.FromResult(order);
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)

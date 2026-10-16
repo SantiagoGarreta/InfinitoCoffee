@@ -9,6 +9,90 @@ namespace InfinitoCoffee.Api.IntegrationTests.Http;
 public sealed class OrderEndpointsTests
 {
     [Fact]
+    public async Task History_ReturnsTwentyNewestOrdersAndSupportsCursor()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Administrator);
+        var start = DateTime.UtcNow.AddHours(-2);
+        await api.ExecuteDbContextAsync(async db =>
+        {
+            for (var index = 1; index <= 22; index++)
+                await TestDataSeeder.AddOrderAsync(db, index.ToString(), OrderStatus.Pending, start.AddMinutes(index));
+        });
+
+        var firstResponse = await api.Client.GetAsync("/api/orders/history?take=20");
+        firstResponse.EnsureSuccessStatusCode();
+        var first = await api.ReadRequiredAsync<OrderHistoryPageResponse>(firstResponse);
+        var secondResponse = await api.Client.GetAsync($"/api/orders/history?take=20&cursor={Uri.EscapeDataString(first.NextCursor!)}");
+        secondResponse.EnsureSuccessStatusCode();
+        var second = await api.ReadRequiredAsync<OrderHistoryPageResponse>(secondResponse);
+
+        Assert.Equal(20, first.Items.Count);
+        Assert.Equal("22", first.Items.First().OrderNumber);
+        Assert.NotNull(first.NextCursor);
+        Assert.Equal(2, second.Items.Count);
+        Assert.Null(second.NextCursor);
+    }
+
+    [Theory]
+    [InlineData(UserRole.Cashier)]
+    [InlineData(UserRole.Kitchen)]
+    public async Task History_WhenNotAdministrator_ReturnsForbidden(UserRole role)
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(role);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await api.Client.GetAsync("/api/orders/history")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Void_DeliveredOrderWithoutStockMovements_MarksItVoidedAndIsIdempotencySafe()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Administrator);
+        var orderId = await api.ExecuteDbContextAsync(async db =>
+            (await TestDataSeeder.AddOrderAsync(db, "VOID-1", OrderStatus.Delivered, DateTime.UtcNow.AddMinutes(-5))).Id);
+
+        var response = await api.PostWithCsrfAsync($"/api/orders/{orderId}/void");
+        var order = await api.ReadRequiredAsync<OrderResponse>(response);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Voided", order.Status);
+        Assert.NotNull(order.VoidedAtUtc);
+        var repeated = await api.PostWithCsrfAsync($"/api/orders/{orderId}/void");
+        Assert.Equal(HttpStatusCode.Conflict, repeated.StatusCode);
+        Assert.Contains("El pedido ya fue anulado.", await repeated.Content.ReadAsStringAsync());
+    }
+
+    [Theory]
+    [InlineData(OrderStatus.Pending)]
+    [InlineData(OrderStatus.Preparing)]
+    [InlineData(OrderStatus.Ready)]
+    [InlineData(OrderStatus.Cancelled)]
+    public async Task Void_NonDeliveredOrder_ReturnsBadRequest(OrderStatus status)
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Administrator);
+        var orderId = await api.ExecuteDbContextAsync(async db =>
+            (await TestDataSeeder.AddOrderAsync(db, $"VOID-{status}", status, DateTime.UtcNow.AddMinutes(-5))).Id);
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await api.PostWithCsrfAsync($"/api/orders/{orderId}/void")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData(UserRole.Cashier)]
+    [InlineData(UserRole.Kitchen)]
+    public async Task Void_WhenNotAdministrator_ReturnsForbidden(UserRole role)
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(role);
+        var orderId = await api.ExecuteDbContextAsync(async db =>
+            (await TestDataSeeder.AddOrderAsync(db, "VOID-FORBIDDEN", OrderStatus.Delivered, DateTime.UtcNow.AddMinutes(-5))).Id);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await api.PostWithCsrfAsync($"/api/orders/{orderId}/void")).StatusCode);
+    }
+
+    [Fact]
     public async Task CreateOrder_WhenValid_ReturnsCreatedWithLocation()
     {
         await using var api = new ApiTestContext();
@@ -303,6 +387,13 @@ public sealed class OrderEndpointsTests
                 productName: "Cookie");
             await TestDataSeeder.AddOrderAsync(dbContext, "A-102", OrderStatus.Pending, now.AddMinutes(-10));
             await TestDataSeeder.AddOrderAsync(dbContext, "A-103", OrderStatus.Cancelled, now.AddMinutes(-5));
+            var voided = await TestDataSeeder.AddOrderAsync(
+                dbContext,
+                "A-104",
+                OrderStatus.Delivered,
+                now.AddDays(-2));
+            voided.Void(now.AddDays(-1));
+            await dbContext.SaveChangesAsync();
         });
 
         var response = await api.Client.GetAsync("/api/orders/summary");
@@ -320,10 +411,11 @@ public sealed class OrderEndpointsTests
         Assert.Equal(400m, summary.CurrentPeriod.AverageDeliveredOrderTotal);
         Assert.Equal(90m, summary.PreviousPeriod.TotalRevenue);
         Assert.Equal(1, summary.PreviousPeriod.DeliveredOrdersCount);
-        Assert.Equal(4, summary.OperationalSnapshot.TotalOrdersCount);
+        Assert.Equal(5, summary.OperationalSnapshot.TotalOrdersCount);
         Assert.Equal(1, summary.OperationalSnapshot.ActiveOrdersCount);
         Assert.Equal(2, summary.OperationalSnapshot.DeliveredOrdersCount);
         Assert.Equal(1, summary.OperationalSnapshot.CancelledOrdersCount);
+        Assert.Equal(1, summary.OperationalSnapshot.VoidedOrdersCount);
         Assert.Collection(
             summary.TopSellingProducts,
             first =>

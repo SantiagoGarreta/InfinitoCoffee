@@ -12,9 +12,21 @@ public interface IOrderRepository
 
     Task<IReadOnlyCollection<Order>> GetPickupCandidatesAsync(CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<Order>> GetHistoryAsync(
+        int take,
+        DateTime? beforeCreatedAtUtc,
+        Guid? beforeId,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(Order order, CancellationToken cancellationToken = default);
 
     Task<string?> GetLatestOrderNumberAsync(CancellationToken cancellationToken = default);
+
+    Task<Order?> VoidSaleAsync(
+        Guid orderId,
+        Guid actorId,
+        DateTime voidedAtUtc,
+        CancellationToken cancellationToken = default);
 
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

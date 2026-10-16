@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { ProductsApiService } from '../../../core/products/data-access/products-api.service';
+import { provideRouter } from '@angular/router';
 import { AdminStockPageComponent } from './admin-stock-page.component';
 import { StockApiService, StockDashboard } from './stock-api.service';
 
@@ -17,13 +17,15 @@ const dashboard: StockDashboard = {
 
 describe('AdminStockPageComponent', () => {
   let api: { dashboard: ReturnType<typeof vi.fn>; history: ReturnType<typeof vi.fn>; record: ReturnType<typeof vi.fn>;
-    saveRecipe: ReturnType<typeof vi.fn>; createItem: ReturnType<typeof vi.fn>; updateItem: ReturnType<typeof vi.fn> };
+    saveRecipe: ReturnType<typeof vi.fn>; archiveRecipe: ReturnType<typeof vi.fn>;
+    createItem: ReturnType<typeof vi.fn>; updateItem: ReturnType<typeof vi.fn> };
   beforeEach(async () => {
     api = { dashboard: vi.fn().mockResolvedValue(structuredClone(dashboard)),
       history: vi.fn().mockResolvedValue({ items: [], hasMore: false }), record: vi.fn().mockResolvedValue(undefined),
-      saveRecipe: vi.fn().mockResolvedValue(undefined), createItem: vi.fn(), updateItem: vi.fn() };
+      saveRecipe: vi.fn().mockResolvedValue(undefined), archiveRecipe: vi.fn().mockResolvedValue(undefined),
+      createItem: vi.fn().mockResolvedValue(undefined), updateItem: vi.fn() };
     await TestBed.configureTestingModule({ imports: [AdminStockPageComponent], providers: [
-      { provide: StockApiService, useValue: api }, { provide: ProductsApiService, useValue: { getProducts: () => Promise.resolve([]) } },
+      provideRouter([]), { provide: StockApiService, useValue: api },
     ] }).compileComponents();
   });
   async function create() {
@@ -38,6 +40,32 @@ describe('AdminStockPageComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Huevos');
     expect(fixture.nativeElement.textContent).not.toContain('En tránsito');
     expect(fixture.nativeElement.textContent).not.toContain('Confirmar recepción');
+  });
+  it('keeps prepared products in recipes without showing a fictitious balance', async () => {
+    const withCoffee = structuredClone(dashboard);
+    withCoffee.items.push({ id: 'coffee', name: 'Capuchino', kind: 'MadeToOrder', unit: 'Unit',
+      productId: 'coffee-product', minimumQuantity: 0 });
+    api.dashboard.mockResolvedValue(withCoffee);
+    const fixture = await create();
+    const component = fixture.componentInstance;
+    expect(component.stockedItems()).toHaveLength(2);
+    expect(component.finished().map(item => item.name)).toEqual(['Scones', 'Capuchino']);
+    expect(fixture.nativeElement.querySelector('tbody')?.textContent).not.toContain('Capuchino');
+    component.setTab('recipes'); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('select[name="recipeItem"]')?.textContent).toContain('Capuchino');
+    component.setTab('adjust'); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('select[name="adjustItem"]')?.textContent).not.toContain('Capuchino');
+  });
+  it('offers only ingredient creation in Stock', async () => {
+    const fixture = await create(); const component = fixture.componentInstance;
+    component.setTab('items'); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Nuevo ingrediente');
+    expect(fixture.nativeElement.querySelector('select[name="itemKind"]')).toBeNull();
+    component.itemName = 'Harina'; component.itemUnit = 'Gram'; component.itemMinimum = 100;
+    await component.saveItem();
+    expect(api.createItem).toHaveBeenCalledWith({
+      name: 'Harina', kind: 'Ingredient', unit: 'Gram', productId: null, minimumQuantity: 100,
+    });
   });
   it('filters and highlights items below their minimum, then shows all items again', async () => {
     const lowDashboard = structuredClone(dashboard);
@@ -106,5 +134,14 @@ describe('AdminStockPageComponent', () => {
       notes: 'Traslado de sucursal 2', consumeIngredients: false,
       lines: [{ itemId: 'scones', delta: 50, unit: 'unit' }],
     });
+  });
+  it('asks before removing a recipe and reloads the dashboard', async () => {
+    const fixture = await create(); const component = fixture.componentInstance;
+    component.setTab('recipes'); fixture.detectChanges();
+    component.askToArchiveRecipe('scones'); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('¿Eliminar la receta de Scones?');
+    await component.archiveRecipe('scones');
+    expect(api.archiveRecipe).toHaveBeenCalledWith('scones');
+    expect(component.confirmingArchiveRecipeItemId()).toBeNull();
   });
 });

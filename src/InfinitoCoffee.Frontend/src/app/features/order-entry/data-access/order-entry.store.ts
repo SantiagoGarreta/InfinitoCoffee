@@ -33,7 +33,7 @@ export class OrderEntryStore {
   readonly visibleProducts = computed(() => {
     const activeCategoryIds = new Set(this.activeCategories().map((category) => category.id));
     const sellableProducts = this.products().filter((product) =>
-      product.isActive && activeCategoryIds.has(product.categoryId));
+      product.isActive && product.categoryId != null && activeCategoryIds.has(product.categoryId));
     const categoryId = this.selectedCategoryId();
 
     if (!categoryId) {

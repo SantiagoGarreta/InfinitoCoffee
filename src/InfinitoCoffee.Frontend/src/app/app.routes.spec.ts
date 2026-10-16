@@ -20,7 +20,7 @@ describe('application route structure', () => {
 
     const admin = shell?.children?.find((route) => route.path === 'admin');
     expect(admin?.canActivate?.length).toBe(1);
-    expect(admin?.children?.map((route) => route.path)).toEqual(['stock', '', 'products', 'categories', 'users', 'results']);
+    expect(admin?.children?.map((route) => route.path)).toEqual(['orders', 'stock', '', 'products', 'categories', 'users', 'results']);
   });
 
   it('keeps public routes prerendered and every private route client-rendered', () => {
@@ -36,15 +36,18 @@ describe('application route structure', () => {
     const categories = admin?.children?.find((route) => route.path === 'categories');
     const users = admin?.children?.find((route) => route.path === 'users');
     const results = admin?.children?.find((route) => route.path === 'results');
+    const orders = admin?.children?.find((route) => route.path === 'orders');
 
     const loadProducts = products?.loadComponent as () => Promise<{ name: string }>;
     const loadCategories = categories?.loadComponent as () => Promise<{ name: string }>;
     const loadUsers = users?.loadComponent as () => Promise<{ name: string }>;
     const loadResults = results?.loadComponent as () => Promise<{ name: string }>;
+    const loadOrders = orders?.loadComponent as () => Promise<{ name: string }>;
 
     expect((await loadProducts()).name).toContain('AdminProductsPageComponent');
     expect((await loadCategories()).name).toContain('AdminCategoriesPageComponent');
     expect((await loadUsers()).name).toContain('AdminUsersPageComponent');
     expect((await loadResults()).name).toContain('AdminResultsPageComponent');
+    expect((await loadOrders()).name).toContain('AdminOrdersPageComponent');
   });
 });

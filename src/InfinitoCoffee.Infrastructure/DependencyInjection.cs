@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Branches.IBranchRepository, BranchRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IProductStockRepository, ProductStockRepository>();
         services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<Application.Stock.IStockService, Persistence.Stock.StockService>();

@@ -19,6 +19,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid #ac8459; outline-offset: 3px; }
 .secondary { background: #efe6da; color: #5d4635; }
 .text-button { color: #355345; background: transparent; padding: .55rem; }
+.danger-text { color: #a0382f; }
 .remove { color: #934237; }
 .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 .metrics article { display: grid; gap: .6rem; }
