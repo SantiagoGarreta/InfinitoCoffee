@@ -109,7 +109,10 @@ public sealed class ProductCategoryEndpointsTests
 
         var reassigned = await api.PutAsJsonWithCsrfAsync($"/api/products/{ids.ProductId}", new UpdateProductRequest
         {
-            Name = "Latte", Price = 100m, Cost = 30m, CategoryId = ids.NewCategoryId
+            Name = "Latte",
+            Price = 100m,
+            Cost = 30m,
+            CategoryId = ids.NewCategoryId
         });
         Assert.Equal(HttpStatusCode.OK, reassigned.StatusCode);
         Assert.Equal(ids.NewCategoryId, (await api.ReadRequiredAsync<ProductResponse>(reassigned)).CategoryId);

@@ -95,8 +95,14 @@ public sealed class ProductEndpointsTests
         var categoryId = await api.ExecuteDbContextAsync(async db =>
             (await TestDataSeeder.AddCategoryAsync(db)).Id);
         var product = await api.ReadRequiredAsync<ProductResponse>(await api.PostAsJsonWithCsrfAsync("/api/products",
-            new CreateProductRequest { Name = "Capuchino", Price = 150, Cost = 50,
-                CategoryId = categoryId, MinimumQuantity = 2 }));
+            new CreateProductRequest
+            {
+                Name = "Capuchino",
+                Price = 150,
+                Cost = 50,
+                CategoryId = categoryId,
+                MinimumQuantity = 2
+            }));
         var itemId = await api.ExecuteDbContextAsync(async db =>
             (await db.StockItems.SingleAsync(x => x.ProductId == product.Id)).Id);
         await api.ExecuteDbContextAsync(async db =>
@@ -104,8 +110,14 @@ public sealed class ProductEndpointsTests
             (await db.StockBalances.SingleAsync(x => x.ItemId == itemId && x.BranchId == 1)).Quantity = 1;
             await db.SaveChangesAsync();
         });
-        var request = new UpdateProductRequest { Name = "Capuchino", Price = 150, Cost = 50,
-            CategoryId = categoryId, StockMode = ProductStockMode.MadeToOrder };
+        var request = new UpdateProductRequest
+        {
+            Name = "Capuchino",
+            Price = 150,
+            Cost = 50,
+            CategoryId = categoryId,
+            StockMode = ProductStockMode.MadeToOrder
+        };
         Assert.Equal(HttpStatusCode.Conflict,
             (await api.PutAsJsonWithCsrfAsync($"/api/products/{product.Id}", request)).StatusCode);
         await api.ExecuteDbContextAsync(async db =>
@@ -120,8 +132,14 @@ public sealed class ProductEndpointsTests
         Assert.False(await api.ExecuteDbContextAsync(db => db.StockBalances.AnyAsync(x => x.ItemId == itemId)));
         var stocked = await api.ReadRequiredAsync<ProductResponse>(await api.PutAsJsonWithCsrfAsync(
             $"/api/products/{product.Id}", new UpdateProductRequest
-            { Name = "Capuchino", Price = 150, Cost = 50, CategoryId = categoryId,
-                StockMode = ProductStockMode.Stocked, MinimumQuantity = 3 }));
+            {
+                Name = "Capuchino",
+                Price = 150,
+                Cost = 50,
+                CategoryId = categoryId,
+                StockMode = ProductStockMode.Stocked,
+                MinimumQuantity = 3
+            }));
         Assert.Equal(ProductStockMode.Stocked, stocked.StockMode);
         Assert.Equal(3m, stocked.MinimumQuantity);
         Assert.Equal(2, await api.ExecuteDbContextAsync(db => db.StockBalances.CountAsync(x => x.ItemId == itemId)));
@@ -139,7 +157,11 @@ public sealed class ProductEndpointsTests
 
         var response = await api.PostAsJsonWithCsrfAsync("/api/products", new CreateProductRequest
         {
-            Name = "Scones", Price = 150m, Cost = 62m, CategoryId = categoryId, MinimumQuantity = 3
+            Name = "Scones",
+            Price = 150m,
+            Cost = 62m,
+            CategoryId = categoryId,
+            MinimumQuantity = 3
         });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
@@ -158,13 +180,20 @@ public sealed class ProductEndpointsTests
         var product = await api.ReadRequiredAsync<ProductResponse>(await api.PostAsJsonWithCsrfAsync(
             "/api/products", new CreateProductRequest
             {
-                Name = "Scones", Price = 150m, Cost = 62m, CategoryId = categoryId, MinimumQuantity = 3
+                Name = "Scones",
+                Price = 150m,
+                Cost = 62m,
+                CategoryId = categoryId,
+                MinimumQuantity = 3
             }));
 
         var response = await api.PutAsJsonWithCsrfAsync($"/api/products/{product.Id}", new UpdateProductRequest
         {
-            Name = "Scones integrales", Price = 160m, Cost = 70m,
-            CategoryId = categoryId, MinimumQuantity = 8
+            Name = "Scones integrales",
+            Price = 160m,
+            Cost = 70m,
+            CategoryId = categoryId,
+            MinimumQuantity = 8
         });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -179,7 +208,10 @@ public sealed class ProductEndpointsTests
         var updateWithoutMinimum = await api.PutAsJsonWithCsrfAsync($"/api/products/{product.Id}",
             new UpdateProductRequest
             {
-                Name = "Scones integrales", Price = 170m, Cost = 75m, CategoryId = categoryId
+                Name = "Scones integrales",
+                Price = 170m,
+                Cost = 75m,
+                CategoryId = categoryId
             });
         Assert.Equal(8m, (await api.ReadRequiredAsync<ProductResponse>(updateWithoutMinimum)).MinimumQuantity);
     }
@@ -390,7 +422,11 @@ public sealed class ProductEndpointsTests
             (await TestDataSeeder.AddCategoryAsync(dbContext)).Id);
         var created = await api.PostAsJsonWithCsrfAsync("/api/products", new CreateProductRequest
         {
-            Name = "Latte", Price = 180m, Cost = 74m, CategoryId = categoryId, MinimumQuantity = 2
+            Name = "Latte",
+            Price = 180m,
+            Cost = 74m,
+            CategoryId = categoryId,
+            MinimumQuantity = 2
         });
         created.EnsureSuccessStatusCode();
         var productId = (await api.ReadRequiredAsync<ProductResponse>(created)).Id;
@@ -419,7 +455,11 @@ public sealed class ProductEndpointsTests
             (await TestDataSeeder.AddCategoryAsync(db)).Id);
         var created = await api.PostAsJsonWithCsrfAsync("/api/products", new CreateProductRequest
         {
-            Name = "Scones", Price = 150m, Cost = 62m, CategoryId = categoryId, MinimumQuantity = 1
+            Name = "Scones",
+            Price = 150m,
+            Cost = 62m,
+            CategoryId = categoryId,
+            MinimumQuantity = 1
         });
         var productId = (await api.ReadRequiredAsync<ProductResponse>(created)).Id;
         var stockItemId = await api.ExecuteDbContextAsync(async db =>

@@ -184,7 +184,9 @@ public sealed class DevelopmentDataSeeder
             foreach (var branchId in branchIds)
                 dbContext.StockBalances.Add(new StockBalance
                 {
-                    ItemId = item.Id, BranchId = branchId, Location = StockLocation.Factory
+                    ItemId = item.Id,
+                    BranchId = branchId,
+                    Location = StockLocation.Factory
                 });
         }
         await dbContext.SaveChangesAsync(cancellationToken);

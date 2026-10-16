@@ -76,8 +76,14 @@ public sealed class PreparedToOrderTests
         var categoryId = await api.ExecuteDbContextAsync(async db =>
             (await TestDataSeeder.AddCategoryAsync(db, "Cafes")).Id);
         var product = await api.ReadRequiredAsync<ProductResponse>(await api.PostAsJsonWithCsrfAsync("/api/products",
-            new CreateProductRequest { Name = "Espresso", Price = 100, Cost = 30, CategoryId = categoryId,
-                StockMode = ProductStockMode.MadeToOrder }));
+            new CreateProductRequest
+            {
+                Name = "Espresso",
+                Price = 100,
+                Cost = 30,
+                CategoryId = categoryId,
+                StockMode = ProductStockMode.MadeToOrder
+            }));
         Assert.Equal(HttpStatusCode.Conflict, (await api.PostAsJsonWithCsrfAsync("/api/orders", new CreateOrderRequest
         {
             Items = [new CreateOrderItemRequest { ProductId = product.Id, Quantity = 1 }]
@@ -107,8 +113,14 @@ public sealed class PreparedToOrderTests
         var categoryId = await api.ExecuteDbContextAsync(async db =>
             (await TestDataSeeder.AddCategoryAsync(db, categoryName)).Id);
         var product = await api.ReadRequiredAsync<ProductResponse>(await api.PostAsJsonWithCsrfAsync("/api/products",
-            new CreateProductRequest { Name = "Capuchino", Price = 150, Cost = 50, CategoryId = categoryId,
-                StockMode = ProductStockMode.MadeToOrder }));
+            new CreateProductRequest
+            {
+                Name = "Capuchino",
+                Price = 150,
+                Cost = 50,
+                CategoryId = categoryId,
+                StockMode = ProductStockMode.MadeToOrder
+            }));
         Assert.Equal(ProductStockMode.MadeToOrder, product.StockMode);
         Assert.Null(product.MinimumQuantity);
         var coffeeItem = await api.ExecuteDbContextAsync(db => db.StockItems.SingleAsync(x => x.ProductId == product.Id));
