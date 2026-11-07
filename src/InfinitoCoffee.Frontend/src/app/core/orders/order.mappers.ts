@@ -49,5 +49,6 @@ function toOrderItem(item: Order['items'][number] | OrderApiItemDto | OrderRealt
     quantity: item.quantity,
     notes: item.notes,
     lineTotal: item.lineTotal,
+    isTakeAway: item.isTakeAway ?? false,
   };
 }

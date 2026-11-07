@@ -41,6 +41,12 @@ public class Product
 
     public decimal Cost { get; private set; }
 
+    public bool CanConsumeOnSite { get; private set; } = true;
+
+    public bool CanTakeAway { get; private set; }
+
+    public decimal TakeAwayCost { get; private set; }
+
     public bool IsActive { get; private set; }
 
     public bool IsDeleted { get; private set; }
@@ -78,6 +84,20 @@ public class Product
         }
 
         Cost = cost;
+    }
+
+    public void ChangeServiceOptions(bool canConsumeOnSite, bool canTakeAway, decimal takeAwayCost)
+    {
+        if (!canConsumeOnSite && !canTakeAway)
+            throw new ArgumentException("At least one service option is required.");
+        if (takeAwayCost < 0)
+            throw new ArgumentOutOfRangeException(nameof(takeAwayCost), "Take-away cost cannot be negative.");
+        if (!canTakeAway && takeAwayCost != 0)
+            throw new ArgumentException("Take-away cost requires the take-away option.", nameof(takeAwayCost));
+
+        CanConsumeOnSite = canConsumeOnSite;
+        CanTakeAway = canTakeAway;
+        TakeAwayCost = takeAwayCost;
     }
 
     public void ChangeCategory(Guid categoryId)

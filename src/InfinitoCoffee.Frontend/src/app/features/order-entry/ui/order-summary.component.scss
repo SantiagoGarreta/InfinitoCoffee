@@ -61,6 +61,18 @@
   resize: vertical;
 }
 
+.order-summary__take-away {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.order-summary__take-away input {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
 .order-summary__footer {
   padding-top: 0.5rem;
   border-top: 1px solid rgba(111, 78, 55, 0.12);

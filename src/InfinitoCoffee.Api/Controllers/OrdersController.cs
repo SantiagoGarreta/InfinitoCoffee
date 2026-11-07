@@ -39,7 +39,7 @@ public sealed class OrdersController : ControllerBase
         var order = await _orderService.CreateOrderAsync(
             new CreateOrderCommand(
                 request.Notes,
-                request.Items.Select(item => new CreateOrderItemCommand(item.ProductId, item.Quantity, item.Notes)).ToArray()),
+                request.Items.Select(item => new CreateOrderItemCommand(item.ProductId, item.Quantity, item.Notes, item.IsTakeAway)).ToArray()),
             cancellationToken);
 
         return CreatedAtAction(nameof(GetById), new { id = order.Id }, ApiContractMapper.MapOrder(order));

@@ -29,7 +29,7 @@
             <summary>Ver detalle</summary>
             <ul class="order-items">
               @for (item of order.items; track item.id) {
-                <li><span><strong>{{ item.quantity }} × {{ item.productNameSnapshot }}</strong>@if (item.notes) { <small>{{ item.notes }}</small> }</span><span>{{ item.lineTotal | currency:'UYU':'symbol-narrow':'1.2-2' }}</span></li>
+                <li><span><strong>{{ item.quantity }} × {{ item.productNameSnapshot }}</strong><small>{{ item.isTakeAway ? 'Para llevar' : 'En el local' }}</small>@if (item.notes) { <small>{{ item.notes }}</small> }</span><span>{{ item.lineTotal | currency:'UYU':'symbol-narrow':'1.2-2' }}</span></li>
               }
             </ul>
             @if (order.notes) { <p class="order-notes"><strong>Notas:</strong> {{ order.notes }}</p> }

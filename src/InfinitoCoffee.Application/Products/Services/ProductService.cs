@@ -34,6 +34,7 @@ public sealed class ProductService
 
         var category = await GetActiveCategoryAsync(command.CategoryId, cancellationToken);
         var product = new Product(category.Id, command.Name, command.Price, command.Cost, command.Description);
+        product.ChangeServiceOptions(command.CanConsumeOnSite, command.CanTakeAway, command.TakeAwayCost);
 
         await _productRepository.AddAsync(product, cancellationToken);
         await _productStockRepository.AddForProductAsync(product, command.MinimumQuantity, command.StockMode, cancellationToken);
@@ -95,6 +96,7 @@ public sealed class ProductService
         product.ChangePrice(command.Price);
         product.ChangeCost(command.Cost);
         product.ChangeDescription(command.Description);
+        product.ChangeServiceOptions(command.CanConsumeOnSite, command.CanTakeAway, command.TakeAwayCost);
 
         var minimumQuantity = await _productStockRepository.UpdateForProductAsync(
             product, command.MinimumQuantity, command.StockMode, cancellationToken);
@@ -177,6 +179,9 @@ public sealed class ProductService
             product.CategoryId,
             product.IsActive,
             minimumQuantity,
-            mode);
+            mode,
+            product.CanConsumeOnSite,
+            product.CanTakeAway,
+            product.TakeAwayCost);
     }
 }

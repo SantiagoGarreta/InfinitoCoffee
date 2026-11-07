@@ -4,6 +4,8 @@ Sistema web para la gestion de comandas de una cafeteria, desarrollado con ASP.N
 
 El sistema admite dos sucursales con ingredientes compartidos y productos terminados, ventas, resultados, cocina y pickup independientes. Administración puede seleccionar la sucursal y cambiar su nombre; caja y cocina trabajan en la sucursal asignada a su usuario. Consultar la [guía de sucursales](docs/sucursales.md) para activar la separación y la [guía de stock](docs/stock.md) para cargar existencias y registrar producción o traslados manuales.
 
+Cada producto puede habilitarse para consumo en el local, para llevar o para ambas opciones. En Administración se carga el costo adicional por unidad para llevar (por ejemplo, vaso y tapa); el precio de venta es el mismo. En Caja, el check de cada renglón define la variante y la comanda la muestra en Cocina e historial. El costo adicional queda guardado en la venta y se refleja en Resultados. Los productos y pedidos existentes se conservan como consumo en el local hasta que se editen.
+
 ## Versiones usadas
 
 - .NET SDK `10.0.302`

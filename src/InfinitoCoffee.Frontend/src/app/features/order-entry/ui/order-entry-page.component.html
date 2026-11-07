@@ -47,9 +47,10 @@
           [items]="store.items()"
           [total]="store.visualTotal()"
           [disabled]="store.submitting()"
-          (increase)="store.increaseQuantity($event)"
-          (decrease)="store.decreaseQuantity($event)"
-          (notesChanged)="store.updateItemNotes($event.productId, $event.notes)" />
+          (increase)="store.increaseQuantity($event.productId, $event.isTakeAway)"
+          (decrease)="store.decreaseQuantity($event.productId, $event.isTakeAway)"
+          (notesChanged)="store.updateItemNotes($event.productId, $event.notes, $event.isTakeAway)"
+          (takeAwayChanged)="store.setTakeAway($event.productId, $event.currentIsTakeAway, $event.isTakeAway)" />
 
         <button
           type="button"
