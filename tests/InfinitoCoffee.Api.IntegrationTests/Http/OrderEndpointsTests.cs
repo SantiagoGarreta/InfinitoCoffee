@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using InfinitoCoffee.Api.Contracts.Orders;
 using InfinitoCoffee.Domain.Orders;
 using InfinitoCoffee.Domain.Users;
+using Microsoft.EntityFrameworkCore;
 
 namespace InfinitoCoffee.Api.IntegrationTests.Http;
 
@@ -127,6 +128,40 @@ public sealed class OrderEndpointsTests
         Assert.Equal("1", order.OrderNumber);
         Assert.Equal("Pending", order.Status);
         Assert.Single(order.Items);
+    }
+
+    [Fact]
+    public async Task CreateOrder_WithTakeAwayVariant_ReturnsVariantAndCostSnapshot()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync(UserRole.Cashier);
+        var productId = await api.ExecuteDbContextAsync(async db =>
+        {
+            var category = await TestDataSeeder.AddCategoryAsync(db);
+            var product = await TestDataSeeder.AddProductAsync(db, category.Id, cost: 60m);
+            product.ChangeServiceOptions(true, true, 10m);
+            await db.SaveChangesAsync();
+            return product.Id;
+        });
+
+        var response = await api.PostAsJsonWithCsrfAsync("/api/orders", new CreateOrderRequest
+        {
+            Items =
+            [
+                new CreateOrderItemRequest { ProductId = productId, Quantity = 1 },
+                new CreateOrderItemRequest { ProductId = productId, Quantity = 2, IsTakeAway = true }
+            ]
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var order = await api.ReadRequiredAsync<OrderResponse>(response);
+        Assert.Contains(order.Items, item => !item.IsTakeAway);
+        Assert.Contains(order.Items, item => item.IsTakeAway);
+        var costs = await api.ExecuteDbContextAsync(async db =>
+            await db.OrderItems.Where(item => item.OrderId == order.Id)
+                .Select(item => new { item.IsTakeAway, item.UnitCostSnapshot }).ToArrayAsync());
+        Assert.Contains(costs, item => !item.IsTakeAway && item.UnitCostSnapshot == 60m);
+        Assert.Contains(costs, item => item.IsTakeAway && item.UnitCostSnapshot == 70m);
     }
 
     [Fact]

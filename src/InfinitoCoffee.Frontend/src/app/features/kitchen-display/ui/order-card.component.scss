@@ -99,6 +99,14 @@
   background: #faf5ef;
 }
 
+.order-card__service {
+  margin: 0.3rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #6f4d33;
+}
+
 .order-card__actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

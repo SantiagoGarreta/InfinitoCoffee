@@ -27,6 +27,10 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
             .HasPrecision(18, 2)
             .IsRequired();
 
+        builder.Property(product => product.CanConsumeOnSite).IsRequired().HasDefaultValue(true);
+        builder.Property(product => product.CanTakeAway).IsRequired().HasDefaultValue(false);
+        builder.Property(product => product.TakeAwayCost).HasPrecision(18, 2).IsRequired();
+
         builder.Property(product => product.CategoryId)
             .IsRequired(false);
 

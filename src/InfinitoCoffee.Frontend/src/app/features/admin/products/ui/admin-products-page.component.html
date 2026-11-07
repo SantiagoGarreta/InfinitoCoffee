@@ -44,6 +44,8 @@
                   <div>
                     <strong>Precio: {{ product.price | currency:'UYU':'symbol-narrow':'1.2-2' }}</strong>
                     <small>Costo: {{ product.cost | currency:'UYU':'symbol-narrow':'1.2-2' }}</small>
+                    <small>{{ (product.canConsumeOnSite ?? true) ? 'En el local' : '' }}{{ (product.canConsumeOnSite ?? true) && product.canTakeAway ? ' · ' : '' }}{{ product.canTakeAway ? 'Para llevar' : '' }}</small>
+                    @if (product.canTakeAway) { <small>Costo adicional para llevar: {{ product.takeAwayCost ?? 0 | currency:'UYU':'symbol-narrow':'1.2-2' }}</small> }
                     <small>{{ product.stockMode === 'MadeToOrder' ? 'Preparado al momento' : 'Con stock' }}</small>
                     @if (product.stockMode !== 'MadeToOrder' && product.minimumQuantity != null) {
                       <small>Stock mínimo: {{ product.minimumQuantity }} un. por sucursal</small>
@@ -131,6 +133,21 @@
           <input name="cost" type="number" required min="0" step="0.01" [disabled]="store.saving()" [ngModel]="cost()" (ngModelChange)="cost.set($event)" />
           @if (cost() !== null && (cost() ?? 0) < 0) { <small>El costo mínimo es 0.</small> }
         </label>
+
+        <div class="admin-catalog__service-options">
+          <span>Opciones de consumo</span>
+          <label><input name="canConsumeOnSite" type="checkbox" [disabled]="store.saving()" [ngModel]="canConsumeOnSite()" (ngModelChange)="canConsumeOnSite.set($event)" /> En el local</label>
+          <label><input name="canTakeAway" type="checkbox" [disabled]="store.saving()" [ngModel]="canTakeAway()" (ngModelChange)="canTakeAway.set($event)" /> Para llevar</label>
+          @if (!canConsumeOnSite() && !canTakeAway()) { <small>Elegí al menos una opción.</small> }
+        </div>
+
+        @if (canTakeAway()) {
+          <label>
+            <span>Costo adicional para llevar por unidad</span>
+            <input name="takeAwayCost" type="number" required min="0" step="0.01" [disabled]="store.saving()" [ngModel]="takeAwayCost()" (ngModelChange)="takeAwayCost.set($event)" />
+            <small>Sumá vaso, tapa y otros insumos. Este costo se agrega al costo base; el precio de venta no cambia.</small>
+          </label>
+        }
 
         <label>
           <span>Control de stock</span>

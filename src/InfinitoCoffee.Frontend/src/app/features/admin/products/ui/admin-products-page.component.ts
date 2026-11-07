@@ -25,6 +25,9 @@ export class AdminProductsPageComponent implements OnInit {
   readonly description = signal('');
   readonly price = signal<number | null>(null);
   readonly cost = signal<number | null>(null);
+  readonly canConsumeOnSite = signal(true);
+  readonly canTakeAway = signal(false);
+  readonly takeAwayCost = signal<number | null>(0);
   readonly minimumQuantity = signal<number | null>(null);
   readonly stockMode = signal<'Stocked' | 'MadeToOrder'>('Stocked');
   readonly categoryId = signal('');
@@ -50,6 +53,7 @@ export class AdminProductsPageComponent implements OnInit {
     const description = this.description().trim();
     const price = this.price();
     const cost = this.cost();
+    const takeAwayCost = this.takeAwayCost();
     const minimumQuantity = this.minimumQuantity();
     return trimmedName.length > 0
       && trimmedName.length <= 150
@@ -58,6 +62,8 @@ export class AdminProductsPageComponent implements OnInit {
       && price >= 0.01
       && cost !== null
       && cost >= 0
+      && (this.canConsumeOnSite() || this.canTakeAway())
+      && (!this.canTakeAway() || (takeAwayCost !== null && takeAwayCost >= 0))
       && (this.stockMode() === 'MadeToOrder' || (minimumQuantity !== null && Number.isInteger(minimumQuantity)
         && minimumQuantity >= 0 && minimumQuantity <= 999999999))
       && this.categoryId().length > 0
@@ -95,6 +101,9 @@ export class AdminProductsPageComponent implements OnInit {
     this.description.set(product.description ?? '');
     this.price.set(product.price);
     this.cost.set(product.cost);
+    this.canConsumeOnSite.set(product.canConsumeOnSite ?? true);
+    this.canTakeAway.set(product.canTakeAway ?? false);
+    this.takeAwayCost.set(product.takeAwayCost ?? 0);
     this.minimumQuantity.set(product.minimumQuantity ?? 0);
     this.stockMode.set(product.stockMode ?? 'Stocked');
     this.categoryId.set(product.categoryId ?? '');
@@ -111,6 +120,9 @@ export class AdminProductsPageComponent implements OnInit {
       description: normalizeOptionalString(this.description()),
       price: this.price()!,
       cost: this.cost()!,
+      canConsumeOnSite: this.canConsumeOnSite(),
+      canTakeAway: this.canTakeAway(),
+      takeAwayCost: this.canTakeAway() ? this.takeAwayCost()! : 0,
       minimumQuantity: this.stockMode() === 'Stocked' ? this.minimumQuantity() : 0,
       stockMode: this.stockMode(),
       categoryId: this.categoryId(),
@@ -169,6 +181,9 @@ export class AdminProductsPageComponent implements OnInit {
     this.description.set('');
     this.price.set(null);
     this.cost.set(null);
+    this.canConsumeOnSite.set(true);
+    this.canTakeAway.set(false);
+    this.takeAwayCost.set(0);
     this.minimumQuantity.set(null);
     this.stockMode.set('Stocked');
     this.categoryId.set(this.store.activeCategories()[0]?.id ?? '');

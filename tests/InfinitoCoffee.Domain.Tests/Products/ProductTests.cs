@@ -40,6 +40,21 @@ public class ProductTests
     }
 
     [Fact]
+    public void ChangeServiceOptions_RequiresAvailabilityAndValidCost()
+    {
+        var product = new Product(Guid.NewGuid(), "Cappuccino", 150m);
+
+        Assert.Throws<ArgumentException>(() => product.ChangeServiceOptions(false, false, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => product.ChangeServiceOptions(true, true, -1));
+        Assert.Throws<ArgumentException>(() => product.ChangeServiceOptions(true, false, 8));
+
+        product.ChangeServiceOptions(true, true, 8);
+        Assert.True(product.CanConsumeOnSite);
+        Assert.True(product.CanTakeAway);
+        Assert.Equal(8m, product.TakeAwayCost);
+    }
+
+    [Fact]
     public void Deactivate_ShouldMarkProductAsInactive()
     {
         var product = new Product(Guid.NewGuid(), "Mocha", 7m);

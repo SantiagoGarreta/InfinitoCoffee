@@ -29,6 +29,14 @@ public sealed class CreateProductRequest
         ConvertValueInInvariantCulture = true)]
     public decimal Cost { get; init; }
 
+    public bool CanConsumeOnSite { get; init; } = true;
+
+    public bool CanTakeAway { get; init; }
+
+    [Range(typeof(decimal), "0", "79228162514264337593543950335",
+        ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
+    public decimal TakeAwayCost { get; init; }
+
     [NotEmptyGuid(ErrorMessage = "CategoryId is required.")]
     public Guid CategoryId { get; init; }
 

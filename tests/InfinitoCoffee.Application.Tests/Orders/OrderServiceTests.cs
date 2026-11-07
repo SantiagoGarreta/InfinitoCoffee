@@ -13,6 +13,50 @@ namespace InfinitoCoffee.Application.Tests.Orders;
 public class OrderServiceTests
 {
     [Fact]
+    public async Task CreateOrderAsync_TakeAwayAddsCostAndKeepsProductAndPriceShared()
+    {
+        var orders = new FakeOrderRepository();
+        var products = new FakeProductRepository();
+        var product = new Product(Guid.NewGuid(), "Cappuccino", 150m, 50m);
+        product.ChangeServiceOptions(true, true, 12m);
+        products.Seed(product);
+        var service = CreateOrderService(orders, products);
+
+        var created = await service.CreateOrderAsync(new CreateOrderCommand(null,
+            [new CreateOrderItemCommand(product.Id, 1, null), new CreateOrderItemCommand(product.Id, 2, null, true)]));
+
+        Assert.Equal(450m, created.Total);
+        Assert.Equal(2, created.Items.Count);
+        Assert.Contains(created.Items, item => !item.IsTakeAway);
+        Assert.Contains(created.Items, item => item.IsTakeAway);
+        var order = Assert.Single(await orders.GetAllAsync());
+        Assert.Equal(174m, order.TotalCost);
+        Assert.Equal(50m, order.Items.Single(item => !item.IsTakeAway).UnitCostSnapshot);
+        Assert.Equal(62m, order.Items.Single(item => item.IsTakeAway).UnitCostSnapshot);
+
+        product.ChangeServiceOptions(true, true, 30m);
+        Assert.Equal(174m, order.TotalCost);
+        await service.StartOrderPreparationAsync(new StartOrderPreparationCommand(order.Id));
+        await service.MarkOrderAsReadyAsync(new MarkOrderAsReadyCommand(order.Id));
+        await service.DeliverOrderAsync(new DeliverOrderCommand(order.Id));
+        Assert.Equal(174m, (await service.GetOrderResultsAsync()).CurrentPeriod.TotalCost);
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_RejectsUnavailableServiceOption()
+    {
+        var orders = new FakeOrderRepository();
+        var products = new FakeProductRepository();
+        var product = new Product(Guid.NewGuid(), "Cappuccino", 150m, 50m);
+        products.Seed(product);
+        var service = CreateOrderService(orders, products);
+
+        await Assert.ThrowsAsync<ConflictException>(() => service.CreateOrderAsync(new CreateOrderCommand(null,
+            [new CreateOrderItemCommand(product.Id, 1, null, true)])));
+        Assert.Empty(await orders.GetAllAsync());
+    }
+
+    [Fact]
     public async Task CreateOrderAsync_OnlyCantina_CompletesSaleWithoutKitchenOrPickup()
     {
         var now = new DateTime(2026, 10, 2, 12, 0, 0, DateTimeKind.Utc);
