@@ -30,6 +30,8 @@ internal sealed class OrderItemConfiguration : IEntityTypeConfiguration<OrderIte
             .HasPrecision(18, 2)
             .IsRequired();
 
+        builder.Property(item => item.IsTakeAway).IsRequired().HasDefaultValue(false);
+
         builder.Property(item => item.Quantity)
             .IsRequired();
 

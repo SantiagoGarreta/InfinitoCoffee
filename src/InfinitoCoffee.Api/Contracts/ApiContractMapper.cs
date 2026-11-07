@@ -73,7 +73,10 @@ internal static class ApiContractMapper
             product.CategoryId,
             product.IsActive,
             product.MinimumQuantity,
-            product.StockMode);
+            product.StockMode,
+            product.CanConsumeOnSite,
+            product.CanTakeAway,
+            product.TakeAwayCost);
     }
 
     public static ProductCategoryResponse MapProductCategory(ProductCategoryDto category)
@@ -123,7 +126,8 @@ internal static class ApiContractMapper
             item.UnitPrice,
             item.Quantity,
             item.Notes,
-            item.LineTotal);
+            item.LineTotal,
+            item.IsTakeAway);
     }
 
     private static PickupOrderItemResponse MapPickupOrderItem(OrderItemDto item)
@@ -131,7 +135,8 @@ internal static class ApiContractMapper
         return new PickupOrderItemResponse(
             item.Id,
             item.ProductName,
-            item.Quantity);
+            item.Quantity,
+            item.IsTakeAway);
     }
 
     private static PickupOrderItemResponse MapPickupOrderItem(OrderRealtimeItemDto item)
@@ -139,7 +144,8 @@ internal static class ApiContractMapper
         return new PickupOrderItemResponse(
             item.Id,
             item.ProductName,
-            item.Quantity);
+            item.Quantity,
+            item.IsTakeAway);
     }
 
     private static OrderPeriodSummaryResponse MapOrderPeriodSummary(OrderPeriodSummaryDto summary)

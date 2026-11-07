@@ -9,4 +9,7 @@ public sealed record CreateProductCommand(
     decimal Cost,
     string? Description,
     decimal MinimumQuantity = 0,
-    ProductStockMode StockMode = ProductStockMode.Stocked);
+    ProductStockMode StockMode = ProductStockMode.Stocked,
+    bool CanConsumeOnSite = true,
+    bool CanTakeAway = false,
+    decimal TakeAwayCost = 0);

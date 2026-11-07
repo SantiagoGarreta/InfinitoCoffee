@@ -4,6 +4,9 @@ export interface Product {
   description: string | null;
   price: number;
   cost: number;
+  canConsumeOnSite?: boolean;
+  canTakeAway?: boolean;
+  takeAwayCost?: number;
   categoryId: string | null;
   isActive: boolean;
   minimumQuantity?: number | null;

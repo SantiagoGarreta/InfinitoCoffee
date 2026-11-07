@@ -16,7 +16,8 @@ export class OrderSummaryComponent {
   readonly total = input.required<number>();
   readonly disabled = input(false);
 
-  readonly increase = output<string>();
-  readonly decrease = output<string>();
-  readonly notesChanged = output<{ productId: string; notes: string }>();
+  readonly increase = output<{ productId: string; isTakeAway: boolean }>();
+  readonly decrease = output<{ productId: string; isTakeAway: boolean }>();
+  readonly notesChanged = output<{ productId: string; isTakeAway: boolean; notes: string }>();
+  readonly takeAwayChanged = output<{ productId: string; currentIsTakeAway: boolean; isTakeAway: boolean }>();
 }

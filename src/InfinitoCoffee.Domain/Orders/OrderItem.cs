@@ -20,7 +20,8 @@ public class OrderItem
         decimal unitPriceSnapshot,
         decimal unitCostSnapshot,
         int quantity,
-        string? notes = null)
+        string? notes = null,
+        bool isTakeAway = false)
     {
         if (productId == Guid.Empty)
         {
@@ -54,6 +55,7 @@ public class OrderItem
         UnitCostSnapshot = unitCostSnapshot;
         Quantity = quantity;
         Notes = NormalizeOptional(notes);
+        IsTakeAway = isTakeAway;
     }
 
     public Guid Id { get; private set; }
@@ -71,6 +73,8 @@ public class OrderItem
     public int Quantity { get; private set; }
 
     public string? Notes { get; private set; }
+
+    public bool IsTakeAway { get; private set; }
 
     public DateTime? SoldAtUtc { get; private set; }
 

@@ -33,7 +33,8 @@ public sealed class ProductsController : ControllerBase
     {
         var product = await _productService.CreateProductAsync(
             new CreateProductCommand(request.CategoryId, request.Name, request.Price, request.Cost, request.Description,
-                request.MinimumQuantity, request.StockMode),
+                request.MinimumQuantity, request.StockMode,
+                request.CanConsumeOnSite, request.CanTakeAway, request.TakeAwayCost),
             cancellationToken);
 
         return CreatedAtAction(nameof(GetById), new { id = product.Id }, ApiContractMapper.MapProduct(product));
@@ -71,7 +72,8 @@ public sealed class ProductsController : ControllerBase
     {
         var product = await _productService.UpdateProductAsync(
             new UpdateProductCommand(id, request.CategoryId, request.Name, request.Price, request.Cost, request.Description,
-                request.MinimumQuantity, request.StockMode),
+                request.MinimumQuantity, request.StockMode,
+                request.CanConsumeOnSite, request.CanTakeAway, request.TakeAwayCost),
             cancellationToken);
 
         return Ok(ApiContractMapper.MapProduct(product));

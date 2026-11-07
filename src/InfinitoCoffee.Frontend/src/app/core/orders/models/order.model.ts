@@ -14,6 +14,7 @@ export interface OrderItem {
   quantity: number;
   notes: string | null;
   lineTotal: number;
+  isTakeAway?: boolean;
 }
 
 export interface OrderApiItemDto {
@@ -24,6 +25,7 @@ export interface OrderApiItemDto {
   quantity: number;
   notes: string | null;
   lineTotal: number;
+  isTakeAway?: boolean;
 }
 
 export interface Order {
@@ -64,6 +66,7 @@ export interface OrderRealtimeItemDto {
   quantity: number;
   notes: string | null;
   lineTotal: number;
+  isTakeAway?: boolean;
 }
 
 export interface OrderRealtimeDto {
@@ -89,6 +92,7 @@ export interface CreateOrderItemRequest {
   productId: string;
   quantity: number;
   notes: string | null;
+  isTakeAway?: boolean;
 }
 
 export interface CreateOrderRequest {

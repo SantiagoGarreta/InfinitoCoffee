@@ -10,6 +10,9 @@ export interface SaveProductRequest {
   description: string | null;
   price: number;
   cost: number;
+  canConsumeOnSite?: boolean;
+  canTakeAway?: boolean;
+  takeAwayCost?: number;
   categoryId: string;
   minimumQuantity?: number | null;
   stockMode?: 'Stocked' | 'MadeToOrder';

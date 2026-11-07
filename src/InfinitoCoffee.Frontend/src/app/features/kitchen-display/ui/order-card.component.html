@@ -33,6 +33,7 @@
           <strong>{{ item.quantity }} x {{ item.productName }}</strong>
           <span>{{ item.lineTotal | currency:'UYU':'symbol':'1.0-0' }}</span>
         </div>
+        <p class="order-card__service">{{ item.isTakeAway ? 'PARA LLEVAR' : 'EN EL LOCAL' }}</p>
 
         @if (item.notes) {
           <p class="order-card__note">Nota item: {{ item.notes }}</p>
