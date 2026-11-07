@@ -72,6 +72,11 @@ public sealed class OrderService
                 throw new ConflictException($"The product '{product.Name}' is inactive.");
             }
 
+            if (item.IsTakeAway ? !product.CanTakeAway : !product.CanConsumeOnSite)
+            {
+                throw new ConflictException($"The selected service option is unavailable for '{product.Name}'.");
+            }
+
             if (product.CategoryId is null)
             {
                 throw new ConflictException($"The product '{product.Name}' needs a category before it can be sold.");
@@ -96,9 +101,10 @@ public sealed class OrderService
                     validated.Product.Id,
                     validated.Product.Name,
                     validated.Product.Price,
-                    validated.Product.Cost,
+                    validated.Product.Cost + (validated.Item.IsTakeAway ? validated.Product.TakeAwayCost : 0m),
                     validated.Item.Quantity,
-                    validated.Item.Notes);
+                    validated.Item.Notes,
+                    validated.Item.IsTakeAway);
                 if (validated.IsCantina)
                 {
                     orderItem.MarkSoldAtCashRegister(createdAtUtc);
@@ -401,7 +407,8 @@ public sealed class OrderService
             item.UnitPriceSnapshot,
             item.Quantity,
             item.Notes,
-            item.LineTotal);
+            item.LineTotal,
+            item.IsTakeAway);
     }
 
     private static OrderRealtimeDto MapRealtimeOrder(OrderDto order)
@@ -430,7 +437,8 @@ public sealed class OrderService
             item.UnitPrice,
             item.Quantity,
             item.Notes,
-            item.LineTotal);
+            item.LineTotal,
+            item.IsTakeAway);
     }
 
     private async Task<string> GenerateNextOrderNumberAsync(CancellationToken cancellationToken)

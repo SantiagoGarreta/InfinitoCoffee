@@ -10,4 +10,7 @@ public sealed record UpdateProductCommand(
     decimal Cost,
     string? Description,
     decimal? MinimumQuantity = null,
-    ProductStockMode? StockMode = null);
+    ProductStockMode? StockMode = null,
+    bool CanConsumeOnSite = true,
+    bool CanTakeAway = false,
+    decimal TakeAwayCost = 0);

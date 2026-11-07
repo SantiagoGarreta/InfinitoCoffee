@@ -29,6 +29,9 @@ public sealed class ProductEndpointsTests
                 Description = "Cafe con leche",
                 Price = 150m,
                 Cost = 62m,
+                CanConsumeOnSite = true,
+                CanTakeAway = true,
+                TakeAwayCost = 12m,
                 CategoryId = categoryId
             });
 
@@ -36,6 +39,9 @@ public sealed class ProductEndpointsTests
         var product = await api.ReadRequiredAsync<ProductResponse>(response);
         Assert.Equal(categoryId, product.CategoryId);
         Assert.Equal(62m, product.Cost);
+        Assert.True(product.CanConsumeOnSite);
+        Assert.True(product.CanTakeAway);
+        Assert.Equal(12m, product.TakeAwayCost);
     }
 
     [Fact]

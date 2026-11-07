@@ -109,9 +109,23 @@ describe('OrderEntryStore', () => {
           productId: 'p-1',
           quantity: 1,
           notes: 'Sin canela',
+          isTakeAway: false,
         },
       ],
     });
+  });
+
+  it('keeps local and take-away units as separate lines of one product', async () => {
+    const store = TestBed.inject(OrderEntryStore);
+    await store.initialize();
+    const product = { ...store.visibleProducts()[0]!, canConsumeOnSite: true, canTakeAway: true, takeAwayCost: 12 };
+
+    store.addProduct(product);
+    store.setTakeAway(product.id, false, true);
+    store.addProduct(product);
+
+    expect(store.items().map((item) => !!item.isTakeAway)).toEqual([true, false]);
+    expect(store.buildRequest()?.items.map((item) => item.isTakeAway)).toEqual([true, false]);
   });
 
   it('cleans the form after creating an order', async () => {

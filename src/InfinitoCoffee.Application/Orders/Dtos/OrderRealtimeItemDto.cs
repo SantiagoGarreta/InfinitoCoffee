@@ -7,4 +7,5 @@ public sealed record OrderRealtimeItemDto(
     decimal UnitPrice,
     int Quantity,
     string? Notes,
-    decimal LineTotal);
+    decimal LineTotal,
+    bool IsTakeAway);

@@ -33,14 +33,18 @@ public class RepositoryPersistenceTests : IDisposable
         await dbContext.SaveChangesAsync();
         var repository = new ProductRepository(dbContext);
         var product = new Product(category.Id, "Latte", 7.25m, 3.10m, "Oat milk");
+        product.ChangeServiceOptions(false, true, 0.75m);
 
         await repository.AddAsync(product);
         await repository.SaveChangesAsync();
 
-        var persisted = await dbContext.Products.SingleAsync();
+        var persisted = await dbContext.Products.AsNoTracking().SingleAsync();
         Assert.Equal(category.Id, persisted.CategoryId);
         Assert.Equal("Latte", persisted.Name);
         Assert.Equal(3.10m, persisted.Cost);
+        Assert.False(persisted.CanConsumeOnSite);
+        Assert.True(persisted.CanTakeAway);
+        Assert.Equal(0.75m, persisted.TakeAwayCost);
     }
 
     [Fact]
@@ -52,18 +56,17 @@ public class RepositoryPersistenceTests : IDisposable
             "260721-0001",
             new DateTime(2026, 7, 21, 12, 0, 0, DateTimeKind.Utc),
             [
-                new OrderItem(Guid.NewGuid(), "Latte", 7.25m, 3.10m, 2, "Extra hot"),
+                new OrderItem(Guid.NewGuid(), "Latte", 7.25m, 3.85m, 2, "Extra hot", true),
                 new OrderItem(Guid.NewGuid(), "Cookie", 3m, 1.25m, 1)
             ]);
 
         await repository.AddAsync(order);
         await repository.SaveChangesAsync();
 
-        var persisted = await repository.GetByIdAsync(order.Id);
+        var persisted = Assert.Single(await repository.GetAllAsync(), item => item.Id == order.Id);
 
-        Assert.NotNull(persisted);
         Assert.Equal(2, persisted.Items.Count);
-        Assert.Contains(persisted.Items, item => item.ProductNameSnapshot == "Latte" && item.UnitPriceSnapshot == 7.25m && item.UnitCostSnapshot == 3.10m);
+        Assert.Contains(persisted.Items, item => item.ProductNameSnapshot == "Latte" && item.UnitPriceSnapshot == 7.25m && item.UnitCostSnapshot == 3.85m && item.IsTakeAway);
         Assert.Contains(persisted.Items, item => item.ProductNameSnapshot == "Cookie" && item.UnitPriceSnapshot == 3m && item.UnitCostSnapshot == 1.25m);
     }
 

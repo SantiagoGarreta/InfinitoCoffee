@@ -7,4 +7,5 @@ public sealed record OrderItemResponse(
     decimal UnitPriceSnapshot,
     int Quantity,
     string? Notes,
-    decimal LineTotal);
+    decimal LineTotal,
+    bool IsTakeAway);

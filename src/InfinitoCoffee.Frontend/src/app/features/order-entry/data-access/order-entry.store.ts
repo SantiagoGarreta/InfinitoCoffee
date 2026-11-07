@@ -14,6 +14,9 @@ export interface EntryOrderItem {
   unitPrice: number;
   quantity: number;
   notes: string;
+  isTakeAway?: boolean;
+  canConsumeOnSite?: boolean;
+  canTakeAway?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -84,11 +87,11 @@ export class OrderEntryStore {
     this.submitError.set(null);
     this.items.update((currentItems) => {
       const nextItems = [...currentItems];
-      const existingItem = nextItems.find((item) => item.productId === product.id);
+      const isTakeAway = product.canConsumeOnSite === false;
+      const existingItem = nextItems.find((item) => item.productId === product.id && !!item.isTakeAway === isTakeAway);
 
       if (existingItem) {
-        existingItem.quantity += 1;
-        return nextItems;
+        return nextItems.map((item) => item === existingItem ? { ...item, quantity: item.quantity + 1 } : item);
       }
 
       nextItems.push({
@@ -97,32 +100,53 @@ export class OrderEntryStore {
         unitPrice: product.price,
         quantity: 1,
         notes: '',
+        isTakeAway,
+        canConsumeOnSite: product.canConsumeOnSite ?? true,
+        canTakeAway: product.canTakeAway ?? false,
       });
 
       return nextItems;
     });
   }
 
-  increaseQuantity(productId: string): void {
+  increaseQuantity(productId: string, isTakeAway = false): void {
     this.items.update((currentItems) => currentItems.map((item) =>
-      item.productId === productId
+      item.productId === productId && !!item.isTakeAway === isTakeAway
         ? { ...item, quantity: item.quantity + 1 }
         : item));
   }
 
-  decreaseQuantity(productId: string): void {
+  decreaseQuantity(productId: string, isTakeAway = false): void {
     this.items.update((currentItems) => currentItems
-      .map((item) => item.productId === productId
+      .map((item) => item.productId === productId && !!item.isTakeAway === isTakeAway
         ? { ...item, quantity: item.quantity - 1 }
         : item)
       .filter((item) => item.quantity > 0));
   }
 
-  updateItemNotes(productId: string, notes: string): void {
+  updateItemNotes(productId: string, notes: string, isTakeAway = false): void {
     this.items.update((currentItems) => currentItems.map((item) =>
-      item.productId === productId
+      item.productId === productId && !!item.isTakeAway === isTakeAway
         ? { ...item, notes }
         : item));
+  }
+
+  setTakeAway(productId: string, currentIsTakeAway: boolean, isTakeAway: boolean): void {
+    if (currentIsTakeAway === isTakeAway) return;
+    this.items.update((currentItems) => {
+      const item = currentItems.find((candidate) => candidate.productId === productId
+        && !!candidate.isTakeAway === currentIsTakeAway);
+      if (!item || (isTakeAway ? !item.canTakeAway : !item.canConsumeOnSite)) return currentItems;
+
+      const existing = currentItems.find((candidate) => candidate.productId === productId
+        && !!candidate.isTakeAway === isTakeAway);
+      if (existing) {
+        return currentItems.filter((candidate) => candidate !== item).map((candidate) => candidate === existing
+          ? { ...candidate, quantity: candidate.quantity + item.quantity }
+          : candidate);
+      }
+      return currentItems.map((candidate) => candidate === item ? { ...candidate, isTakeAway } : candidate);
+    });
   }
 
   async submit(): Promise<void> {
@@ -158,6 +182,7 @@ export class OrderEntryStore {
         productId: item.productId,
         quantity: item.quantity,
         notes: normalizeOptionalString(item.notes),
+        isTakeAway: !!item.isTakeAway,
       })),
     };
   }

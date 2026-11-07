@@ -11,4 +11,7 @@ public sealed record ProductDto(
     Guid? CategoryId,
     bool IsActive,
     decimal? MinimumQuantity,
-    ProductStockMode StockMode);
+    ProductStockMode StockMode,
+    bool CanConsumeOnSite,
+    bool CanTakeAway,
+    decimal TakeAwayCost);
