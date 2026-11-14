@@ -43,5 +43,8 @@ public sealed class CreateProductRequest
     [Range(0, 999999999)]
     public decimal MinimumQuantity { get; init; }
 
+    [Range(0, 999999999)]
+    public decimal? MinimumQuantityBranch2 { get; init; }
+
     public ProductStockMode StockMode { get; init; } = ProductStockMode.Stocked;
 }

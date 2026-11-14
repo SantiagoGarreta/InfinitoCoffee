@@ -94,6 +94,52 @@ public sealed class ProductEndpointsTests
     }
 
     [Fact]
+    public async Task ProductMinimumsAreIndependentForEachBranch()
+    {
+        await using var api = new ApiTestContext();
+        await api.AuthenticateAsync();
+        var categoryId = await api.ExecuteDbContextAsync(async db =>
+            (await TestDataSeeder.AddCategoryAsync(db)).Id);
+
+        var product = await api.ReadRequiredAsync<ProductResponse>(await api.PostAsJsonWithCsrfAsync(
+            "/api/products", new CreateProductRequest
+            {
+                Name = "Scones",
+                Price = 150m,
+                Cost = 62m,
+                CategoryId = categoryId,
+                MinimumQuantity = 8m,
+                MinimumQuantityBranch2 = 6m
+            }));
+        Assert.Equal(8m, product.MinimumQuantity);
+        Assert.Equal(6m, product.MinimumQuantityBranch2);
+
+        var first = await ReadStock<StockDashboardDto>(await api.Client.GetAsync("/api/stock"));
+        Assert.Equal(8m, Assert.Single(first.Items, x => x.ProductId == product.Id).MinimumQuantity);
+        api.Client.DefaultRequestHeaders.Add("X-Branch-Id", "2");
+        var second = await ReadStock<StockDashboardDto>(await api.Client.GetAsync("/api/stock"));
+        Assert.Equal(6m, Assert.Single(second.Items, x => x.ProductId == product.Id).MinimumQuantity);
+
+        var updated = await api.ReadRequiredAsync<ProductResponse>(await api.PutAsJsonWithCsrfAsync(
+            $"/api/products/{product.Id}", new UpdateProductRequest
+            {
+                Name = "Scones",
+                Price = 150m,
+                Cost = 62m,
+                CategoryId = categoryId,
+                MinimumQuantity = 7m,
+                MinimumQuantityBranch2 = 5m
+            }));
+        Assert.Equal(7m, updated.MinimumQuantity);
+        Assert.Equal(5m, updated.MinimumQuantityBranch2);
+        Assert.Equal(5m, Assert.Single((await ReadStock<StockDashboardDto>(
+            await api.Client.GetAsync("/api/stock"))).Items, x => x.ProductId == product.Id).MinimumQuantity);
+        api.Client.DefaultRequestHeaders.Remove("X-Branch-Id");
+        Assert.Equal(7m, Assert.Single((await ReadStock<StockDashboardDto>(
+            await api.Client.GetAsync("/api/stock"))).Items, x => x.ProductId == product.Id).MinimumQuantity);
+    }
+
+    [Fact]
     public async Task ProductCanSwitchBetweenStockedAndMadeToOrderOnlyWithZeroBalances()
     {
         await using var api = new ApiTestContext();

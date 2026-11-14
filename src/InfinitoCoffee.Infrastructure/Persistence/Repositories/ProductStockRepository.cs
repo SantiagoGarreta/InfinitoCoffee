@@ -19,7 +19,7 @@ public sealed class ProductStockRepository(InfinitoCoffeeDbContext db) : IProduc
         await transaction.CommitAsync(cancellationToken);
     }
 
-    public async Task AddForProductAsync(Product product, decimal minimumQuantity, ProductStockMode mode, CancellationToken cancellationToken = default)
+    public async Task AddForProductAsync(Product product, decimal minimumQuantity, ProductStockMode mode, CancellationToken cancellationToken = default, decimal? minimumQuantityBranch2 = null)
     {
         var normalizedName = product.Name.ToUpperInvariant();
         if (await db.StockItems.AnyAsync(x => !x.IsDeleted && x.NormalizedName == normalizedName, cancellationToken))
@@ -32,20 +32,21 @@ public sealed class ProductStockRepository(InfinitoCoffeeDbContext db) : IProduc
             Kind = ToItemKind(mode),
             Unit = StockUnit.Unit,
             ProductId = product.Id,
-            MinimumQuantity = mode == ProductStockMode.Stocked ? minimumQuantity : 0m
+            MinimumQuantity = mode == ProductStockMode.Stocked ? minimumQuantity : 0m,
+            MinimumQuantityBranch2 = mode == ProductStockMode.Stocked ? minimumQuantityBranch2 ?? minimumQuantity : 0m
         };
         db.StockItems.Add(item);
         if (mode == ProductStockMode.Stocked)
             await AddBalancesAsync(item.Id, cancellationToken);
     }
 
-    public async Task<decimal?> UpdateForProductAsync(Product product, decimal? minimumQuantity, ProductStockMode? mode, CancellationToken cancellationToken = default)
+    public async Task<decimal?> UpdateForProductAsync(Product product, decimal? minimumQuantity, ProductStockMode? mode, CancellationToken cancellationToken = default, decimal? minimumQuantityBranch2 = null)
     {
         var item = await db.StockItems.SingleOrDefaultAsync(x => !x.IsDeleted && x.ProductId == product.Id, cancellationToken);
         if (item is null)
         {
             var initialMinimum = minimumQuantity ?? 0m;
-            await AddForProductAsync(product, initialMinimum, mode ?? ProductStockMode.Stocked, cancellationToken);
+            await AddForProductAsync(product, initialMinimum, mode ?? ProductStockMode.Stocked, cancellationToken, minimumQuantityBranch2);
             return mode == ProductStockMode.MadeToOrder ? null : initialMinimum;
         }
 
@@ -72,20 +73,23 @@ public sealed class ProductStockRepository(InfinitoCoffeeDbContext db) : IProduc
                     throw new ConflictException("Dejá el stock en cero en todas las sucursales antes de cambiar a preparado al momento.");
                 db.StockBalances.RemoveRange(balances);
                 item.MinimumQuantity = 0m;
+                item.MinimumQuantityBranch2 = 0m;
             }
             else
             {
                 await AddBalancesAsync(item.Id, cancellationToken);
+                item.MinimumQuantityBranch2 = minimumQuantityBranch2 ?? minimumQuantity ?? 0m;
             }
             item.Kind = ToItemKind(mode.Value);
         }
         if (item.Kind == StockItemKind.MadeToOrder)
         {
-            if (minimumQuantity is > 0m)
+            if (minimumQuantity is > 0m || minimumQuantityBranch2 is > 0m)
                 throw new ArgumentException("Un producto preparado al momento no tiene stock mínimo.");
             return null;
         }
         if (minimumQuantity.HasValue) item.MinimumQuantity = minimumQuantity.Value;
+        if (minimumQuantityBranch2.HasValue) item.MinimumQuantityBranch2 = minimumQuantityBranch2.Value;
         return item.MinimumQuantity;
     }
 
@@ -107,17 +111,17 @@ public sealed class ProductStockRepository(InfinitoCoffeeDbContext db) : IProduc
                 cancellationToken);
     }
 
-    public Task<decimal?> GetMinimumQuantityAsync(Guid productId, CancellationToken cancellationToken = default) =>
+    public Task<decimal?> GetMinimumQuantityAsync(Guid productId, CancellationToken cancellationToken = default, int branchId = 1) =>
         db.StockItems.AsNoTracking().Where(x => !x.IsDeleted && x.ProductId == productId && x.Kind == StockItemKind.FinishedProduct)
-            .Select(x => (decimal?)x.MinimumQuantity).SingleOrDefaultAsync(cancellationToken);
+            .Select(x => (decimal?)(branchId == 2 ? x.MinimumQuantityBranch2 : x.MinimumQuantity)).SingleOrDefaultAsync(cancellationToken);
 
     public async Task<IReadOnlyDictionary<Guid, decimal>> GetMinimumQuantitiesAsync(
-        IReadOnlyCollection<Guid> productIds, CancellationToken cancellationToken = default)
+        IReadOnlyCollection<Guid> productIds, CancellationToken cancellationToken = default, int branchId = 1)
     {
         if (productIds.Count == 0) return new Dictionary<Guid, decimal>();
         return await db.StockItems.AsNoTracking()
             .Where(x => !x.IsDeleted && x.Kind == StockItemKind.FinishedProduct && x.ProductId.HasValue && productIds.Contains(x.ProductId.Value))
-            .ToDictionaryAsync(x => x.ProductId!.Value, x => x.MinimumQuantity, cancellationToken);
+            .ToDictionaryAsync(x => x.ProductId!.Value, x => branchId == 2 ? x.MinimumQuantityBranch2 : x.MinimumQuantity, cancellationToken);
     }
 
     private async Task AddBalancesAsync(Guid itemId, CancellationToken cancellationToken)

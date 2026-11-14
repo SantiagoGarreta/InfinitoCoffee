@@ -12,4 +12,5 @@ public sealed record CreateProductCommand(
     ProductStockMode StockMode = ProductStockMode.Stocked,
     bool CanConsumeOnSite = true,
     bool CanTakeAway = false,
-    decimal TakeAwayCost = 0);
+    decimal TakeAwayCost = 0,
+    decimal? MinimumQuantityBranch2 = null);
