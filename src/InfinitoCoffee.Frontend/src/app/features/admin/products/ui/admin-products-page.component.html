@@ -48,7 +48,7 @@
                     @if (product.canTakeAway) { <small>Costo adicional para llevar: {{ product.takeAwayCost ?? 0 | currency:'UYU':'symbol-narrow':'1.2-2' }}</small> }
                     <small>{{ product.stockMode === 'MadeToOrder' ? 'Preparado al momento' : 'Con stock' }}</small>
                     @if (product.stockMode !== 'MadeToOrder' && product.minimumQuantity != null) {
-                      <small>Stock mínimo: {{ product.minimumQuantity }} un. por sucursal</small>
+                      <small>Stock mínimo: Sucursal 1, {{ product.minimumQuantity }} un. · Sucursal 2, {{ product.minimumQuantityBranch2 ?? product.minimumQuantity }} un.</small>
                     }
                   </div>
                 </div>
@@ -160,9 +160,14 @@
 
         @if (stockMode() === 'Stocked') {
           <label>
-            <span>Stock mínimo por sucursal (unidades)</span>
+            <span>Stock mínimo Sucursal 1 (unidades)</span>
             <input name="minimumQuantity" type="number" required min="0" max="999999999" step="1" [disabled]="store.saving()" [ngModel]="minimumQuantity()" (ngModelChange)="minimumQuantity.set($event)" />
-            <small>Ingresá 0 si no querés alertas. Este producto tendrá existencias en cada sucursal.</small>
+            <small>Ingresá 0 si no querés alertas en esta sucursal.</small>
+          </label>
+          <label>
+            <span>Stock mínimo Sucursal 2 (unidades)</span>
+            <input name="minimumQuantityBranch2" type="number" required min="0" max="999999999" step="1" [disabled]="store.saving()" [ngModel]="minimumQuantityBranch2()" (ngModelChange)="minimumQuantityBranch2.set($event)" />
+            <small>Ingresá 0 si no querés alertas en esta sucursal.</small>
           </label>
         }
 

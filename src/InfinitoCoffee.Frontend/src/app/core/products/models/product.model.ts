@@ -10,5 +10,6 @@ export interface Product {
   categoryId: string | null;
   isActive: boolean;
   minimumQuantity?: number | null;
+  minimumQuantityBranch2?: number | null;
   stockMode?: 'Stocked' | 'MadeToOrder';
 }

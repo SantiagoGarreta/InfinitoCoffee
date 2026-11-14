@@ -2,8 +2,8 @@ using InfinitoCoffee.Domain.Stock;
 
 namespace InfinitoCoffee.Application.Stock;
 
-public sealed record StockItemRequest(string Name, StockItemKind Kind, StockUnit Unit, Guid? ProductId, decimal MinimumQuantity = 0);
-public sealed record StockItemUpdate(string Name, decimal MinimumQuantity);
+public sealed record StockItemRequest(string Name, StockItemKind Kind, StockUnit Unit, Guid? ProductId, decimal MinimumQuantity = 0, decimal? MinimumQuantityBranch2 = null);
+public sealed record StockItemUpdate(string Name, decimal MinimumQuantity, decimal? MinimumQuantityBranch2 = null);
 public sealed record StockLineInput(Guid ItemId, decimal Quantity, string Unit);
 public sealed record RecipeRequest(Guid ItemId, decimal Yield, IReadOnlyList<StockLineInput> Lines);
 public sealed record StockAdjustmentRequest(Guid OperationId, string Notes, IReadOnlyList<StockAdjustmentLine> Lines, bool ConsumeIngredients = true);

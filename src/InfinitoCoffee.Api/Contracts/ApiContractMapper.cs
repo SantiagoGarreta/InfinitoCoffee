@@ -76,7 +76,8 @@ internal static class ApiContractMapper
             product.StockMode,
             product.CanConsumeOnSite,
             product.CanTakeAway,
-            product.TakeAwayCost);
+            product.TakeAwayCost,
+            product.MinimumQuantityBranch2);
     }
 
     public static ProductCategoryResponse MapProductCategory(ProductCategoryDto category)

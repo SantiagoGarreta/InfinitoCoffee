@@ -15,6 +15,7 @@ export interface SaveProductRequest {
   takeAwayCost?: number;
   categoryId: string;
   minimumQuantity?: number | null;
+  minimumQuantityBranch2?: number | null;
   stockMode?: 'Stocked' | 'MadeToOrder';
 }
 
