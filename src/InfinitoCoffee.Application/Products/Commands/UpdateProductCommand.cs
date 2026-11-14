@@ -13,4 +13,5 @@ public sealed record UpdateProductCommand(
     ProductStockMode? StockMode = null,
     bool CanConsumeOnSite = true,
     bool CanTakeAway = false,
-    decimal TakeAwayCost = 0);
+    decimal TakeAwayCost = 0,
+    decimal? MinimumQuantityBranch2 = null);

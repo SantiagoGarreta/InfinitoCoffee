@@ -94,6 +94,32 @@ describe('AdminStockPageComponent', () => {
     expect(filter().getAttribute('aria-pressed')).toBe('false');
     expect(rows()).toHaveLength(2);
   });
+  it('separates shared ingredient warnings from branch product warnings', async () => {
+    const firstBranch = structuredClone(dashboard);
+    firstBranch.items[0].name = 'Harina';
+    firstBranch.balances[0].quantity = 2;
+    firstBranch.items.push({ id: 'lettuce', name: 'Lechuga romana', kind: 'Ingredient', unit: 'Unit', minimumQuantity: 4 });
+    firstBranch.balances.push({ itemId: 'lettuce', location: 'Factory', quantity: 1, revision: 'three' });
+    firstBranch.items[1].name = 'Scon';
+    firstBranch.items[1].minimumQuantity = 8;
+    firstBranch.balances[1].quantity = 7;
+    api.dashboard.mockResolvedValue(firstBranch);
+
+    const fixture = await create();
+    const warnings = () => Array.from(fixture.nativeElement.querySelectorAll('.notice.warning') as NodeListOf<HTMLElement>)
+      .map(element => element.textContent?.replace(/\s+/g, ' ').trim());
+    expect(warnings()).toEqual([
+      'Revisá la reposición de ingredientes: Harina, Lechuga romana.',
+      'Revisá la reposición de productos: Scon.',
+    ]);
+
+    const secondBranch = structuredClone(firstBranch);
+    secondBranch.items[1].minimumQuantity = 6;
+    api.dashboard.mockResolvedValue(secondBranch);
+    await fixture.componentInstance.reload();
+    fixture.detectChanges();
+    expect(warnings()).toEqual(['Revisá la reposición de ingredientes: Harina, Lechuga romana.']);
+  });
   it('records a decrease of a finished product with a reason', async () => {
     const fixture = await create(); const component = fixture.componentInstance;
     component.openAdjustment('scones', 'decrease');

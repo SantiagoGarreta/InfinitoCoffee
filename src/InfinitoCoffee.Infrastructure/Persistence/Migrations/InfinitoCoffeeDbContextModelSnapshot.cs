@@ -273,6 +273,10 @@ namespace InfinitoCoffee.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 3)
                         .HasColumnType("decimal(18,3)");
 
+                    b.Property<decimal>("MinimumQuantityBranch2")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)

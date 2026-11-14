@@ -36,6 +36,8 @@ export class AdminStockPageComponent implements OnInit {
     x.name.toLocaleLowerCase().includes(this.search().toLocaleLowerCase())
     && (!this.showOnlyLowStock() || this.isLowStock(x))));
   readonly lowStock = computed(() => this.stockedItems().filter(x => this.isLowStock(x)));
+  readonly lowIngredients = computed(() => this.lowStock().filter(x => x.kind === 'Ingredient'));
+  readonly lowProducts = computed(() => this.lowStock().filter(x => x.kind === 'FinishedProduct'));
   readonly tabs: { id: Tab; label: string }[] = [
     { id: 'overview', label: 'Existencias' }, { id: 'adjust', label: 'Ajustar stock' },
     { id: 'recipes', label: 'Recetas' }, { id: 'items', label: 'Artículos' }, { id: 'history', label: 'Historial' } ];
