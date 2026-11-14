@@ -104,8 +104,12 @@ public sealed class ProductEndpointsTests
         var product = await api.ReadRequiredAsync<ProductResponse>(await api.PostAsJsonWithCsrfAsync(
             "/api/products", new CreateProductRequest
             {
-                Name = "Scones", Price = 150m, Cost = 62m, CategoryId = categoryId,
-                MinimumQuantity = 8m, MinimumQuantityBranch2 = 6m
+                Name = "Scones",
+                Price = 150m,
+                Cost = 62m,
+                CategoryId = categoryId,
+                MinimumQuantity = 8m,
+                MinimumQuantityBranch2 = 6m
             }));
         Assert.Equal(8m, product.MinimumQuantity);
         Assert.Equal(6m, product.MinimumQuantityBranch2);
@@ -119,8 +123,12 @@ public sealed class ProductEndpointsTests
         var updated = await api.ReadRequiredAsync<ProductResponse>(await api.PutAsJsonWithCsrfAsync(
             $"/api/products/{product.Id}", new UpdateProductRequest
             {
-                Name = "Scones", Price = 150m, Cost = 62m, CategoryId = categoryId,
-                MinimumQuantity = 7m, MinimumQuantityBranch2 = 5m
+                Name = "Scones",
+                Price = 150m,
+                Cost = 62m,
+                CategoryId = categoryId,
+                MinimumQuantity = 7m,
+                MinimumQuantityBranch2 = 5m
             }));
         Assert.Equal(7m, updated.MinimumQuantity);
         Assert.Equal(5m, updated.MinimumQuantityBranch2);
