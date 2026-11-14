@@ -106,14 +106,18 @@ describe('AdminProductsPageComponent', () => {
     component.minimumQuantity.set(2.5);
     expect(component.canSubmit()).toBe(false);
     component.minimumQuantity.set(4);
+    component.minimumQuantityBranch2.set(6);
     await component.submit();
     expect(store.createRequest?.minimumQuantity).toBe(4);
+    expect(store.createRequest?.minimumQuantityBranch2).toBe(6);
 
     component.startEdit(store.products()[0]!);
     expect(component.minimumQuantity()).toBe(3);
     component.minimumQuantity.set(8);
+    component.minimumQuantityBranch2.set(5);
     await component.submit();
     expect(store.updateRequest?.minimumQuantity).toBe(8);
+    expect(store.updateRequest?.minimumQuantityBranch2).toBe(5);
 
     component.startEdit(store.products()[1]!);
     expect(component.minimumQuantity()).toBe(0);

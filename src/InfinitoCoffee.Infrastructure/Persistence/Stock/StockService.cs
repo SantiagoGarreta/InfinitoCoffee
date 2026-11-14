@@ -34,6 +34,8 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
         var name = Name(request.Name);
         if (!Enum.IsDefined(request.Kind) || !Enum.IsDefined(request.Unit)) throw new ArgumentException("Tipo o unidad inválida.");
         StockQuantity.ValidateBase(request.MinimumQuantity, request.Unit);
+        if (request.MinimumQuantityBranch2.HasValue)
+            StockQuantity.ValidateBase(request.MinimumQuantityBranch2.Value, request.Unit);
         if (request.Kind is not (StockItemKind.Ingredient or StockItemKind.FinishedProduct))
             throw new ArgumentException("Creá los productos preparados al momento desde Productos.");
         if (request.Kind == StockItemKind.FinishedProduct && (request.ProductId is null || request.Unit != StockUnit.Unit))
@@ -52,7 +54,9 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
             Kind = request.Kind,
             Unit = request.Unit,
             ProductId = request.ProductId,
-            MinimumQuantity = request.MinimumQuantity
+            MinimumQuantity = request.MinimumQuantity,
+            MinimumQuantityBranch2 = request.Kind == StockItemKind.FinishedProduct
+                ? request.MinimumQuantityBranch2 ?? request.MinimumQuantity : 0m
         };
         db.StockItems.Add(item);
         var scopeIds = item.Kind == StockItemKind.Ingredient ? [0] : await db.Branches.Select(x => x.Id).ToArrayAsync(ct);
@@ -69,11 +73,18 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
             throw new ArgumentException("Los productos preparados al momento se editan desde Productos y no tienen stock mínimo.");
         var name = Name(request.Name);
         StockQuantity.ValidateBase(request.MinimumQuantity, item.Unit);
+        if (request.MinimumQuantityBranch2.HasValue)
+            StockQuantity.ValidateBase(request.MinimumQuantityBranch2.Value, item.Unit);
         if (await db.StockItems.AnyAsync(x => !x.IsDeleted && x.Id != id && x.NormalizedName == name.ToUpperInvariant(), ct))
             throw new ConflictException("Ya existe un artículo con ese nombre.");
         item.Name = name;
         item.NormalizedName = name.ToUpperInvariant();
-        item.MinimumQuantity = request.MinimumQuantity;
+        if (item.Kind == StockItemKind.FinishedProduct && BranchId == 2)
+            item.MinimumQuantityBranch2 = request.MinimumQuantity;
+        else
+            item.MinimumQuantity = request.MinimumQuantity;
+        if (request.MinimumQuantityBranch2.HasValue && item.Kind == StockItemKind.FinishedProduct)
+            item.MinimumQuantityBranch2 = request.MinimumQuantityBranch2.Value;
         await db.SaveChangesAsync(ct);
         return MapItem(item);
     }
@@ -254,7 +265,8 @@ public sealed class StockService(InfinitoCoffeeDbContext db, IDateTimeProvider c
     {
         if (string.IsNullOrWhiteSpace(reason)) throw new ArgumentException("Indicá un motivo para que la diferencia quede documentada.");
     }
-    private static StockItemDto MapItem(StockItem x) => new(x.Id, x.Name, x.Kind, x.Unit, x.ProductId, x.MinimumQuantity);
+    private StockItemDto MapItem(StockItem x) => new(x.Id, x.Name, x.Kind, x.Unit, x.ProductId,
+        x.Kind == StockItemKind.FinishedProduct && BranchId == 2 ? x.MinimumQuantityBranch2 : x.MinimumQuantity);
     private static RecipeDto MapRecipe(StockRecipe x) => new(x.Id, x.ItemId, x.Version, x.Yield, x.CreatedAtUtc,
         x.Lines.Select(l => new RecipeLineDto(l.ItemId, l.Quantity)).ToArray());
 }

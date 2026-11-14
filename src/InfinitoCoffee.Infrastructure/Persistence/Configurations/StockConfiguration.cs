@@ -17,6 +17,7 @@ internal static class StockConfiguration
         item.Property(x => x.NormalizedName).HasMaxLength(150).IsRequired();
         item.HasIndex(x => x.NormalizedName).IsUnique().HasFilter("[IsDeleted] = 0");
         item.Property(x => x.MinimumQuantity).HasPrecision(18, 3);
+        item.Property(x => x.MinimumQuantityBranch2).HasPrecision(18, 3);
         item.Property(x => x.IsDeleted).IsRequired().HasDefaultValue(false);
         item.HasIndex(x => x.ProductId).IsUnique().HasFilter("[ProductId] IS NOT NULL AND [IsDeleted] = 0");
         item.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);

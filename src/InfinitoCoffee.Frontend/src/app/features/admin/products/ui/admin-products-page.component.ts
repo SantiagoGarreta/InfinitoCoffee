@@ -29,6 +29,7 @@ export class AdminProductsPageComponent implements OnInit {
   readonly canTakeAway = signal(false);
   readonly takeAwayCost = signal<number | null>(0);
   readonly minimumQuantity = signal<number | null>(null);
+  readonly minimumQuantityBranch2 = signal<number | null>(null);
   readonly stockMode = signal<'Stocked' | 'MadeToOrder'>('Stocked');
   readonly categoryId = signal('');
 
@@ -55,6 +56,7 @@ export class AdminProductsPageComponent implements OnInit {
     const cost = this.cost();
     const takeAwayCost = this.takeAwayCost();
     const minimumQuantity = this.minimumQuantity();
+    const minimumQuantityBranch2 = this.minimumQuantityBranch2();
     return trimmedName.length > 0
       && trimmedName.length <= 150
       && description.length <= 1000
@@ -65,7 +67,9 @@ export class AdminProductsPageComponent implements OnInit {
       && (this.canConsumeOnSite() || this.canTakeAway())
       && (!this.canTakeAway() || (takeAwayCost !== null && takeAwayCost >= 0))
       && (this.stockMode() === 'MadeToOrder' || (minimumQuantity !== null && Number.isInteger(minimumQuantity)
-        && minimumQuantity >= 0 && minimumQuantity <= 999999999))
+        && minimumQuantity >= 0 && minimumQuantity <= 999999999
+        && minimumQuantityBranch2 !== null && Number.isInteger(minimumQuantityBranch2)
+        && minimumQuantityBranch2 >= 0 && minimumQuantityBranch2 <= 999999999))
       && this.categoryId().length > 0
       && !this.store.saving();
   });
@@ -105,6 +109,7 @@ export class AdminProductsPageComponent implements OnInit {
     this.canTakeAway.set(product.canTakeAway ?? false);
     this.takeAwayCost.set(product.takeAwayCost ?? 0);
     this.minimumQuantity.set(product.minimumQuantity ?? 0);
+    this.minimumQuantityBranch2.set(product.minimumQuantityBranch2 ?? product.minimumQuantity ?? 0);
     this.stockMode.set(product.stockMode ?? 'Stocked');
     this.categoryId.set(product.categoryId ?? '');
   }
@@ -124,6 +129,7 @@ export class AdminProductsPageComponent implements OnInit {
       canTakeAway: this.canTakeAway(),
       takeAwayCost: this.canTakeAway() ? this.takeAwayCost()! : 0,
       minimumQuantity: this.stockMode() === 'Stocked' ? this.minimumQuantity() : 0,
+      minimumQuantityBranch2: this.stockMode() === 'Stocked' ? this.minimumQuantityBranch2() : 0,
       stockMode: this.stockMode(),
       categoryId: this.categoryId(),
     };
@@ -185,6 +191,7 @@ export class AdminProductsPageComponent implements OnInit {
     this.canTakeAway.set(false);
     this.takeAwayCost.set(0);
     this.minimumQuantity.set(null);
+    this.minimumQuantityBranch2.set(null);
     this.stockMode.set('Stocked');
     this.categoryId.set(this.store.activeCategories()[0]?.id ?? '');
   }

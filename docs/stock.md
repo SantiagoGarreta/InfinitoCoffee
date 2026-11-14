@@ -1,5 +1,9 @@
 # Control de stock
 
+Los productos con stock tienen un mínimo independiente por sucursal. En **Productos**, ingresá el mínimo de Sucursal 1 y el de Sucursal 2 en unidades; por ejemplo, 8 y 6 scones. En **Stock → Existencias**, la alerta aparece cuando la cantidad del local seleccionado es menor que su propio mínimo. El valor 0 desactiva la alerta en esa sucursal. Los ingredientes conservan un mínimo compartido.
+
+La migración `20261114000000_AddBranchSpecificStockMinimums` copia el mínimo anterior a Sucursal 2. Así, los productos existentes mantienen el mismo aviso en ambas sucursales hasta que se editen sus valores.
+
 La sección **Administración → Stock** muestra el saldo compartido de cada ingrediente y el saldo de productos terminados de la sucursal seleccionada. Solo los administradores pueden registrar artículos, recetas y ajustes. El catálogo de artículos y las recetas son comunes a ambas sucursales.
 
 ## Puesta en marcha

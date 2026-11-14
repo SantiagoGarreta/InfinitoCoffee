@@ -14,4 +14,5 @@ public sealed record ProductDto(
     ProductStockMode StockMode,
     bool CanConsumeOnSite,
     bool CanTakeAway,
-    decimal TakeAwayCost);
+    decimal TakeAwayCost,
+    decimal? MinimumQuantityBranch2 = null);
